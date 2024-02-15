@@ -1,7 +1,7 @@
 <template>
   <v-app>
     <v-main name="main" style="display: flex;">
-      <v-navigation-drawer class="left-column" :key="render_key_column" :width="200" permanent="true">
+      <v-navigation-drawer class="left-column" :key="render_key_column" :width="200" :permanent=true>
         <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
         <v-list-item style="display: inline-block; width:100%;">
           <input type="checkbox" id="check_core" value="core" v-model="set_types_shown" class="set_check" :checked="check_core">
@@ -22,11 +22,22 @@
         </div> </v-list-item>
       </v-navigation-drawer>
       <v-sheet class="main_body">
-        <v-row no-gutters>
-          <v-col class="card_element" v-for="card in current_set_booster_cards" sm="4" lg="3">
-            <img :src="card['image_uris']['normal']" class="card_image">
-          </v-col>
-        </v-row>
+        <v-card class="set_stats_banner" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box">
+          <p>Base Cards: 0/{{ current_set_booster_cards.length }}</p>
+          <p v-if="current_set_commons > 0">Commons: 0/{{ current_set_commons }}</p>
+          <p v-if="current_set_uncommons > 0">Uncommons: 0/{{ current_set_uncommons }}</p>
+          <p v-if="current_set_rares > 0">Rares: 0/{{ current_set_rares }}</p>
+          <p v-if="current_set_mythics > 0">Mythic Rares: 0/{{ current_set_mythics }}</p>
+          <p v-if="current_set['card_count'] - current_set_booster_cards.length > 0">Booster Fun Cards: 0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p>
+          <p>Grand Total Cards: 0/{{ current_set['card_count'] }}</p>
+        </v-card>
+        <v-sheet class="card_holder">
+          <v-row no-gutters>
+            <v-col class="card_element" v-for="card in current_set_booster_cards" xs="6" sm="6" md="4" lg="3">
+              <img :src="card['image_uris']['normal']" class="card_image">
+            </v-col>
+          </v-row>
+        </v-sheet>
       </v-sheet>
       <v-card class="set_stats_box" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box">
         <p>Base Cards: 0/{{ current_set_booster_cards.length }}</p>
@@ -194,9 +205,8 @@ function forceRerenderStatsBox()
   background-color: aquamarine;
   width: 60%;
   max-width: 1400px;
-  min-width: 600px;
   display: inline-block;
-  top: 300px;
+  margin-top: 50px;
   text-align: center;
 }
 .v-col {
@@ -204,11 +214,15 @@ function forceRerenderStatsBox()
 }
 .card_element {
   display: inline-block;
-  width: 32%;
-  max-width: 198px;
 }
 .card_image {
- width: 100%; 
+  width: 100%; 
+  -webkit-filter: grayscale(1);
+  filter: grayscale(1);
+}
+.card_image:hover {
+  -webkit-filter: grayscale(0);
+  filter: grayscale(0);
 }
 .set_stats_box {
   width: 200px;
@@ -222,9 +236,35 @@ function forceRerenderStatsBox()
   right: 50px;
   padding: 15px;
 }
-@media screen and (max-width: 1100px) {
+.set_stats_banner {
+  width: 100%;
+  height: 150px;
+  display: block;
+  padding: 15px;
+}
+@media screen and (max-width: 1350px) {
   .set_stats_box {
     display: none;
+  }
+}
+@media screen and (min-width: 1351px) {
+  .set_stats_banner {
+    display: none;
+  }
+}
+@media screen and (min-width: 1530px) {
+  .main_body {
+    width: 900px;
+  }
+}
+@media screen and (max-width: 1529px) {
+  .main_body {
+    width: 80%;
+  }
+}
+@media screen and (max-width: 960px) {
+  .main_body {
+    width: 95%;
   }
 }
 </style>
