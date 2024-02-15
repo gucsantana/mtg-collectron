@@ -2,8 +2,8 @@
   <v-app>
     <v-main name="main" style="display: flex;">
       <v-navigation-drawer class="left-column" :key="render_key_column" :width="200" permanent="true">
-        <v-list-item id="column_set_visib_title" ><p class="column_header">Set Visibility</p></v-list-item>
-        <v-list-item density="compact" style="display: inline-block; width:100%;">
+        <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
+        <v-list-item style="display: inline-block; width:100%;">
           <input type="checkbox" id="check_core" value="core" v-model="set_types_shown" class="set_check" :checked="check_core">
             <label for="check_core" style="display: inline-block;">Core Sets</label>
         </v-list-item>
@@ -11,22 +11,24 @@
           <input type="checkbox" value="expansion" v-model="set_types_shown" class="set_check" :checked="check_expansion">
             <p style="display: inline-block;">Expansions</p>
         </v-list-item>
-        <div style="display: inline-block; width:100%;">
+        <v-list-item style="display: inline-block; width:100%;">
           <input type="checkbox" value="masters" v-model="set_types_shown" class="set_check" :checked="check_masters">
             <p style="display: inline-block;">Masters Sets</p>
-        </div>
-        <p id="column_set_list_title" class="column_header">List of Sets</p>
-        <div v-for="set in set_list"> <div :id="set['code']" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" @click="select_set(set)">
+        </v-list-item>
+        <v-list-item id="column_set_list_title"><p class="column_header">List of Sets</p></v-list-item>
+        <v-list-item v-for="set in set_list"> <div :id="set['code']" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" @click="select_set(set)">
           <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
           <p class="set_list_name">{{ set['name'] }}</p>
-        </div> </div>
+        </div> </v-list-item>
       </v-navigation-drawer>
-      <div class="main_body">
-        <div class="card_element" v-for="card in current_set_booster_cards">
-          <img :src="card['image_uris']['normal']" class="card_image">
-        </div>
-      </div>
-      <div class="set_stats_box" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box">
+      <v-sheet class="main_body">
+        <v-row no-gutters>
+          <v-col class="card_element" v-for="card in current_set_booster_cards" sm="4" lg="3">
+            <img :src="card['image_uris']['normal']" class="card_image">
+          </v-col>
+        </v-row>
+      </v-sheet>
+      <v-card class="set_stats_box" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box">
         <p>Base Cards: 0/{{ current_set_booster_cards.length }}</p>
         <p v-if="current_set_commons > 0">Commons: 0/{{ current_set_commons }}</p>
         <p v-if="current_set_uncommons > 0">Uncommons: 0/{{ current_set_uncommons }}</p>
@@ -34,7 +36,7 @@
         <p v-if="current_set_mythics > 0">Mythic Rares: 0/{{ current_set_mythics }}</p>
         <p v-if="current_set['card_count'] - current_set_booster_cards.length > 0">Booster Fun Cards: 0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p>
         <p>Grand Total Cards: 0/{{ current_set['card_count'] }}</p>
-      </div>
+      </v-card>
     </v-main>
   </v-app>
 </template>
@@ -165,12 +167,13 @@ function forceRerenderStatsBox()
   text-align: left;
   padding-left: 20px;
 }
-.v-list__tile {
-  padding: 0  
+.v-list-item {
+  padding: 0 16px;
+  min-height: 0;  
 }
 .set_list_element {
   display: flex;
-  width: 180px;
+  width: 160px;
   max-height: 25px;
 }
 .set_list_element:hover {
@@ -196,6 +199,9 @@ function forceRerenderStatsBox()
   top: 300px;
   text-align: center;
 }
+.v-col {
+  padding: 0;
+}
 .card_element {
   display: inline-block;
   width: 32%;
@@ -207,13 +213,18 @@ function forceRerenderStatsBox()
 .set_stats_box {
   width: 200px;
   height: 200px;
-  border-radius: 10%;
-  border: 1px solid black;
+  border-radius: 5%;
+  border: 1px solid rgb(113, 113, 113);
   display: block;
   float:right;
   position: fixed;
   top: 20%;
   right: 50px;
   padding: 15px;
+}
+@media screen and (max-width: 1100px) {
+  .set_stats_box {
+    display: none;
+  }
 }
 </style>
