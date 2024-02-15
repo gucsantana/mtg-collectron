@@ -1,25 +1,25 @@
 <template>
   <v-app>
     <v-main name="main" style="display: flex;">
-      <v-navigation-drawer class="left-column" :key="render_key_column" :width="240" permanent="true">
-        <v-list-item id="column_set_visib_title" class="column_header" title="Set Visibility"></v-list-item>
-        <!-- <div style="display: inline-block; width:100%;">
+      <v-navigation-drawer class="left-column" :key="render_key_column" :width="200" permanent="true">
+        <v-list-item id="column_set_visib_title" ><p class="column_header">Set Visibility</p></v-list-item>
+        <v-list-item density="compact" style="display: inline-block; width:100%;">
           <input type="checkbox" id="check_core" value="core" v-model="set_types_shown" class="set_check" :checked="check_core">
             <label for="check_core" style="display: inline-block;">Core Sets</label>
-        </div>
-        <div style="display: inline-block; width:100%;">
+        </v-list-item>
+        <v-list-item style="display: inline-block; width:100%;">
           <input type="checkbox" value="expansion" v-model="set_types_shown" class="set_check" :checked="check_expansion">
             <p style="display: inline-block;">Expansions</p>
-        </div>
+        </v-list-item>
         <div style="display: inline-block; width:100%;">
           <input type="checkbox" value="masters" v-model="set_types_shown" class="set_check" :checked="check_masters">
             <p style="display: inline-block;">Masters Sets</p>
         </div>
         <p id="column_set_list_title" class="column_header">List of Sets</p>
         <div v-for="set in set_list"> <div :id="set['code']" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" @click="select_set(set)">
-          <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/>
+          <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
           <p class="set_list_name">{{ set['name'] }}</p>
-        </div> </div> -->
+        </div> </div>
       </v-navigation-drawer>
       <div class="main_body">
         <div class="card_element" v-for="card in current_set_booster_cards">
@@ -161,9 +161,12 @@ function forceRerenderStatsBox()
   display: inline-block;
 }
 .column_header {
-  font-weight: bold;
+  font-weight: bold; 
   text-align: left;
   padding-left: 20px;
+}
+.v-list__tile {
+  padding: 0  
 }
 .set_list_element {
   display: flex;
