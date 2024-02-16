@@ -45,7 +45,7 @@
               <v-hover v-slot="{ isHovering, props }">
                 <v-card :class="{ 'on-hover': isHovering }" :="props" :card-data="card">
                   <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering }">
-                  <v-btn class="add_card_button" density="comfortable" v-show="isHovering"><v-icon icon="mdi-plus" size="x-large" color="teal-accent-3"/></v-btn>
+                  <v-btn @click="add_card_to_stock(card)" class="add_card_button" v-show="isHovering" density="comfortable" ><v-icon icon="mdi-plus" size="x-large" color="teal-accent-3"/></v-btn>
                 </v-card>
               </v-hover>
             </v-col>
@@ -73,8 +73,9 @@ var render_key_column = 0
 var render_key_stats_box = 0
 
 var set_list = ref([])
-var local_set_data = ref({})    // all card data for any given set; will be loaded from scryfall only once, and then stored to local
 var set_types_shown = ref(['core','expansion'])
+
+var collection_stock = ref({})  // the user's total card stock, a json object that includes every single card they own (oof?)
 
 var check_core = false
 var check_expansion = false
@@ -89,18 +90,10 @@ var current_set_mythics = ref(0)
 
 onMounted(() => {
   set_list.value = sets_json['data']
-  console.log(sets_json['data'])
 
   // get the list of set options from local storage
   const set_options = JSON.parse(localStorage.getItem('set_options'))
   if(set_options)  {  set_types_shown.value = set_options  }
-  // get the dictionary of already loaded set data from
-  try {
-    local_set_data.value = JSON.parse(localStorage.getItem('set_card_data'))
-  }
-  catch {
-    console.log('No set_card_data on the local storage yet, or failed to parse')
-  }
 })
 
 // watch keeps track of variable changes
@@ -133,14 +126,12 @@ async function get_set_cards(set_code) {
     has_more = response_data['has_more']
     fetch_url = response_data['next_page']
   } while (has_more != false)
-  console.log("obtained set data from scryfall")
 
   current_set_commons.value = total_data.filter(is_common).length
   current_set_uncommons.value = total_data.filter(is_uncommon).length
   current_set_rares.value = total_data.filter(is_rare).length
   current_set_mythics.value = total_data.filter(is_mythic).length
 
-  console.log('total data for set',total_data)
   return total_data
 }
 
@@ -155,6 +146,57 @@ function getCardImage(uriArray,cardFacesArray){
     return cardFacesArray[0]['image_uris']['normal']
   }
   else return
+}
+
+function add_card_to_stock(card_data){
+  var set_stock = {}
+
+  // first, we check if we already have any cards from this set; if yes, we grab the existing data; if not, we create a new empty set with this set's name
+  if(card_data['set'] in this.collection_stock) {
+    set_stock = this.collection_stock[card_data['set']]
+  } else {
+    var new_set = {
+      cards:[],
+      commons: 0,
+      uncommons: 0,
+      rares: 0,
+      mythics: 0,
+      booster_fun: 0
+    }
+    this.collection_stock.push({ [card_data['set']] : new_set})
+    set_stock = this.collection_stock[card_data['set']]
+  }
+  console.log(set_stock)
+  return
+  // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
+  if(card_data['name'] in set_stock){
+    var card_stock = set_stock[card_data['name']]
+    card_stock['count'] ++
+  } else {
+    var new_card = {
+      count: 1,
+      rarity: card_data['rarity'],
+      foil: false
+    }
+    set_stock['cards'].push(new_card)
+    switch(card_data){
+      case 'common':
+        set_stock['commons']++
+        break
+      case 'uncommon':
+        set_stock['uncommons']++
+        break
+      case 'rare':
+        set_stock['rares']++
+        break
+      case 'mythic':
+        set_stock['mythics']++
+        break
+      default:
+        break
+    }
+  }
+  console.log("current card stock",this.collection_stock.value)
 }
 
 // aux functions for checking rarity
