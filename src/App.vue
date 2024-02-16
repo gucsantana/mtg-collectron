@@ -23,30 +23,43 @@
       </v-navigation-drawer>
       <v-sheet class="main_body">
         <v-card class="set_stats_banner" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box">
-          <p>Base Cards: 0/{{ current_set_booster_cards.length }}</p>
-          <p v-if="current_set_commons > 0">Commons: 0/{{ current_set_commons }}</p>
-          <p v-if="current_set_uncommons > 0">Uncommons: 0/{{ current_set_uncommons }}</p>
-          <p v-if="current_set_rares > 0">Rares: 0/{{ current_set_rares }}</p>
-          <p v-if="current_set_mythics > 0">Mythic Rares: 0/{{ current_set_mythics }}</p>
-          <p v-if="current_set['card_count'] - current_set_booster_cards.length > 0">Booster Fun Cards: 0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p>
-          <p>Grand Total Cards: 0/{{ current_set['card_count'] }}</p>
+          <v-row style="height: 80px;" align="center" >
+            <v-col><p>Base Set:</p><p>0/{{ current_set_booster_cards.length }}</p></v-col>
+            <v-divider vertical/>
+            <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>0/{{ current_set_commons }}</p></v-col>
+            <v-divider vertical v-if="current_set_commons > 0"/>
+            <v-col v-if="current_set_uncommons > 0"><p>Uncommons:</p><p>0/{{ current_set_uncommons }}</p></v-col>
+            <v-divider vertical v-if="current_set_uncommons > 0"/>
+            <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>0/{{ current_set_rares }}</p></v-col>
+            <v-divider vertical v-if="current_set_rares > 0"/>
+            <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>0/{{ current_set_mythics }}</p></v-col>
+            <v-divider vertical v-if="current_set_mythics > 0"/>
+            <v-col v-if="current_set['card_count'] - current_set_booster_cards.length > 0"><p>Booster Fun:</p><p>0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p></v-col>
+            <v-divider vertical v-if="current_set['card_count'] - current_set_booster_cards.length > 0"/>
+            <v-col><p>Grand Total:</p><p>0/{{ current_set['card_count'] }}</p></v-col>
+          </v-row>
         </v-card>
         <v-sheet class="card_holder">
           <v-row no-gutters>
-            <v-col class="card_element" v-for="card in current_set_booster_cards" xs="6" sm="6" md="4" lg="3">
-              <img :src="card['image_uris']['normal']" class="card_image">
+            <v-col class="card_element" v-for="card in current_set_booster_cards" cols="6" sm="6" md="4" lg="3">
+              <v-hover v-slot="{ isHovering, props }">
+                <v-card :class="{ 'on-hover': isHovering }" :="props" :card-data="card">
+                  <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering }">
+                  <v-btn class="add_card_button" density="comfortable" v-show="isHovering"><v-icon icon="mdi-plus" size="x-large" color="teal-accent-3"/></v-btn>
+                </v-card>
+              </v-hover>
             </v-col>
           </v-row>
         </v-sheet>
       </v-sheet>
-      <v-card class="set_stats_box" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box">
-        <p>Base Cards: 0/{{ current_set_booster_cards.length }}</p>
+      <v-card class="set_stats_box" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box" :elevation="10">
+        <p>Base Set: 0/{{ current_set_booster_cards.length }}</p>
         <p v-if="current_set_commons > 0">Commons: 0/{{ current_set_commons }}</p>
         <p v-if="current_set_uncommons > 0">Uncommons: 0/{{ current_set_uncommons }}</p>
         <p v-if="current_set_rares > 0">Rares: 0/{{ current_set_rares }}</p>
         <p v-if="current_set_mythics > 0">Mythic Rares: 0/{{ current_set_mythics }}</p>
-        <p v-if="current_set['card_count'] - current_set_booster_cards.length > 0">Booster Fun Cards: 0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p>
-        <p>Grand Total Cards: 0/{{ current_set['card_count'] }}</p>
+        <p v-if="current_set['card_count'] - current_set_booster_cards.length > 0">Booster Fun: 0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p>
+        <p>Grand Total: 0/{{ current_set['card_count'] }}</p>
       </v-card>
     </v-main>
   </v-app>
@@ -80,7 +93,6 @@ onMounted(() => {
 
   // get the list of set options from local storage
   const set_options = JSON.parse(localStorage.getItem('set_options'))
-  console.log("loaded set options",JSON.stringify(set_options))
   if(set_options)  {  set_types_shown.value = set_options  }
   // get the dictionary of already loaded set data from
   try {
@@ -110,29 +122,18 @@ async function get_set_cards(set_code) {
   var total_data = []
   var has_more = false
   var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards&as=grid&order=name"
-  // if(set_code in local_set_data)
-  // {
-  //   // if the data is already on the local storage, we don't need to fetch it again
-  //   total_data = local_set_data[set_code]
-  //   console.log("data already in local storage")
-  // }
-  // else
-  {
-    // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and aren't booster fun (showcase, etc)
-    // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
-    // we follow down said batches until no has_more and concat the results back
-    do {
-      const response = await fetch(fetch_url);
-      const response_data = await response.json();
-      total_data = total_data.concat(response_data['data'])
-      has_more = response_data['has_more']
-      fetch_url = response_data['next_page']
-    } while (has_more != false)
-
-    // local_set_data[set_code] = total_data
-    // localStorage.setItem('set_card_data',JSON.stringify(local_set_data))
-    console.log("obtained set data from scryfall")
-  }
+  
+  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and aren't booster fun (showcase, etc)
+  // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
+  // we follow down said batches until no has_more and concat the results back
+  do {
+    const response = await fetch(fetch_url);
+    const response_data = await response.json();
+    total_data = total_data.concat(response_data['data'])
+    has_more = response_data['has_more']
+    fetch_url = response_data['next_page']
+  } while (has_more != false)
+  console.log("obtained set data from scryfall")
 
   current_set_commons.value = total_data.filter(is_common).length
   current_set_uncommons.value = total_data.filter(is_uncommon).length
@@ -141,6 +142,19 @@ async function get_set_cards(set_code) {
 
   console.log('total data for set',total_data)
   return total_data
+}
+
+// passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri
+function getCardImage(uriArray,cardFacesArray){
+  if(uriArray)
+  {
+    return uriArray['normal']
+  }
+  else if(cardFacesArray)
+  {
+    return cardFacesArray[0]['image_uris']['normal']
+  }
+  else return
 }
 
 // aux functions for checking rarity
@@ -202,11 +216,11 @@ function forceRerenderStatsBox()
   width: 100%;
 }
 .main_body {
-  background-color: aquamarine;
+  /* background-color: aquamarine; */
   width: 60%;
   max-width: 1400px;
   display: inline-block;
-  margin-top: 50px;
+  /* margin-top: 50px; */
   text-align: center;
 }
 .v-col {
@@ -214,21 +228,33 @@ function forceRerenderStatsBox()
 }
 .card_element {
   display: inline-block;
+  position: relative;
 }
 .card_image {
   width: 100%; 
   -webkit-filter: grayscale(1);
   filter: grayscale(1);
 }
-.card_image:hover {
+.lit_up_card_image {
   -webkit-filter: grayscale(0);
   filter: grayscale(0);
+}
+.add_card_button {
+  display:inline-block;
+  position:absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgb(232, 253, 246);
+}
+.rainbow-box {
+  border: 5px solid transparent;
+  border-image: linear-gradient(to bottom right, #b827fc 0%, #2c90fc 25%, #b8fd33 50%, #fec837 75%, #fd1892 100%);
+  border-image-slice: 1;
 }
 .set_stats_box {
   width: 200px;
   height: 200px;
   border-radius: 5%;
-  border: 1px solid rgb(113, 113, 113);
   display: block;
   float:right;
   position: fixed;
@@ -238,17 +264,13 @@ function forceRerenderStatsBox()
 }
 .set_stats_banner {
   width: 100%;
-  height: 150px;
+  height: 80px;
   display: block;
   padding: 15px;
+  margin-bottom: 10px;
 }
 @media screen and (max-width: 1350px) {
   .set_stats_box {
-    display: none;
-  }
-}
-@media screen and (min-width: 1351px) {
-  .set_stats_banner {
     display: none;
   }
 }
