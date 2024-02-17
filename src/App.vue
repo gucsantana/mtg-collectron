@@ -26,13 +26,13 @@
           <v-row style="height: 80px;" align="center" >
             <v-col><p>Base Set:</p><p>0/{{ current_set_booster_cards.length }}</p></v-col>
             <v-divider vertical/>
-            <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>0/{{ current_set_commons }}</p></v-col>
+            <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>{{ current_set_owned_commons }}/{{ current_set_commons }}</p></v-col>
             <v-divider vertical v-if="current_set_commons > 0"/>
-            <v-col v-if="current_set_uncommons > 0"><p>Uncommons:</p><p>0/{{ current_set_uncommons }}</p></v-col>
+            <v-col v-if="current_set_uncommons > 0"><p>Uncommons:</p><p>{{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p></v-col>
             <v-divider vertical v-if="current_set_uncommons > 0"/>
-            <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>0/{{ current_set_rares }}</p></v-col>
+            <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>{{ current_set_owned_rares }}/{{ current_set_rares }}</p></v-col>
             <v-divider vertical v-if="current_set_rares > 0"/>
-            <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>0/{{ current_set_mythics }}</p></v-col>
+            <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>{{ current_set_owned_mythics }}/{{ current_set_mythics }}</p></v-col>
             <v-divider vertical v-if="current_set_mythics > 0"/>
             <v-col v-if="current_set['card_count'] - current_set_booster_cards.length > 0"><p>Booster Fun:</p><p>0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p></v-col>
             <v-divider vertical v-if="current_set['card_count'] - current_set_booster_cards.length > 0"/>
@@ -44,7 +44,7 @@
             <v-col class="card_element" v-for="card in current_set_booster_cards" cols="6" sm="6" md="4" lg="3">
               <v-hover v-slot="{ isHovering, props }">
                 <v-card :class="{ 'on-hover': isHovering }" :="props" :card-data="card">
-                  <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering }">
+                  <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering, 'card_owned': (collection_stock[current_set_code] && card.name in collection_stock[current_set_code].cards && card.collector_number in collection_stock[current_set_code].cards[card.name]) }">
                   <v-btn @click="add_card_to_stock(card)" class="add_card_button" v-show="isHovering" density="comfortable" ><v-icon icon="mdi-plus" size="x-large" color="teal-accent-3"/></v-btn>
                 </v-card>
               </v-hover>
@@ -54,10 +54,10 @@
       </v-sheet>
       <v-card class="set_stats_box" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box" :elevation="10">
         <p>Base Set: 0/{{ current_set_booster_cards.length }}</p>
-        <p v-if="current_set_commons > 0">Commons: 0/{{ current_set_commons }}</p>
-        <p v-if="current_set_uncommons > 0">Uncommons: 0/{{ current_set_uncommons }}</p>
-        <p v-if="current_set_rares > 0">Rares: 0/{{ current_set_rares }}</p>
-        <p v-if="current_set_mythics > 0">Mythic Rares: 0/{{ current_set_mythics }}</p>
+        <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
+        <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
+        <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
+        <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
         <p v-if="current_set['card_count'] - current_set_booster_cards.length > 0">Booster Fun: 0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p>
         <p>Grand Total: 0/{{ current_set['card_count'] }}</p>
       </v-card>
@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, reactive, computed } from 'vue'
 import sets_json from './scryfall_data/sets.json'
 
 var render_key_column = 0
@@ -75,18 +75,30 @@ var render_key_stats_box = 0
 var set_list = ref([])
 var set_types_shown = ref(['core','expansion'])
 
-var collection_stock = ref({})  // the user's total card stock, a json object that includes every single card they own (oof?)
+var collection_stock = reactive({})  // the user's total card stock, a json object that includes every single card they own (oof?)
 
 var check_core = false
 var check_expansion = false
 var check_masters = false
 
 var current_set = ref(null)
+var current_set_code = ref('')
 var current_set_booster_cards = ref(null)
 var current_set_commons = ref(0)
 var current_set_uncommons = ref(0)
 var current_set_rares = ref(0)
 var current_set_mythics = ref(0)
+
+var current_set_owned_booster_cards = ref(null)
+var current_set_owned_commons = ref(0)
+var current_set_owned_uncommons = ref(0)
+var current_set_owned_rares = ref(0)
+var current_set_owned_mythics = ref(0)
+
+// TODO: revisit this? sounds like it solves some problems but it doesn't work yet
+var is_card_owned = computed(() => {
+  return collection_stock[current_set_code] && card.name in collection_stock[current_set_code].cards && card.collector_number in collection_stock[current_set_code].cards[card.name]
+})
 
 onMounted(() => {
   set_list.value = sets_json['data']
@@ -97,24 +109,28 @@ onMounted(() => {
 })
 
 // watch keeps track of variable changes
-watch(set_types_shown, new_array => {
-  localStorage.setItem('set_options',JSON.stringify(new_array))
-  forceRerenderColumn()
+watch(collection_stock, new_obj => {
+  const cur_set_code = current_set.value?.code
+  current_set_owned_commons.value = new_obj[cur_set_code]?.commons
+  current_set_owned_uncommons.value = new_obj[cur_set_code]?.uncommons
+  current_set_owned_rares.value = new_obj[cur_set_code]?.rares
+  current_set_owned_mythics.value = new_obj[cur_set_code]?.mythics
 })
 
 // activated when a set is selected on the left column
 async function select_set(set) 
 {
   current_set.value = set
-  current_set_booster_cards.value = await get_set_cards(set['code'])
-  forceRerenderStatsBox()
+  current_set_code.value = set.code
+  current_set_booster_cards.value = await get_set_cards(set.code)
 }
 
 // get all card information for the selected set
 async function get_set_cards(set_code) {
   var total_data = []
   var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards&as=grid&order=name"
+  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset&unique=cards&as=grid&order=name"
+  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards&as=grid&order=name"
   
   // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and aren't booster fun (showcase, etc)
   // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
@@ -149,12 +165,8 @@ function getCardImage(uriArray,cardFacesArray){
 }
 
 function add_card_to_stock(card_data){
-  var set_stock = {}
-
-  // first, we check if we already have any cards from this set; if yes, we grab the existing data; if not, we create a new empty set with this set's name
-  if(card_data['set'] in this.collection_stock) {
-    set_stock = this.collection_stock[card_data['set']]
-  } else {
+  // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
+  if(!(card_data['set'] in collection_stock)) {
     var new_set = {
       cards:[],
       commons: 0,
@@ -163,40 +175,49 @@ function add_card_to_stock(card_data){
       mythics: 0,
       booster_fun: 0
     }
-    this.collection_stock.push({ [card_data['set']] : new_set})
-    set_stock = this.collection_stock[card_data['set']]
+    collection_stock[card_data['set']] = new_set
   }
-  console.log(set_stock)
-  return
+  
   // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
-  if(card_data['name'] in set_stock){
-    var card_stock = set_stock[card_data['name']]
-    card_stock['count'] ++
-  } else {
-    var new_card = {
-      count: 1,
-      rarity: card_data['rarity'],
-      foil: false
+  if(card_data['name'] in collection_stock[card_data['set']].cards){
+    if(card_data['collector_number'] in collection_stock[card_data['set']].cards[card_data['name']])
+    {
+      collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']].count++
     }
-    set_stock['cards'].push(new_card)
-    switch(card_data){
+    else
+    {
+      collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']] = {
+        count: 1,
+        foil: false
+      }
+    }
+  } else {
+    const new_card = {
+      [card_data['collector_number']] : {
+        count: 1,
+        foil: false
+      }
+    }
+    collection_stock[card_data['set']].cards[card_data['name']] = new_card
+    switch(card_data['rarity']){
       case 'common':
-        set_stock['commons']++
+        collection_stock[card_data['set']].commons++
         break
       case 'uncommon':
-        set_stock['uncommons']++
+      collection_stock[card_data['set']].uncommons++
         break
       case 'rare':
-        set_stock['rares']++
+      collection_stock[card_data['set']].rares++
         break
       case 'mythic':
-        set_stock['mythics']++
+      collection_stock[card_data['set']].mythics++
         break
       default:
         break
     }
   }
-  console.log("current card stock",this.collection_stock.value)
+  console.log("current collection stock",this.collection_stock)
+  forceRerenderStatsBox()
 }
 
 // aux functions for checking rarity
@@ -211,6 +232,13 @@ function is_rare(card){
 }
 function is_mythic(card){
   return card['rarity'] == 'mythic'
+}
+
+// aux functions for returning rarity counts
+function get_common_count_for_set()
+{
+  console.log("is the ternary true?", this.collection_stock[current_set['code']])
+  return this.collection_stock[current_set['code']] ? this.collection_stock[current_set['code']].commons : 0
 }
 
 function forceRerenderColumn()
@@ -278,6 +306,10 @@ function forceRerenderStatsBox()
   filter: grayscale(1);
 }
 .lit_up_card_image {
+  -webkit-filter: grayscale(0);
+  filter: grayscale(0);
+}
+.card_owned {
   -webkit-filter: grayscale(0);
   filter: grayscale(0);
 }
