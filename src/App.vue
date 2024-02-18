@@ -22,9 +22,9 @@
         </div> </v-list-item>
       </v-navigation-drawer>
       <v-sheet class="main_body">
-        <v-card class="set_stats_banner" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box">
+        <v-card class="set_stats_banner" v-if="current_set && current_set_base_cards">
           <v-row style="height: 80px;" align="center" >
-            <v-col><p>Base Set:</p><p>0/{{ current_set_booster_cards.length }}</p></v-col>
+            <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p></v-col>
             <v-divider vertical/>
             <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>{{ current_set_owned_commons }}/{{ current_set_commons }}</p></v-col>
             <v-divider vertical v-if="current_set_commons > 0"/>
@@ -34,31 +34,33 @@
             <v-divider vertical v-if="current_set_rares > 0"/>
             <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>{{ current_set_owned_mythics }}/{{ current_set_mythics }}</p></v-col>
             <v-divider vertical v-if="current_set_mythics > 0"/>
-            <v-col v-if="current_set['card_count'] - current_set_booster_cards.length > 0"><p>Booster Fun:</p><p>0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p></v-col>
-            <v-divider vertical v-if="current_set['card_count'] - current_set_booster_cards.length > 0"/>
+            <v-col v-if="current_set_boosterfun_cards"><p>Booster Fun:</p><p>{{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p></v-col>
+            <v-divider vertical v-if="current_set_boosterfun_cards"/>
             <v-col><p>Grand Total:</p><p>0/{{ current_set['card_count'] }}</p></v-col>
           </v-row>
         </v-card>
-        <v-sheet class="card_holder">
+        <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
-            <v-col class="card_element" v-for="card in current_set_booster_cards" cols="6" sm="6" md="4" lg="3">
-              <v-hover v-slot="{ isHovering, props }">
-                <v-card :class="{ 'on-hover': isHovering }" :="props" :card-data="card">
-                  <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering, 'card_owned': (collection_stock[current_set_code] && card.name in collection_stock[current_set_code].cards && card.collector_number in collection_stock[current_set_code].cards[card.name]) }">
-                  <v-btn @click="add_card_to_stock(card)" class="add_card_button" v-show="isHovering" density="comfortable" ><v-icon icon="mdi-plus" size="x-large" color="teal-accent-3"/></v-btn>
-                </v-card>
-              </v-hover>
+            <v-col v-for="card in current_set_base_cards" cols="6" sm="6" md="4" lg="3">
+              <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :is_booster_fun="false"></CardSlot>
+            </v-col>
+          </v-row>
+        </v-sheet>
+        <v-sheet name="booster_fun_cards_holder">
+          <v-row no-gutters>
+            <v-col v-for="card in current_set_boosterfun_cards" cols="6" sm="6" md="4" lg="3">
+              <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :is_booster_fun="true"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
       </v-sheet>
-      <v-card class="set_stats_box" v-if="current_set && current_set_booster_cards" :key="render_key_stats_box" :elevation="10">
-        <p>Base Set: 0/{{ current_set_booster_cards.length }}</p>
+      <v-card class="set_stats_box" v-if="current_set && current_set_base_cards" :key="render_key_stats_box" :elevation="10">
+        <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p>
         <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
         <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
         <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
         <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
-        <p v-if="current_set['card_count'] - current_set_booster_cards.length > 0">Booster Fun: 0/{{ current_set['card_count'] - current_set_booster_cards.length }}</p>
+        <p v-if="current_set_boosterfun_cards">Booster Fun: {{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p>
         <p>Grand Total: 0/{{ current_set['card_count'] }}</p>
       </v-card>
     </v-main>
@@ -67,6 +69,7 @@
 
 <script setup>
 import { onMounted, ref, watch, reactive, computed } from 'vue'
+import CardSlot from './CardSlot.vue'
 import sets_json from './scryfall_data/sets.json'
 
 var render_key_column = 0
@@ -83,22 +86,19 @@ var check_masters = false
 
 var current_set = ref(null)
 var current_set_code = ref('')
-var current_set_booster_cards = ref(null)
+var current_set_base_cards = ref(null)
+var current_set_boosterfun_cards = ref(null)
+var current_set_owned_base_cards = ref(0)
+var current_set_owned_boosterfun_cards = ref(0)
 var current_set_commons = ref(0)
 var current_set_uncommons = ref(0)
 var current_set_rares = ref(0)
 var current_set_mythics = ref(0)
 
-var current_set_owned_booster_cards = ref(null)
 var current_set_owned_commons = ref(0)
 var current_set_owned_uncommons = ref(0)
 var current_set_owned_rares = ref(0)
 var current_set_owned_mythics = ref(0)
-
-// TODO: revisit this? sounds like it solves some problems but it doesn't work yet
-var is_card_owned = computed(() => {
-  return collection_stock[current_set_code] && card.name in collection_stock[current_set_code].cards && card.collector_number in collection_stock[current_set_code].cards[card.name]
-})
 
 onMounted(() => {
   set_list.value = sets_json['data']
@@ -109,12 +109,19 @@ onMounted(() => {
 })
 
 // watch keeps track of variable changes
+// whenever collection stock changes, we recalc the total rarities for the current set
 watch(collection_stock, new_obj => {
   const cur_set_code = current_set.value?.code
   current_set_owned_commons.value = new_obj[cur_set_code]?.commons
   current_set_owned_uncommons.value = new_obj[cur_set_code]?.uncommons
   current_set_owned_rares.value = new_obj[cur_set_code]?.rares
   current_set_owned_mythics.value = new_obj[cur_set_code]?.mythics
+  current_set_owned_base_cards.value = new_obj[cur_set_code]?.base_set
+  current_set_owned_boosterfun_cards.value = new_obj[cur_set_code]?.booster_fun
+})
+// whenever the set options checklist changes, we save it
+watch(set_types_shown, new_array => {
+  localStorage.setItem('set_options',JSON.stringify(new_array))
 })
 
 // activated when a set is selected on the left column
@@ -122,15 +129,15 @@ async function select_set(set)
 {
   current_set.value = set
   current_set_code.value = set.code
-  current_set_booster_cards.value = await get_set_cards(set.code)
+  current_set_base_cards.value = await get_set_cards(set.code)
+  current_set_boosterfun_cards.value = await get_set_boosterfun_cards(set.code)
 }
 
 // get all card information for the selected set
 async function get_set_cards(set_code) {
   var total_data = []
   var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset&unique=cards&as=grid&order=name"
-  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards&as=grid&order=name"
+  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards&as=grid&order=name"
   
   // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and aren't booster fun (showcase, etc)
   // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
@@ -151,73 +158,25 @@ async function get_set_cards(set_code) {
   return total_data
 }
 
-// passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri
-function getCardImage(uriArray,cardFacesArray){
-  if(uriArray)
-  {
-    return uriArray['normal']
-  }
-  else if(cardFacesArray)
-  {
-    return cardFacesArray[0]['image_uris']['normal']
-  }
-  else return
-}
-
-function add_card_to_stock(card_data){
-  // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
-  if(!(card_data['set'] in collection_stock)) {
-    var new_set = {
-      cards:[],
-      commons: 0,
-      uncommons: 0,
-      rares: 0,
-      mythics: 0,
-      booster_fun: 0
-    }
-    collection_stock[card_data['set']] = new_set
-  }
+// get all card information for booster fun cards in the selected set
+async function get_set_boosterfun_cards(set_code) {
+  var total_data = []
+  var has_more = false
+  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+is%3Aboosterfun&unique=cards&as=grid&order=name"
   
-  // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
-  if(card_data['name'] in collection_stock[card_data['set']].cards){
-    if(card_data['collector_number'] in collection_stock[card_data['set']].cards[card_data['name']])
-    {
-      collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']].count++
-    }
-    else
-    {
-      collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']] = {
-        count: 1,
-        foil: false
-      }
-    }
-  } else {
-    const new_card = {
-      [card_data['collector_number']] : {
-        count: 1,
-        foil: false
-      }
-    }
-    collection_stock[card_data['set']].cards[card_data['name']] = new_card
-    switch(card_data['rarity']){
-      case 'common':
-        collection_stock[card_data['set']].commons++
-        break
-      case 'uncommon':
-      collection_stock[card_data['set']].uncommons++
-        break
-      case 'rare':
-      collection_stock[card_data['set']].rares++
-        break
-      case 'mythic':
-      collection_stock[card_data['set']].mythics++
-        break
-      default:
-        break
-    }
-  }
-  console.log("current collection stock",this.collection_stock)
-  forceRerenderStatsBox()
+  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and are booster fun (showcase, etc)
+  // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
+  // we follow down said batches until no has_more and concat the results back
+  do {
+    const response = await fetch(fetch_url);
+    if(response.status === 404){return []}  // booster fun search can return 404 (no cards), so we just drop the query right there
+    const response_data = await response.json();
+    total_data = total_data.concat(response_data['data'])
+    has_more = response_data['has_more']
+    fetch_url = response_data['next_page']
+  } while (has_more != false)
+
+  return total_data
 }
 
 // aux functions for checking rarity
@@ -232,22 +191,6 @@ function is_rare(card){
 }
 function is_mythic(card){
   return card['rarity'] == 'mythic'
-}
-
-// aux functions for returning rarity counts
-function get_common_count_for_set()
-{
-  console.log("is the ternary true?", this.collection_stock[current_set['code']])
-  return this.collection_stock[current_set['code']] ? this.collection_stock[current_set['code']].commons : 0
-}
-
-function forceRerenderColumn()
-{
-  render_key_column += 1
-}
-function forceRerenderStatsBox()
-{
-  render_key_stats_box += 1
 }
 
 </script>
@@ -295,35 +238,6 @@ function forceRerenderStatsBox()
 }
 .v-col {
   padding: 0;
-}
-.card_element {
-  display: inline-block;
-  position: relative;
-}
-.card_image {
-  width: 100%; 
-  -webkit-filter: grayscale(1);
-  filter: grayscale(1);
-}
-.lit_up_card_image {
-  -webkit-filter: grayscale(0);
-  filter: grayscale(0);
-}
-.card_owned {
-  -webkit-filter: grayscale(0);
-  filter: grayscale(0);
-}
-.add_card_button {
-  display:inline-block;
-  position:absolute;
-  top: 10px;
-  right: 10px;
-  background-color: rgb(232, 253, 246);
-}
-.rainbow-box {
-  border: 5px solid transparent;
-  border-image: linear-gradient(to bottom right, #b827fc 0%, #2c90fc 25%, #b8fd33 50%, #fec837 75%, #fd1892 100%);
-  border-image-slice: 1;
 }
 .set_stats_box {
   width: 200px;
