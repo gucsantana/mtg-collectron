@@ -22,6 +22,7 @@
         </div> </v-list-item>
       </v-navigation-drawer>
       <v-sheet class="main_body">
+        <p class="set_page_title" v-if="current_set && current_set_base_cards">{{ current_set['name'] }}</p>
         <v-card class="set_stats_banner" v-if="current_set && current_set_base_cards">
           <v-row style="height: 80px;" align="center" >
             <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p></v-col>
@@ -36,7 +37,7 @@
             <v-divider vertical v-if="current_set_mythics > 0"/>
             <v-col v-if="current_set_boosterfun_cards"><p>Booster Fun:</p><p>{{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p></v-col>
             <v-divider vertical v-if="current_set_boosterfun_cards"/>
-            <v-col><p>Grand Total:</p><p>0/{{ current_set['card_count'] }}</p></v-col>
+            <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_boosterfun_cards }}/{{ current_set['card_count'] }}</p></v-col>
           </v-row>
         </v-card>
         <v-sheet name="normal_cards_holder">
@@ -61,7 +62,7 @@
         <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
         <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
         <p v-if="current_set_boosterfun_cards">Booster Fun: {{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p>
-        <p>Grand Total: 0/{{ current_set['card_count'] }}</p>
+        <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_boosterfun_cards }}/{{ current_set['card_count'] }}</p>
       </v-card>
     </v-main>
   </v-app>
@@ -208,6 +209,11 @@ function is_mythic(card){
 .v-list-item {
   padding: 0 16px;
   min-height: 0;  
+}
+.set_page_title {
+  font-weight: bold;
+  font-size: 20pt;
+  font-family: Georgia, 'Times New Roman', Times, serif;
 }
 .set_list_element {
   display: flex;

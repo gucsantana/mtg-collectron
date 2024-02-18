@@ -1,9 +1,20 @@
 <!-- This component represents a single card being rendered on the screen and all the associated buttons and thingamajigs -->
 <template>
     <v-hover v-slot="{ isHovering, props }">
-        <v-card :class="{ 'on-hover': isHovering, 'foil_card_frame': is_foil, 'card-element': true }" :="props">
-            <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering, 'card_owned': isCardOwned, 'foil_card_frame': is_foil }">
-            <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="isCardNotOwned" density="comfortable" ><v-icon icon="mdi-plus-thick" size="x-large" color="teal-accent-3"/></v-btn>
+        <v-card :class="{ 'on-hover': isHovering, 'card-element': true }" :="props">
+            <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering, 'card_owned': isCardOwned}">
+            <v-card name="foil_overlay" :class="{'foil_card_frame':isCardFoil}"></v-card>
+            <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="isCardNotOwned" density="comfortable" >
+              <v-icon icon="mdi-plus-thick" size="x-large" color="teal-accent-3"/>
+            </v-btn>
+            <v-btn @click="mark_card_as_foil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && !isCardFoil" color="purple-lighten-3" density="comfortable">
+              <v-icon icon="mdi-star-outline" size="x-large" color="white"/>
+              <v-tooltip activator="parent" location="bottom">Set as Foil</v-tooltip>
+            </v-btn>
+            <v-btn @click="mark_card_as_nonfoil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && isCardFoil" color="purple-lighten-3" density="comfortable">
+              <v-icon icon="mdi-star" size="x-large" color="white"/>
+              <v-tooltip activator="parent" location="bottom">Remove Foil</v-tooltip>
+            </v-btn>
             <v-card v-show="isHovering" v-if="isCardOwned" class="owned_card_controls">
               <v-row no-gutters align="center">
                 <v-col cols="4" class="sub_remove_card_btn" @click="remove_card_from_stock(card)"><v-icon icon="mdi-minus-thick" size="large" color="red-lighten-5"/></v-col>
@@ -20,7 +31,7 @@ export default {
     props: ['card','collection_stock','current_set_code', 'is_booster_fun'],
     data() {
        return {
-        is_foil: true
+        is_foil: false
        }
     },
     methods: {
@@ -139,6 +150,12 @@ export default {
             this.collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']].count--
           }
           console.log("current collection stock",this.collection_stock)
+        },
+        mark_card_as_foil(card_data){
+          this.collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']].foil = true
+        },
+        mark_card_as_nonfoil(card_data){
+          this.collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']].foil = false
         }
     },
     computed: {
@@ -149,12 +166,25 @@ export default {
       isCardNotOwned: function() {    // TODO: can't I just invert the output of isCardOwned? this feels redundant and ugly
         return !this.collection_stock[this.current_set_code] || !(this.card.name in this.collection_stock[this.current_set_code].cards) 
         || !(this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name])
+      },
+      isCardFoil: function() {
+        return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
+        && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
+        && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].foil == true
+      },
+      isCardNonfoil: function() {
+        return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
+        && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
+        && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].foil == false
       }
     }
 }
 </script>
 
 <style>
+.v-btn {
+  min-width: 0 !important;
+}
 .card_element {
   display: inline-block;
   position: relative;
@@ -192,6 +222,13 @@ export default {
   height: 30px;
   padding: 0;
 }
+.btn_foil_modify {
+  display:inline-block;
+  position:absolute !important; 
+  top: 10px;
+  right: 100px;
+  width: 30px;
+}
 .sub_remove_card_btn {
   background-color: #FF5252;
   height: 30px;
@@ -213,9 +250,15 @@ export default {
   cursor: pointer;
 }
 .foil_card_frame {
-  border: 5px solid transparent;
-  border-image: linear-gradient(to bottom right, #b827fc 0%, #2c90fc 25%, #b8fd33 50%, #fec837 75%, #fd1892 100%);
-  border-image-slice: 1;
+  background: linear-gradient(to bottom right, #b827fc 0%, #2c90fc 25%, #b8fd33 50%, #fec837 75%, #fd1892 100%) !important;
   box-sizing: border-box;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: absolute !important;
+  display: block;
+  top: 0;
+  left: 0;
+  opacity: 0.2;
 }
 </style>
