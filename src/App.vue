@@ -1,5 +1,8 @@
 <template>
   <v-app>
+    <v-overlay :model-value="loading" class="align-center justify-center">
+      <v-progress-circular color="primary" indeterminate size="64"/>
+    </v-overlay>
     <v-app-bar>
       <v-btn @click="drawer = !drawer">
         <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
@@ -7,7 +10,7 @@
         <p style="margin-left: 10px;">Set Navigation</p>
       </v-btn>
       <v-spacer/>
-      <v-btn>
+      <v-btn @click="settings = !settings">
         <v-icon icon="mdi-cog" size="x-large"/>
       </v-btn>
     </v-app-bar>
@@ -16,7 +19,7 @@
         <v-list dense>
           <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" id="check_core" value="core" v-model="set_types_shown" class="set_check" :checked="check_core">
+            <input type="checkbox" value="core" v-model="set_types_shown" class="set_check" :checked="check_core">
               <label for="check_core" style="display: inline-block;">Core Sets</label>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
@@ -29,10 +32,25 @@
           </v-list-item>
         </v-list>
         <v-list-item id="column_set_list_title"><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div :id="set['code']" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" @click="select_set(set)">
+        <v-list-item v-for="set in set_list"> <div :id="set['code']" @click="select_set(set)" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
           <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
           <p class="set_list_name">{{ set['name'] }}</p>
         </div> </v-list-item>
+      </v-navigation-drawer>
+    </v-card>
+    <v-card>
+      <v-navigation-drawer app v-model="settings" location="right">
+        <v-list dense>
+          <v-list-item><p class="column_header">User Preferences</p></v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <v-form>
+              <v-select label="Full Set Definition" :items="['Base Set only','At least one Version of each card name','Every single card, variants included']"></v-select>
+            </v-form>
+          </v-list-item>
+          <v-list-item>
+            <v-btn>Save Preferences</v-btn>
+          </v-list-item>
+        </v-list>
       </v-navigation-drawer>
     </v-card>
     <v-main name="main" style="display: flex;">
@@ -50,7 +68,7 @@
             <v-divider vertical v-if="current_set_rares > 0"/>
             <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>{{ current_set_owned_mythics }}/{{ current_set_mythics }}</p></v-col>
             <v-divider vertical v-if="current_set_mythics > 0"/>
-            <v-col v-if="current_set_boosterfun_cards"><p>Booster Fun:</p><p>{{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p></v-col>
+            <v-col v-if="current_set_boosterfun_cards && current_set_boosterfun_cards.length > 0"><p>Booster Fun:</p><p>{{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p></v-col>
             <v-divider vertical v-if="current_set_boosterfun_cards"/>
             <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_boosterfun_cards }}/{{ current_set['card_count'] }}</p></v-col>
           </v-row>
@@ -76,7 +94,7 @@
         <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
         <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
         <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
-        <p v-if="current_set_boosterfun_cards">Booster Fun: {{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p>
+        <p v-if="current_set_boosterfun_cards && current_set_boosterfun_cards.length > 0">Booster Fun: {{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p>
         <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_boosterfun_cards }}/{{ current_set['card_count'] }}</p>
       </v-card>
     </v-main>
@@ -84,11 +102,13 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, reactive, computed } from 'vue'
+import { onMounted, ref, watch, reactive } from 'vue'
 import CardSlot from './CardSlot.vue'
 import sets_json from './scryfall_data/sets.json'
 
-var drawer = ref(true)
+var drawer = ref(true)    // signals the set navigation drawer is open
+var settings = ref(false) // signals the settings menu is open
+var loading = ref(false)  // 
 
 var set_list = ref([])
 var set_types_shown = ref(['core','expansion'])
@@ -103,17 +123,17 @@ var current_set = ref(null)
 var current_set_code = ref('')
 var current_set_base_cards = ref(null)
 var current_set_boosterfun_cards = ref(null)
-var current_set_owned_base_cards = ref(0)
-var current_set_owned_boosterfun_cards = ref(0)
 var current_set_commons = ref(0)
 var current_set_uncommons = ref(0)
 var current_set_rares = ref(0)
 var current_set_mythics = ref(0)
 
+var current_set_owned_base_cards = ref(0)
 var current_set_owned_commons = ref(0)
 var current_set_owned_uncommons = ref(0)
 var current_set_owned_rares = ref(0)
 var current_set_owned_mythics = ref(0)
+var current_set_owned_boosterfun_cards = ref(0)
 
 onMounted(() => {
   set_list.value = sets_json['data']
@@ -140,12 +160,23 @@ watch(set_types_shown, new_array => {
 })
 
 // activated when a set is selected on the left column
+// clean up previous values, set up the loading overlay, and grab the new data from the next set
 async function select_set(set) 
 {
+  loading.value = true
+
+  current_set_owned_base_cards.value = 0
+  current_set_owned_commons.value = 0
+  current_set_owned_uncommons.value = 0
+  current_set_owned_rares.value = 0
+  current_set_owned_mythics.value = 0
+  current_set_owned_boosterfun_cards.value = 0
+
   current_set.value = set
   current_set_code.value = set.code
   current_set_base_cards.value = await get_set_cards(set.code)
   current_set_boosterfun_cards.value = await get_set_boosterfun_cards(set.code)
+  loading.value = false
 }
 
 // get all card information for the selected set
@@ -237,6 +268,11 @@ function is_mythic(card){
 }
 .set_list_element:hover {
   cursor:pointer;
+  background-color: rgb(255, 221, 231);
+}
+.set_list_element_selected {
+  background-color: rgb(255, 162, 190);
+  font-weight: bold;
 }
 .set_logo, .set_check {
   display: inline-block;

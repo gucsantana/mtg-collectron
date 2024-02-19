@@ -4,7 +4,7 @@
         <v-card :class="{ 'on-hover': isHovering, 'card-element': true }" :="props">
           <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering, 'card_owned': isCardOwned}">
           <v-card name="foil_overlay" :class="{'foil_card_frame':isCardFoil}"></v-card>
-          <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="isCardNotOwned" density="comfortable" >
+          <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="!isCardOwned" density="comfortable" >
             <v-icon icon="mdi-plus-thick" size="x-large" color="teal-accent-3"/>
           </v-btn>
           <v-btn @click="mark_card_as_foil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && !isCardFoil" color="purple-lighten-3" density="comfortable">
@@ -163,19 +163,10 @@ export default {
         return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
         && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
       },
-      isCardNotOwned: function() {    // TODO: can't I just invert the output of isCardOwned? this feels redundant and ugly
-        return !this.collection_stock[this.current_set_code] || !(this.card.name in this.collection_stock[this.current_set_code].cards) 
-        || !(this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name])
-      },
       isCardFoil: function() {
         return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
         && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
         && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].foil == true
-      },
-      isCardNonfoil: function() {
-        return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
-        && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
-        && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].foil == false
       }
     }
 }
