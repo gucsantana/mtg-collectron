@@ -1,26 +1,41 @@
 <template>
   <v-app>
-    <v-main name="main" style="display: flex;">
-      <v-navigation-drawer class="left-column" :key="render_key_column" :width="200" :permanent=true>
-        <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
-        <v-list-item style="display: inline-block; width:100%;">
-          <input type="checkbox" id="check_core" value="core" v-model="set_types_shown" class="set_check" :checked="check_core">
-            <label for="check_core" style="display: inline-block;">Core Sets</label>
-        </v-list-item>
-        <v-list-item style="display: inline-block; width:100%;">
-          <input type="checkbox" value="expansion" v-model="set_types_shown" class="set_check" :checked="check_expansion">
-            <p style="display: inline-block;">Expansions</p>
-        </v-list-item>
-        <v-list-item style="display: inline-block; width:100%;">
-          <input type="checkbox" value="masters" v-model="set_types_shown" class="set_check" :checked="check_masters">
-            <p style="display: inline-block;">Masters Sets</p>
-        </v-list-item>
+    <v-app-bar>
+      <v-btn @click="drawer = !drawer">
+        <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
+        <v-icon icon="mdi-chevron-left-circle" size="x-large" v-if="drawer"/>
+        <p style="margin-left: 10px;">Set Navigation</p>
+      </v-btn>
+      <v-spacer/>
+      <v-btn>
+        <v-icon icon="mdi-cog" size="x-large"/>
+      </v-btn>
+    </v-app-bar>
+    <v-card>
+      <v-navigation-drawer app v-model="drawer">
+        <v-list dense>
+          <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <input type="checkbox" id="check_core" value="core" v-model="set_types_shown" class="set_check" :checked="check_core">
+              <label for="check_core" style="display: inline-block;">Core Sets</label>
+          </v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <input type="checkbox" value="expansion" v-model="set_types_shown" class="set_check" :checked="check_expansion">
+              <p style="display: inline-block;">Expansions</p>
+          </v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <input type="checkbox" value="masters" v-model="set_types_shown" class="set_check" :checked="check_masters">
+              <p style="display: inline-block;">Masters Sets</p>
+          </v-list-item>
+        </v-list>
         <v-list-item id="column_set_list_title"><p class="column_header">List of Sets</p></v-list-item>
         <v-list-item v-for="set in set_list"> <div :id="set['code']" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" @click="select_set(set)">
           <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
           <p class="set_list_name">{{ set['name'] }}</p>
         </div> </v-list-item>
       </v-navigation-drawer>
+    </v-card>
+    <v-main name="main" style="display: flex;">
       <v-sheet class="main_body">
         <p class="set_page_title" v-if="current_set && current_set_base_cards">{{ current_set['name'] }}</p>
         <v-card class="set_stats_banner" v-if="current_set && current_set_base_cards">
@@ -73,8 +88,7 @@ import { onMounted, ref, watch, reactive, computed } from 'vue'
 import CardSlot from './CardSlot.vue'
 import sets_json from './scryfall_data/sets.json'
 
-var render_key_column = 0
-var render_key_stats_box = 0
+var drawer = ref(true)
 
 var set_list = ref([])
 var set_types_shown = ref(['core','expansion'])
@@ -207,8 +221,9 @@ function is_mythic(card){
   padding-left: 20px;
 }
 .v-list-item {
-  padding: 0 16px;
-  min-height: 0;  
+  padding: 0 16px !important;
+  margin: 0 !important;
+  min-height: 0 !important;  
 }
 .set_page_title {
   font-weight: bold;

@@ -2,26 +2,26 @@
 <template>
     <v-hover v-slot="{ isHovering, props }">
         <v-card :class="{ 'on-hover': isHovering, 'card-element': true }" :="props">
-            <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering, 'card_owned': isCardOwned}">
-            <v-card name="foil_overlay" :class="{'foil_card_frame':isCardFoil}"></v-card>
-            <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="isCardNotOwned" density="comfortable" >
-              <v-icon icon="mdi-plus-thick" size="x-large" color="teal-accent-3"/>
-            </v-btn>
-            <v-btn @click="mark_card_as_foil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && !isCardFoil" color="purple-lighten-3" density="comfortable">
-              <v-icon icon="mdi-star-outline" size="x-large" color="white"/>
-              <v-tooltip activator="parent" location="bottom">Set as Foil</v-tooltip>
-            </v-btn>
-            <v-btn @click="mark_card_as_nonfoil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && isCardFoil" color="purple-lighten-3" density="comfortable">
-              <v-icon icon="mdi-star" size="x-large" color="white"/>
-              <v-tooltip activator="parent" location="bottom">Remove Foil</v-tooltip>
-            </v-btn>
-            <v-card v-show="isHovering" v-if="isCardOwned" class="owned_card_controls">
-              <v-row no-gutters align="center">
-                <v-col cols="4" class="sub_remove_card_btn" @click="remove_card_from_stock(card)"><v-icon icon="mdi-minus-thick" size="large" color="red-lighten-5"/></v-col>
-                <v-col cols="4" class="sub_card_count"><p class="card_count">{{ this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].count }}</p></v-col>
-                <v-col cols="4" class="sub_add_card_btn" @click="add_card_to_stock(card)"><v-icon icon="mdi-plus-thick" size="large" color="teal-lighten-5"/></v-col>
-              </v-row>
-            </v-card>
+          <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering, 'card_owned': isCardOwned}">
+          <v-card name="foil_overlay" :class="{'foil_card_frame':isCardFoil}"></v-card>
+          <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="isCardNotOwned" density="comfortable" >
+            <v-icon icon="mdi-plus-thick" size="x-large" color="teal-accent-3"/>
+          </v-btn>
+          <v-btn @click="mark_card_as_foil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && !isCardFoil" color="purple-lighten-3" density="comfortable">
+            <v-icon icon="mdi-star-outline" size="x-large" color="white"/>
+            <v-tooltip activator="parent" location="bottom">Set as Foil</v-tooltip>
+          </v-btn>
+          <v-btn @click="mark_card_as_nonfoil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && isCardFoil" color="purple-lighten-3" density="comfortable">
+            <v-icon icon="mdi-star" size="x-large" color="white"/>
+            <v-tooltip activator="parent" location="bottom">Remove Foil</v-tooltip>
+          </v-btn>
+          <v-card v-show="isHovering" v-if="isCardOwned" class="owned_card_controls">
+            <v-row no-gutters align="center">
+              <v-col cols="4" class="sub_remove_card_btn" @click="remove_card_from_stock(card)"><v-icon icon="mdi-minus-thick" size="large" color="red-lighten-5"/></v-col>
+              <v-col cols="4" class="sub_card_count"><p class="card_count">{{ this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].count }}</p></v-col>
+              <v-col cols="4" class="sub_add_card_btn" @click="add_card_to_stock(card)"><v-icon icon="mdi-plus-thick" size="large" color="teal-lighten-5"/></v-col>
+            </v-row>
+          </v-card>
         </v-card>
     </v-hover>
 </template>
@@ -31,7 +31,7 @@ export default {
     props: ['card','collection_stock','current_set_code', 'is_booster_fun'],
     data() {
        return {
-        is_foil: false
+        test: false
        }
     },
     methods: {
