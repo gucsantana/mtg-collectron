@@ -32,30 +32,24 @@
           </v-list-item>
         </v-list>
         <v-list-item id="column_set_list_title"><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div :id="set['code']" @click="select_set(set)" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
+        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
           <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
           <p class="set_list_name">{{ set['name'] }}</p>
         </div> </v-list-item>
       </v-navigation-drawer>
     </v-card>
-    <v-card>
-      <v-navigation-drawer app v-model="settings" location="right">
-        <v-list dense>
-          <v-list-item><p class="column_header">User Preferences</p></v-list-item>
-          <v-list-item style="display: inline-block; width:100%;">
-            <v-form>
-              <v-select label="Full Set Definition" :items="['Base Set only','At least one Version of each card name','Every single card, variants included']"></v-select>
-            </v-form>
-          </v-list-item>
-          <v-list-item>
-            <v-btn>Save Preferences</v-btn>
-          </v-list-item>
-        </v-list>
-      </v-navigation-drawer>
-    </v-card>
-    <v-main name="main" style="display: flex;">
+    <v-main name="main">
       <v-sheet class="main_body">
         <p class="set_page_title" v-if="current_set && current_set_base_cards">{{ current_set['name'] }}</p>
+        <v-row v-if="current_set && current_set_base_cards">
+          <v-spacer/>
+          <v-col cols="3" v-show="false">
+            <v-select v-model="page_options.card_per_page_option_selected" label="Cards per Page:" :items="card_per_page_options" return-object density="compact"/>
+          </v-col>
+          <v-col cols="3" v-show="false">
+            <v-select v-model="page_options.show_option_selected" label="Show:" :items="show_options" return-object density="compact"/>
+          </v-col>
+        </v-row>
         <v-card class="set_stats_banner" v-if="current_set && current_set_base_cards">
           <v-row style="height: 80px;" align="center" >
             <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p></v-col>
@@ -64,8 +58,8 @@
             <v-divider vertical v-if="current_set_commons > 0"/>
             <v-col v-if="current_set_uncommons > 0"><p>Uncommons:</p><p>{{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p></v-col>
             <v-divider vertical v-if="current_set_uncommons > 0"/>
-            <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>{{ current_set_owned_rares }}/{{ current_set_rares }}</p></v-col>
-            <v-divider vertical v-if="current_set_rares > 0"/>
+              <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>{{ current_set_owned_rares }}/{{ current_set_rares }}</p></v-col>
+              <v-divider vertical v-if="current_set_rares > 0"/>
             <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>{{ current_set_owned_mythics }}/{{ current_set_mythics }}</p></v-col>
             <v-divider vertical v-if="current_set_mythics > 0"/>
             <v-col v-if="current_set_boosterfun_cards && current_set_boosterfun_cards.length > 0"><p>Booster Fun:</p><p>{{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p></v-col>
@@ -75,20 +69,16 @@
         </v-card>
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
-            <v-col v-for="card in current_set_base_cards" cols="6" sm="6" md="4" lg="3">
-              <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :is_booster_fun="false"></CardSlot>
+            <v-col v-for="card in current_set_base_cards" cols="6" sm="6" md="4" lg="3" >
+              <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_booster_fun="false"></CardSlot>
             </v-col>
-          </v-row>
-        </v-sheet>
-        <v-sheet name="booster_fun_cards_holder">
-          <v-row no-gutters>
-            <v-col v-for="card in current_set_boosterfun_cards" cols="6" sm="6" md="4" lg="3">
-              <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :is_booster_fun="true"></CardSlot>
+            <v-col v-for="card in current_set_boosterfun_cards" cols="6" sm="6" md="4" lg="3" >
+              <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_booster_fun="true"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
       </v-sheet>
-      <v-card class="set_stats_box" v-if="current_set && current_set_base_cards" :key="render_key_stats_box" :elevation="10">
+      <v-card class="set_stats_box" v-if="current_set && current_set_base_cards" :elevation="10">
         <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p>
         <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
         <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
@@ -98,11 +88,26 @@
         <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_boosterfun_cards }}/{{ current_set['card_count'] }}</p>
       </v-card>
     </v-main>
+    <v-card >
+      <v-navigation-drawer app temporary v-model="settings" location="right">
+        <v-list dense>
+          <v-list-item><p class="column_header">User Preferences</p></v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <v-form>
+              <v-select v-model="page_options.full_set_option_selected" label="Full Set Definition" :items="full_set_options" return-object>
+                <v-tooltip activator="parent" location="bottom">Defines the objective considered for the progress bars and 'full set' message displays for each set</v-tooltip>
+              </v-select>
+            </v-form>
+          </v-list-item>
+        </v-list>
+      </v-navigation-drawer>
+    </v-card>
   </v-app>
 </template>
 
 <script setup>
 import { onMounted, ref, watch, reactive } from 'vue'
+import { useTheme } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import sets_json from './scryfall_data/sets.json'
 
@@ -110,10 +115,18 @@ var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // 
 
+var page_options = reactive({
+  show_option_selected: 1,
+  full_set_option_selected: 1,
+  card_per_page_option_selected: 1
+})
+
 var set_list = ref([])
 var set_types_shown = ref(['core','expansion'])
 
 var collection_stock = reactive({})  // the user's total card stock, a json object that includes every single card they own (oof?)
+
+var rerenderCards = ref(0)
 
 var check_core = false
 var check_expansion = false
@@ -135,12 +148,34 @@ var current_set_owned_rares = ref(0)
 var current_set_owned_mythics = ref(0)
 var current_set_owned_boosterfun_cards = ref(0)
 
+// -------------------------------------------------------------------------------------------------- //
+
+const show_options = [
+  {value: 1, title: 'All cards'},
+  {value: 2, title: 'Only owned'},
+  {value: 3, title: 'Only unowned'}
+]
+const card_per_page_options = [
+  {value: 1, title: '36'},
+  {value: 2, title: '60'},
+  {value: 3, title: '120'},
+  {value: 4, title: 'All'}
+]
+const full_set_options = [
+  {value: 1, title: 'Every single card, variants included'},
+  {value: 2, title: 'Base Set only'},
+  {value: 3, title: 'At least one Version of each card name'}
+]
+
+// -------------------------------------------------------------------------------------------------- //
+
 onMounted(() => {
   set_list.value = sets_json['data']
 
   // get the list of set options from local storage
   const set_options = JSON.parse(localStorage.getItem('set_options'))
   if(set_options)  {  set_types_shown.value = set_options  }
+  get_preferences_from_storage()
 })
 
 // watch keeps track of variable changes
@@ -153,10 +188,15 @@ watch(collection_stock, new_obj => {
   current_set_owned_mythics.value = new_obj[cur_set_code]?.mythics
   current_set_owned_base_cards.value = new_obj[cur_set_code]?.base_set
   current_set_owned_boosterfun_cards.value = new_obj[cur_set_code]?.booster_fun
+  rerenderCards.value++
 })
 // whenever the set options checklist changes, we save it
 watch(set_types_shown, new_array => {
   localStorage.setItem('set_options',JSON.stringify(new_array))
+})
+watch(page_options, v => {
+  console.log("show options selected,",v)
+  localStorage.setItem('stored_options',JSON.stringify(page_options))
 })
 
 // activated when a set is selected on the left column
@@ -177,6 +217,27 @@ async function select_set(set)
   current_set_base_cards.value = await get_set_cards(set.code)
   current_set_boosterfun_cards.value = await get_set_boosterfun_cards(set.code)
   loading.value = false
+}
+
+// recovers the user preferences from storage and sets up the screen based on them
+function get_preferences_from_storage() {
+  localStorage.clear('stored_options')
+  const stored_options = JSON.parse(localStorage.getItem('stored_options'))
+  if(stored_options) {
+    page_options.show_option_selected = stored_options.show_option_selected
+    page_options.full_set_option_selected = stored_options.full_set_option_selected
+  } else {
+    const user_options = {
+      show_option_selected: 1,
+      full_set_option_selected: 1,
+      card_per_page_option_selected: 2,
+    }
+    page_options.show_option_selected = user_options.show_option_selected
+    page_options.full_set_option_selected = user_options.full_set_option_selected
+    page_options.card_per_page_option_selected = user_options.card_per_page_option_selected
+
+    localStorage.setItem('stored_options',JSON.stringify(page_options))
+  }
 }
 
 // get all card information for the selected set
@@ -263,7 +324,7 @@ function is_mythic(card){
 }
 .set_list_element {
   display: flex;
-  width: 160px;
+  width: 100%;
   max-height: 25px;
 }
 .set_list_element:hover {

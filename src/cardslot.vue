@@ -1,7 +1,7 @@
 <!-- This component represents a single card being rendered on the screen and all the associated buttons and thingamajigs -->
 <template>
-    <v-hover v-slot="{ isHovering, props }">
-        <v-card :class="{ 'on-hover': isHovering, 'card-element': true }" :="props">
+    <v-hover v-slot="{ isHovering, props }" v-if="isCardVisible">
+        <v-card :class="{ 'on-hover': isHovering, 'card-element': true }" :="props" flat>
           <img :src="getCardImage(card['image_uris'],card['card_faces'])" class="card_image" :class="{ 'lit_up_card_image': isHovering, 'card_owned': isCardOwned}">
           <v-card name="foil_overlay" :class="{'foil_card_frame':isCardFoil}"></v-card>
           <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="!isCardOwned" density="comfortable" >
@@ -28,12 +28,7 @@
 
 <script>
 export default {
-    props: ['card','collection_stock','current_set_code', 'is_booster_fun'],
-    data() {
-       return {
-        test: false
-       }
-    },
+    props: ['card','collection_stock','current_set_code', 'show_option', 'is_booster_fun'],
     methods: {
         // passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri
         getCardImage(uriArray,cardFacesArray){
@@ -167,6 +162,10 @@ export default {
         return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
         && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
         && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].foil == true
+      },
+      isCardVisible: function() {
+        // show option 1 is 'all cards', 2 is 'only owned', and 3 is 'only unowned', so an owned card will show up as long as the option is not 3
+        return (this.isCardOwned && this.show_option != 3) || (!this.isCardOwned && this.show_option != 2)
       }
     }
 }
