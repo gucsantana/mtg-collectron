@@ -38,19 +38,19 @@
         </div> </v-list-item>
       </v-navigation-drawer>
     </v-card>
-    <v-main name="main">
+    <v-main name="main" v-if="current_set && current_set_base_cards">
       <v-sheet class="main_body">
-        <p class="set_page_title" v-if="current_set && current_set_base_cards">{{ current_set['name'] }}</p>
-        <v-row v-if="current_set && current_set_base_cards">
+        <v-card class="set_page_title" flat><p>{{ current_set['name'] }}</p></v-card>
+        <v-row>
           <v-spacer/>
-          <v-col cols="3" v-show="false">
+          <v-col cols="3">
             <v-select v-model="page_options.card_per_page_option_selected" label="Cards per Page:" :items="card_per_page_options" return-object density="compact"/>
           </v-col>
           <v-col cols="3" v-show="false">
             <v-select v-model="page_options.show_option_selected" label="Show:" :items="show_options" return-object density="compact"/>
           </v-col>
         </v-row>
-        <v-card class="set_stats_banner" v-if="current_set && current_set_base_cards">
+        <v-card class="set_stats_banner">
           <v-row style="height: 80px;" align="center" >
             <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p></v-col>
             <v-divider vertical/>
@@ -69,16 +69,14 @@
         </v-card>
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
-            <v-col v-for="card in current_set_base_cards" cols="6" sm="6" md="4" lg="3" >
+            <v-col v-for="card in current_set_base_cards.slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
               <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_booster_fun="false"></CardSlot>
-            </v-col>
-            <v-col v-for="card in current_set_boosterfun_cards" cols="6" sm="6" md="4" lg="3" >
-              <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_booster_fun="true"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
       </v-sheet>
-      <v-card class="set_stats_box" v-if="current_set && current_set_base_cards" :elevation="10">
+      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" total-visible="8"/>
+      <v-card class="set_stats_box" :elevation="10">
         <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p>
         <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
         <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
@@ -106,7 +104,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, reactive } from 'vue'
+import { onMounted, ref, watch, reactive, computed } from 'vue'
 import { useTheme } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import sets_json from './scryfall_data/sets.json'
@@ -132,6 +130,7 @@ var check_core = false
 var check_expansion = false
 var check_masters = false
 
+var current_page = ref(1)
 var current_set = ref(null)
 var current_set_code = ref('')
 var current_set_base_cards = ref(null)
@@ -156,9 +155,9 @@ const show_options = [
   {value: 3, title: 'Only unowned'}
 ]
 const card_per_page_options = [
-  {value: 1, title: '36'},
-  {value: 2, title: '60'},
-  {value: 3, title: '120'},
+  {value: 1, title: 36},
+  {value: 2, title: 60},
+  {value: 3, title: 120},
   {value: 4, title: 'All'}
 ]
 const full_set_options = [
@@ -195,8 +194,8 @@ watch(set_types_shown, new_array => {
   localStorage.setItem('set_options',JSON.stringify(new_array))
 })
 watch(page_options, v => {
-  console.log("show options selected,",v)
   localStorage.setItem('stored_options',JSON.stringify(page_options))
+  current_page.value = 1
 })
 
 // activated when a set is selected on the left column
@@ -215,17 +214,18 @@ async function select_set(set)
   current_set.value = set
   current_set_code.value = set.code
   current_set_base_cards.value = await get_set_cards(set.code)
-  current_set_boosterfun_cards.value = await get_set_boosterfun_cards(set.code)
+  // current_set_boosterfun_cards.value = await get_set_boosterfun_cards(set.code)
   loading.value = false
 }
 
 // recovers the user preferences from storage and sets up the screen based on them
 function get_preferences_from_storage() {
-  localStorage.clear('stored_options')
+  // localStorage.clear('stored_options')
   const stored_options = JSON.parse(localStorage.getItem('stored_options'))
   if(stored_options) {
     page_options.show_option_selected = stored_options.show_option_selected
     page_options.full_set_option_selected = stored_options.full_set_option_selected
+    page_options.card_per_page_option_selected = stored_options.card_per_page_option_selected
   } else {
     const user_options = {
       show_option_selected: 1,
@@ -244,7 +244,8 @@ function get_preferences_from_storage() {
 async function get_set_cards(set_code) {
   var total_data = []
   var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards&as=grid&order=name"
+  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset&unique=cards&as=grid&order=name"
+  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards&as=grid&order=name"
   
   // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and aren't booster fun (showcase, etc)
   // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
@@ -286,6 +287,18 @@ async function get_set_boosterfun_cards(set_code) {
   return total_data
 }
 
+const pageCount = computed(() => {
+  const total_cards_to_display = current_set_base_cards.value ? current_set_base_cards.value.length : 0
+  return (page_options && page_options.card_per_page_option_selected && (page_options.card_per_page_option_selected.value != 4)) 
+    ? Math.ceil(total_cards_to_display / page_options.card_per_page_option_selected.title) : 0
+})
+const pageSliceStart = computed(() => {
+  return 0 + (page_options.card_per_page_option_selected.value != 4 ? (current_page.value-1)* page_options.card_per_page_option_selected.title : 0)
+})
+const pageSliceEnd = computed(() => {
+  return (page_options.card_per_page_option_selected.value != 4 ? Math.min(current_set_base_cards.value.length, current_page.value * page_options.card_per_page_option_selected.title) : current_set_base_cards.value.length)
+})
+
 // aux functions for checking rarity
 function is_common(card){
   return card['rarity'] == 'common'
@@ -321,6 +334,7 @@ function is_mythic(card){
   font-weight: bold;
   font-size: 20pt;
   font-family: Georgia, 'Times New Roman', Times, serif;
+  height: 80px;
 }
 .set_list_element {
   display: flex;
