@@ -50,40 +50,43 @@
             <v-select v-model="page_options.show_option_selected" label="Show:" :items="show_options" return-object density="compact"/>
           </v-col>
         </v-row>
-        <v-card class="set_stats_banner">
-          <v-row style="height: 80px;" align="center" >
-            <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p></v-col>
-            <v-divider vertical/>
-            <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>{{ current_set_owned_commons }}/{{ current_set_commons }}</p></v-col>
-            <v-divider vertical v-if="current_set_commons > 0"/>
-            <v-col v-if="current_set_uncommons > 0"><p>Uncommons:</p><p>{{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p></v-col>
-            <v-divider vertical v-if="current_set_uncommons > 0"/>
-              <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>{{ current_set_owned_rares }}/{{ current_set_rares }}</p></v-col>
-              <v-divider vertical v-if="current_set_rares > 0"/>
-            <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>{{ current_set_owned_mythics }}/{{ current_set_mythics }}</p></v-col>
-            <v-divider vertical v-if="current_set_mythics > 0"/>
-            <v-col v-if="current_set_boosterfun_cards && current_set_boosterfun_cards.length > 0"><p>Booster Fun:</p><p>{{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p></v-col>
-            <v-divider vertical v-if="current_set_boosterfun_cards"/>
-            <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_boosterfun_cards }}/{{ current_set['card_count'] }}</p></v-col>
-          </v-row>
+        <v-card class="page_header">
+          <v-card class="set_stats_banner">
+            <v-row style="height: 70px;" align="center" >
+              <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p></v-col>
+              <v-divider vertical/>
+              <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>{{ current_set_owned_commons }}/{{ current_set_commons }}</p></v-col>
+              <v-divider vertical v-if="current_set_commons > 0"/>
+              <v-col v-if="current_set_uncommons > 0"><p>Uncommons:</p><p>{{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p></v-col>
+              <v-divider vertical v-if="current_set_uncommons > 0"/>
+                <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>{{ current_set_owned_rares }}/{{ current_set_rares }}</p></v-col>
+                <v-divider vertical v-if="current_set_rares > 0"/>
+              <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>{{ current_set_owned_mythics }}/{{ current_set_mythics }}</p></v-col>
+              <v-divider vertical v-if="current_set_mythics > 0"/>
+              <v-col v-if="current_set_extra_cards_qty > 0"><p>Extra Cards:</p><p>{{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p></v-col>
+              <v-divider vertical v-if="current_set_extra_cards_qty > 0"/>
+              <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
+            </v-row>
+            <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' "/>
+          </v-card>
         </v-card>
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
-            <v-col v-for="card in current_set_base_cards.slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
-              <CardSlot :card="card" :collection_stock="collection_stock" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_booster_fun="false"></CardSlot>
+            <v-col v-for="(item,index) in current_set_base_cards.slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
+              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="(index+pageSliceStart) >= current_set_base_cards_qty" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
       </v-sheet>
       <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" total-visible="8"/>
       <v-card class="set_stats_box" :elevation="10">
-        <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards.length }}</p>
+        <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p>
         <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
         <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
         <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
         <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
-        <p v-if="current_set_boosterfun_cards && current_set_boosterfun_cards.length > 0">Booster Fun: {{ current_set_owned_boosterfun_cards }}/{{ current_set_boosterfun_cards.length }}</p>
-        <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_boosterfun_cards }}/{{ current_set['card_count'] }}</p>
+        <p v-if="current_set_extra_cards_qty > 0">Extra Cards: {{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p>
+        <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
       </v-card>
     </v-main>
     <v-card >
@@ -122,7 +125,8 @@ var page_options = reactive({
 var set_list = ref([])
 var set_types_shown = ref(['core','expansion'])
 
-var collection_stock = reactive({})  // the user's total card stock, a json object that includes every single card they own (oof?)
+var collection_stock = reactive({o:{}})  // the user's total card stock, a json object that includes every single card they own (oof?)
+// the .o initial object is required to maintain reactivity, because if we overwrite the parent object, we lose reactive()
 
 var rerenderCards = ref(0)
 
@@ -134,18 +138,19 @@ var current_page = ref(1)
 var current_set = ref(null)
 var current_set_code = ref('')
 var current_set_base_cards = ref(null)
-var current_set_boosterfun_cards = ref(null)
 var current_set_commons = ref(0)
 var current_set_uncommons = ref(0)
 var current_set_rares = ref(0)
 var current_set_mythics = ref(0)
+var current_set_base_cards_qty = ref(0)
+var current_set_extra_cards_qty = ref(0)
 
 var current_set_owned_base_cards = ref(0)
 var current_set_owned_commons = ref(0)
 var current_set_owned_uncommons = ref(0)
 var current_set_owned_rares = ref(0)
 var current_set_owned_mythics = ref(0)
-var current_set_owned_boosterfun_cards = ref(0)
+var current_set_owned_extra_cards = ref(0)
 
 // -------------------------------------------------------------------------------------------------- //
 
@@ -169,25 +174,31 @@ const full_set_options = [
 // -------------------------------------------------------------------------------------------------- //
 
 onMounted(() => {
+  // localStorage.removeItem('collection_stock')
   set_list.value = sets_json['data']
 
   // get the list of set options from local storage
   const set_options = JSON.parse(localStorage.getItem('set_options'))
   if(set_options)  {  set_types_shown.value = set_options  }
   get_preferences_from_storage()
+  
+  const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
+  if(local_stock) { collection_stock.o = local_stock }
 })
 
 // watch keeps track of variable changes
 // whenever collection stock changes, we recalc the total rarities for the current set
 watch(collection_stock, new_obj => {
   const cur_set_code = current_set.value?.code
-  current_set_owned_commons.value = new_obj[cur_set_code]?.commons
-  current_set_owned_uncommons.value = new_obj[cur_set_code]?.uncommons
-  current_set_owned_rares.value = new_obj[cur_set_code]?.rares
-  current_set_owned_mythics.value = new_obj[cur_set_code]?.mythics
-  current_set_owned_base_cards.value = new_obj[cur_set_code]?.base_set
-  current_set_owned_boosterfun_cards.value = new_obj[cur_set_code]?.booster_fun
+  current_set_owned_commons.value = new_obj.o[cur_set_code]?.commons
+  current_set_owned_uncommons.value = new_obj.o[cur_set_code]?.uncommons
+  current_set_owned_rares.value = new_obj.o[cur_set_code]?.rares
+  current_set_owned_mythics.value = new_obj.o[cur_set_code]?.mythics
+  current_set_owned_base_cards.value = new_obj.o[cur_set_code]?.base_set_owned
+  current_set_owned_extra_cards.value = new_obj.o[cur_set_code]?.extra_owned
   rerenderCards.value++
+
+  localStorage.setItem('collection_stock',JSON.stringify(new_obj.o))
 })
 // whenever the set options checklist changes, we save it
 watch(set_types_shown, new_array => {
@@ -204,17 +215,23 @@ async function select_set(set)
 {
   loading.value = true
 
-  current_set_owned_base_cards.value = 0
-  current_set_owned_commons.value = 0
-  current_set_owned_uncommons.value = 0
-  current_set_owned_rares.value = 0
-  current_set_owned_mythics.value = 0
-  current_set_owned_boosterfun_cards.value = 0
-
+  current_page.value = 1
+  
   current_set.value = set
   current_set_code.value = set.code
   current_set_base_cards.value = await get_set_cards(set.code)
-  // current_set_boosterfun_cards.value = await get_set_boosterfun_cards(set.code)
+  current_set_base_cards_qty = current_set_base_cards.value.length
+
+  current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
+  current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
+  current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
+  current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
+  current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
+  current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
+
+  const extra_set_cards = await get_set_extra_cards(set.code)
+  current_set_extra_cards_qty.value = extra_set_cards.length
+  current_set_base_cards.value = current_set_base_cards.value.concat( extra_set_cards )
   loading.value = false
 }
 
@@ -244,8 +261,8 @@ function get_preferences_from_storage() {
 async function get_set_cards(set_code) {
   var total_data = []
   var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset&unique=cards&as=grid&order=name"
-  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards&as=grid&order=name"
+  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset&unique=cards&as=grid&order=name"
+  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster&unique=cards"
   
   // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and aren't booster fun (showcase, etc)
   // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
@@ -267,17 +284,17 @@ async function get_set_cards(set_code) {
 }
 
 // get all card information for booster fun cards in the selected set
-async function get_set_boosterfun_cards(set_code) {
+async function get_set_extra_cards(set_code) {
   var total_data = []
   var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+is%3Aboosterfun&unique=cards&as=grid&order=name"
+  var fetch_url = "https://api.scryfall.com/cards/search?order=set&q=set%3A"+set_code+"+%28is%3Apromo+or+is%3Abooster_fun%29+game%3Apaper+unique%3Aprints&unique=cards"
   
-  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and are booster fun (showcase, etc)
+  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and are either booster fun (showcase, etc) or promos (buy a box, bundle, etc)
   // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
   // we follow down said batches until no has_more and concat the results back
   do {
     const response = await fetch(fetch_url);
-    if(response.status === 404){return []}  // booster fun search can return 404 (no cards), so we just drop the query right there
+    if(response.status === 404){return []}  // extras search can return 404 (no cards), so we just drop the query right there
     const response_data = await response.json();
     total_data = total_data.concat(response_data['data'])
     has_more = response_data['has_more']
@@ -287,6 +304,25 @@ async function get_set_boosterfun_cards(set_code) {
   return total_data
 }
 
+const getProgressForSet = computed(() => {
+  if(collection_stock.o[current_set_code.value])
+  {
+    switch(page_options.full_set_option_selected.value) {
+      case 1:
+        console.log("getProgressForSet, switch 1, value",((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total))*100)
+        return ((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total))*100
+      case 2:
+        console.log("getProgressForSet, switch 2, value", (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100)
+        return (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100
+      case 3:
+      console.log("getProgressForSet, switch 3, value",((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / collection_stock.o[current_set_code.value].base_set_total)*100)
+        return ((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / collection_stock.o[current_set_code.value].base_set_total)*100
+      default:
+        console.log("Something very wrong happened with page_options.full_set_option_selected on render")
+        return 0
+    }
+  } else {return 0}
+})
 const pageCount = computed(() => {
   const total_cards_to_display = current_set_base_cards.value ? current_set_base_cards.value.length : 0
   return (page_options && page_options.card_per_page_option_selected && (page_options.card_per_page_option_selected.value != 4)) 
@@ -382,9 +418,12 @@ function is_mythic(card){
   right: 50px;
   padding: 15px;
 }
+.page_header {
+  height: 105px;
+}
 .set_stats_banner {
   width: 100%;
-  height: 80px;
+  height: 90px;
   display: block;
   padding: 15px;
   margin-bottom: 10px;

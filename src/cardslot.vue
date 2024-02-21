@@ -28,7 +28,7 @@
 
 <script>
 export default {
-    props: ['card','collection_stock','current_set_code', 'show_option', 'is_booster_fun'],
+    props: ['card','collection_stock','current_set_code', 'show_option', 'is_extra', 'base_set_total', 'extra_set_total'],
     methods: {
         // passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri
         getCardImage(uriArray,cardFacesArray){
@@ -46,13 +46,15 @@ export default {
           // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
           if(!(card_data['set'] in this.collection_stock)) {
             var new_set = {
-              cards:[],
+              cards:{},
               commons: 0,
               uncommons: 0,
               rares: 0,
               mythics: 0,
-              base_set: 0,
-              booster_fun: 0
+              base_set_owned: 0,
+              extra_owned: 0,
+              base_set_total: this.base_set_total,
+              extra_set_total: this.extra_set_total
             }
             this.collection_stock[card_data['set']] = new_set
           }
@@ -71,10 +73,10 @@ export default {
               }
               // console.log("is booster fun? ",this.is_booster_fun)
               // console.log(JSON.stringify(this.collection_stock[card_data['set']]))
-              if(this.is_booster_fun){
-                this.collection_stock[card_data['set']].booster_fun++
+              if(this.is_extra){
+                this.collection_stock[card_data['set']].extra_owned++
               } else {
-                this.collection_stock[card_data['set']].base_set++
+                this.collection_stock[card_data['set']].base_set_owned++
               }
             }
           } else {
@@ -101,10 +103,10 @@ export default {
               default:
                 break
             }
-            if(this.is_booster_fun){
-              this.collection_stock[card_data['set']].booster_fun++
+            if(this.is_extra){
+              this.collection_stock[card_data['set']].extra_owned++
             } else {
-              this.collection_stock[card_data['set']].base_set++
+              this.collection_stock[card_data['set']].base_set_owned++
             }
           }
           console.log("current collection stock",this.collection_stock)
@@ -114,9 +116,9 @@ export default {
           const total_of_this_print = this.collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']].count
           if(total_of_this_print <= 1){
             delete this.collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']]
-            // remove it from the base set/booster fun tracker
-            if(this.is_booster_fun){
-              this.collection_stock[card_data['set']].booster_fun--
+            // remove it from the base set/extra tracker
+            if(this.is_extra){
+              this.collection_stock[card_data['set']].extra--
             } else {
               this.collection_stock[card_data['set']].base_set--
             }
