@@ -19,20 +19,32 @@
         <v-list dense>
           <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="core" v-model="set_types_shown" class="set_check" :checked="check_core">
+            <input type="checkbox" value="core" v-model="set_types_shown" class="set_check">
               <label for="check_core" style="display: inline-block;">Core Sets</label>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="expansion" v-model="set_types_shown" class="set_check" :checked="check_expansion">
+            <input type="checkbox" value="expansion" v-model="set_types_shown" class="set_check">
               <p style="display: inline-block;">Expansions</p>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="masters" v-model="set_types_shown" class="set_check" :checked="check_masters">
+            <input type="checkbox" value="masters" v-model="set_types_shown" class="set_check">
               <p style="display: inline-block;">Masters Sets</p>
+          </v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <input type="checkbox" value="commander" v-model="set_types_shown" class="set_check">
+              <p style="display: inline-block;">Commander Sets</p>
+          </v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <input type="checkbox" value="masterpiece" v-model="set_types_shown" class="set_check">
+              <p style="display: inline-block;">Masterpieces</p>
+          </v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <input type="checkbox" value="all" v-model="set_types_shown" class="set_check">
+              <p style="display: inline-block;">Other Sets</p>
           </v-list-item>
         </v-list>
         <v-list-item id="column_set_list_title"><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && set_types_shown.includes(set['set_type'])" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
+        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','masterpiece'].includes(set['set_type'])))" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
           <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
           <p class="set_list_name">{{ set['name'] }}</p>
         </div> </v-list-item>
@@ -40,7 +52,17 @@
     </v-card>
     <v-main name="main" v-if="current_set && current_set_base_cards">
       <v-sheet class="main_body">
-        <v-card class="set_page_title" flat><p>{{ current_set['name'] }}</p></v-card>
+        <v-card class="set_page_title_card" flat>
+          <div>
+            <p class="set_page_title">{{ current_set['name'] }}</p>
+          </div>
+          <div style="display:inline-block">
+            <p class="set_page_subtitle">Release Date:</p><p class="set_page_subtext">{{ current_set['released_at'] }}</p>
+          </div>
+          <div style="display:inline-block">
+            <p class="set_page_subtitle">Set Type:</p><p class="set_page_subtext">{{ current_set['set_type'] }}</p>
+          </div>
+        </v-card>
         <v-row>
           <v-spacer/>
           <v-col cols="3">
@@ -51,7 +73,7 @@
           </v-col>
         </v-row>
         <v-card class="page_header">
-          <v-card class="set_stats_banner">
+          <v-card class="set_stats_banner" flat>
             <v-row style="height: 70px;" align="center" >
               <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p></v-col>
               <v-divider vertical/>
@@ -67,8 +89,8 @@
               <v-divider vertical v-if="current_set_extra_cards_qty > 0"/>
               <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
             </v-row>
-            <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' "/>
           </v-card>
+          <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' "/>
         </v-card>
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
@@ -98,11 +120,15 @@
               <v-select v-model="page_options.full_set_option_selected" label="Full Set Definition" :items="full_set_options" return-object>
                 <v-tooltip activator="parent" location="bottom">Defines the objective considered for the progress bars and 'full set' message displays for each set</v-tooltip>
               </v-select>
+              <v-divider/>
+              <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
+              <v-btn @click="clear_all_data()" density="comfortable">Clear ALL card data</v-btn>
             </v-form>
           </v-list-item>
         </v-list>
       </v-navigation-drawer>
     </v-card>
+    <!-- <v-footer></v-footer> -->
   </v-app>
 </template>
 
@@ -130,9 +156,7 @@ var collection_stock = reactive({o:{}})  // the user's total card stock, a json 
 
 var rerenderCards = ref(0)
 
-var check_core = false
-var check_expansion = false
-var check_masters = false
+var clicks_to_clear = ref(0)
 
 var current_page = ref(1)
 var current_set = ref(null)
@@ -216,22 +240,35 @@ async function select_set(set)
   loading.value = true
 
   current_page.value = 1
-  
   current_set.value = set
   current_set_code.value = set.code
-  current_set_base_cards.value = await get_set_cards(set.code)
-  current_set_base_cards_qty = current_set_base_cards.value.length
+  
+  // for any sets with traditional boosters and structure, we get their base cards and extra cards separately
+  if(['core','draft_innovation','masters','expansion','starter'].includes(set.set_type)) {
+    current_set_base_cards.value = await get_set_base_cards(set.code)
+    current_set_base_cards_qty = current_set_base_cards.value.length
 
-  current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
-  current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
-  current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
-  current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
-  current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
-  current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
+    current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
+    current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
+    current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
+    current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
+    current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
+    current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
 
-  const extra_set_cards = await get_set_extra_cards(set.code)
-  current_set_extra_cards_qty.value = extra_set_cards.length
-  current_set_base_cards.value = current_set_base_cards.value.concat( extra_set_cards )
+    const extra_set_cards = await get_set_extra_cards(set.code)
+    current_set_extra_cards_qty.value = extra_set_cards.length
+    current_set_base_cards.value = current_set_base_cards.value.concat( extra_set_cards )
+  } else {
+    current_set_base_cards.value = await get_set_all_cards(set.code)
+    current_set_base_cards_qty = current_set_base_cards.value.length
+
+    current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
+    current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
+    current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
+    current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
+    current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
+    current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
+  }
   loading.value = false
 }
 
@@ -257,8 +294,8 @@ function get_preferences_from_storage() {
   }
 }
 
-// get all card information for the selected set
-async function get_set_cards(set_code) {
+// get all base card information for the selected set
+async function get_set_base_cards(set_code) {
   var total_data = []
   var has_more = false
   // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset&unique=cards&as=grid&order=name"
@@ -304,18 +341,57 @@ async function get_set_extra_cards(set_code) {
   return total_data
 }
 
+// get all card information for the selected set
+async function get_set_all_cards(set_code) {
+  var total_data = []
+  var has_more = false
+  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset"
+  
+  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper
+  // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
+  // we follow down said batches until no has_more and concat the results back
+  do {
+    const response = await fetch(fetch_url);
+    const response_data = await response.json();
+    total_data = total_data.concat(response_data['data'])
+    has_more = response_data['has_more']
+    fetch_url = response_data['next_page']
+  } while (has_more != false)
+
+  current_set_commons.value = total_data.filter(is_common).length
+  current_set_uncommons.value = total_data.filter(is_uncommon).length
+  current_set_rares.value = total_data.filter(is_rare).length
+  current_set_mythics.value = total_data.filter(is_mythic).length
+
+  return total_data
+}
+
+function clear_all_data() {
+  if(clicks_to_clear.value < 9)
+  {
+    clicks_to_clear.value ++
+  }
+  else
+  {
+    clicks_to_clear.value = 0
+    collection_stock.o = {}
+    localStorage.removeItem('collection_stock')
+    location.reload()
+  }
+}
+
 const getProgressForSet = computed(() => {
   if(collection_stock.o[current_set_code.value])
   {
     switch(page_options.full_set_option_selected.value) {
       case 1:
-        console.log("getProgressForSet, switch 1, value",((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total))*100)
+        // console.log("getProgressForSet, switch 1, value",((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total))*100)
         return ((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total))*100
       case 2:
-        console.log("getProgressForSet, switch 2, value", (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100)
+        // console.log("getProgressForSet, switch 2, value", (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100)
         return (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100
       case 3:
-      console.log("getProgressForSet, switch 3, value",((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / collection_stock.o[current_set_code.value].base_set_total)*100)
+      // console.log("getProgressForSet, switch 3, value",((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / collection_stock.o[current_set_code.value].base_set_total)*100)
         return ((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / collection_stock.o[current_set_code.value].base_set_total)*100
       default:
         console.log("Something very wrong happened with page_options.full_set_option_selected on render")
@@ -366,11 +442,22 @@ function is_mythic(card){
   margin: 0 !important;
   min-height: 0 !important;  
 }
+.set_page_title_card {
+  height: 100px;
+}
 .set_page_title {
   font-weight: bold;
   font-size: 20pt;
   font-family: Georgia, 'Times New Roman', Times, serif;
-  height: 80px;
+}
+.set_page_subtitle {
+  font-weight: bold;
+  font-size: 10pt;
+  font-family: Georgia, 'Times New Roman', Times, serif;
+}
+.set_page_subtext {
+  font-size: 10pt;
+  font-family: Georgia, 'Times New Roman', Times, serif;
 }
 .set_list_element {
   display: flex;
@@ -420,13 +507,13 @@ function is_mythic(card){
 }
 .page_header {
   height: 105px;
+  margin-bottom: 10px;
 }
 .set_stats_banner {
   width: 100%;
   height: 90px;
   display: block;
   padding: 15px;
-  margin-bottom: 10px;
 }
 @media screen and (max-width: 1350px) {
   .set_stats_box {

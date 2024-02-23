@@ -118,9 +118,9 @@ export default {
             delete this.collection_stock[card_data['set']].cards[card_data['name']][card_data['collector_number']]
             // remove it from the base set/extra tracker
             if(this.is_extra){
-              this.collection_stock[card_data['set']].extra--
+              this.collection_stock[card_data['set']].extra_owned--
             } else {
-              this.collection_stock[card_data['set']].base_set--
+              this.collection_stock[card_data['set']].base_set_owned--
             }
             // if there are no more prints of this card on this set, we remove it from the tracked rarity list
             if (JSON.stringify(this.collection_stock[card_data['set']].cards[card_data['name']]) === "{}")  // stringify an empty object returns "{}"... ugly but works
