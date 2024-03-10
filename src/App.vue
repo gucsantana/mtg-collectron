@@ -5,7 +5,7 @@
     </v-overlay>
     <v-overlay persistent :model-value="import_window_active" class="align-center justify-center">
       <v-card title="Import Cards" class="import_window">
-        <v-textarea class="import_text_field" variant="outlined"/>
+        <v-textarea v-model="import_text" class="import_text_field" variant="outlined"/>
         <v-row>
           <v-spacer/>
           <v-col cols="3"><v-btn>Import</v-btn></v-col>
@@ -154,6 +154,8 @@ var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // 
 var import_window_active = ref(false) // signals the import dialog is visible
+
+var import_text = ''
 
 var page_options = reactive({
   show_option_selected: 1,
