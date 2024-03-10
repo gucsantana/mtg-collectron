@@ -3,6 +3,16 @@
     <v-overlay :model-value="loading" class="align-center justify-center">
       <v-progress-circular color="primary" indeterminate size="64"/>
     </v-overlay>
+    <v-overlay persistent :model-value="import_window_active" class="align-center justify-center">
+      <v-card title="Import Cards" class="import_window">
+        <v-textarea class="import_text_field" variant="outlined"/>
+        <v-row>
+          <v-spacer/>
+          <v-col cols="3"><v-btn>Import</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="import_window_active=false">Close</v-btn></v-col>
+        </v-row>
+      </v-card>
+    </v-overlay>
     <v-app-bar>
       <v-btn @click="drawer = !drawer">
         <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
@@ -116,14 +126,16 @@
         <v-list dense>
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <v-form>
-              <v-select v-model="page_options.full_set_option_selected" label="Full Set Definition" :items="full_set_options" return-object>
-                <v-tooltip activator="parent" location="bottom">Defines the objective considered for the progress bars and 'full set' message displays for each set</v-tooltip>
-              </v-select>
-              <v-divider/>
-              <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
-              <v-btn @click="clear_all_data()" density="comfortable">Clear ALL card data</v-btn>
-            </v-form>
+            <v-select v-model="page_options.full_set_option_selected" label="Full Set Definition" :items="full_set_options" return-object>
+              <v-tooltip activator="parent" location="bottom">Defines the objective considered for the progress bars and 'full set' message displays for each set</v-tooltip>
+            </v-select>
+          </v-list-item>
+          <v-divider/>
+          <v-list-item><p class="column_header">Collection Functions</p></v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <v-btn @click="import_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">Import Cards</v-btn>
+            <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
+            <v-btn @click="clear_all_data()" class="side_drawer_button" density="comfortable" variant="outlined">Clear ALL card data</v-btn>
           </v-list-item>
         </v-list>
       </v-navigation-drawer>
@@ -141,6 +153,7 @@ import sets_json from './scryfall_data/sets.json'
 var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // 
+var import_window_active = ref(false) // signals the import dialog is visible
 
 var page_options = reactive({
   show_option_selected: 1,
@@ -514,6 +527,20 @@ function is_mythic(card){
   height: 90px;
   display: block;
   padding: 15px;
+}
+.side_drawer_button {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+.import_window {
+  width: 500px;
+  height: 300px;
+  text-align: center;
+}
+.import_text_field {
+  width: 450px;
+  height: 150px;
+  display: inline-block;
 }
 @media screen and (max-width: 1350px) {
   .set_stats_box {
