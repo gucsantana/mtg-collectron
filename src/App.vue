@@ -4,11 +4,27 @@
       <v-progress-circular color="primary" indeterminate size="64"/>
     </v-overlay>
     <v-overlay persistent :model-value="import_window_active" class="align-center justify-center">
-      <v-card title="Import Cards" class="import_window">
+      <v-card class="import_window">
+        <v-card-item>
+          <v-row class="import_window_header align-center">
+            <v-col cols="6"><h2>Import Cards</h2></v-col>
+            <v-spacer/>
+            <v-col cols="1">
+              <v-tooltip text="/n" location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon :="props" icon="mdi-help-box" size="x-large"/>
+                </template>
+                <p>Uses the Moxfield syntax, one card per line</p>
+                <p class="mb-0">e.g. "1 Loran's Escape (BRO) *F*"</p>
+              </v-tooltip>
+            </v-col>
+          </v-row>
+        </v-card-item>
+        <v-divider/>
         <v-textarea v-model="import_text" class="import_text_field" variant="outlined"/>
         <v-row>
           <v-spacer/>
-          <v-col cols="3"><v-btn>Import</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="import_cards">Import</v-btn></v-col>
           <v-col cols="3"><v-btn @click="import_window_active=false">Close</v-btn></v-col>
         </v-row>
       </v-card>
@@ -292,16 +308,13 @@ function get_preferences_from_storage() {
   // localStorage.clear('stored_options')
   const stored_options = JSON.parse(localStorage.getItem('stored_options'))
   if(stored_options) {
-    page_options.show_option_selected = stored_options.show_option_selected
     page_options.full_set_option_selected = stored_options.full_set_option_selected
     page_options.card_per_page_option_selected = stored_options.card_per_page_option_selected
   } else {
     const user_options = {
-      show_option_selected: 1,
-      full_set_option_selected: 1,
-      card_per_page_option_selected: 2,
+      full_set_option_selected: {value: 1, title: 'Every single card, variants included'},
+      card_per_page_option_selected: {value: 2, title: 60},
     }
-    page_options.show_option_selected = user_options.show_option_selected
     page_options.full_set_option_selected = user_options.full_set_option_selected
     page_options.card_per_page_option_selected = user_options.card_per_page_option_selected
 
@@ -327,10 +340,12 @@ async function get_set_base_cards(set_code) {
     fetch_url = response_data['next_page']
   } while (has_more != false)
 
-  current_set_commons.value = total_data.filter(is_common).length
-  current_set_uncommons.value = total_data.filter(is_uncommon).length
-  current_set_rares.value = total_data.filter(is_rare).length
-  current_set_mythics.value = total_data.filter(is_mythic).length
+  const set_rarities = get_rarities(total_data)
+
+  current_set_commons.value = set_rarities.common
+  current_set_uncommons.value = set_rarities.uncommon
+  current_set_rares.value = set_rarities.rare
+  current_set_mythics.value = set_rarities.mythic
 
   return total_data
 }
@@ -373,12 +388,138 @@ async function get_set_all_cards(set_code) {
     fetch_url = response_data['next_page']
   } while (has_more != false)
 
-  current_set_commons.value = total_data.filter(is_common).length
-  current_set_uncommons.value = total_data.filter(is_uncommon).length
-  current_set_rares.value = total_data.filter(is_rare).length
-  current_set_mythics.value = total_data.filter(is_mythic).length
+  const set_rarities = get_rarities(total_data)
+
+  current_set_commons.value = set_rarities.common
+  current_set_uncommons.value = set_rarities.uncommon
+  current_set_rares.value = set_rarities.rare
+  current_set_mythics.value = set_rarities.mythic
 
   return total_data
+}
+
+// parse and import list of cards on the text box
+function import_cards() {
+  // first, we split the list of cards imported, one per line
+  var split_cards = import_text.split('\n')
+  var error_list = []
+  // then, we iterate through the list
+  for(let i = 0; i < split_cards.length; i++) {
+    try {
+      console.log('split_cards[i]',split_cards[i])
+      // for each card, we set up a return object to later use to push the card
+      var card = {'name': '', 'amount': 0, 'set': '', 'collector_number': 0, 'foil': false}
+
+      // first we split the card by '(', the first half is the quantity and card name, the second half is the set name and modifiers
+      const card_elements = split_cards[i].split('(')
+      // then we split the first part in two at the first space
+      const first_part = card_elements[0].split(' ',2)  
+      console.log('first_part',first_part)
+      // if the first element is not a number, it's an error
+      if(typeof(first_part[0]) === 'number') {
+        card.amount = first_part[0]
+      } else {
+        throw EvalError()
+      }
+      // the remaining elements of the first part should be the card name
+      card.name = first_part[1]
+
+      // the second part, past the first parentheses, is further split by the second parentheses; the first element is the set, the second (if exists) may indicate foil
+      const second_part = card_elements[1].split(')')
+      const third_part = second_part[1]?.split(' ')
+      card.set = second_part[0].toLowerCase()
+      if(typeof(third_part[0]) === 'number') {
+        card.collector_number = third_part[0]
+      } else {
+        throw EvalError()
+      }
+      if(third_part.length >= 2 && ['*F*','*E*'].includes(third_part[1]))
+      {
+        card.foil = true
+      }
+
+      add_card_to_stock(card)
+    }
+    catch (e){
+      console.log("Error: ",e)
+      error_list.push(split_cards[i])
+    }
+  }
+}
+
+// a simplified version of the add_card_to_stock function in CardSlot.vue
+async function add_card_to_stock(card) {
+  // scryfall fetch for the card, to get the rarity and is_extra info
+  var fetch_url = "https://api.scryfall.com/cards/search?q="+card.name+"%28+set%3A"+card.set+"+%28game%3Apaper%29&unique=prints&order=set"
+  const response = await fetch(fetch_url);
+  const response_data = await response.json()['data'];
+
+  // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
+  if(!(card['set'] in collection_stock.o)) {
+    var new_set = {
+      cards:{},
+      commons: 0,
+      uncommons: 0,
+      rares: 0,
+      mythics: 0,
+      base_set_owned: 0,
+      extra_owned: 0,
+      base_set_total: this.base_set_total,
+      extra_set_total: this.extra_set_total
+    }
+    collection_stock.o[card['set']] = new_set
+  }
+  
+  // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
+  if(card['name'] in collection_stock.o[card['set']].cards){
+    if(card['collector_number'] in collection_stock.o[card['set']].cards[card['name']])
+    {
+      collection_stock.o[card['set']].cards[card['name']][card['collector_number']].count+= card['amount']
+    }
+    else
+    {
+      collection_stock.o[card['set']].cards[card['name']][card['collector_number']] = {
+        count: card['amount'],
+        foil: card['foil']
+      }
+      
+      // TODO: how can I check if this is base set or extra?
+      if(card.collector_number == response_data[0].collector_number) {
+        collection_stock.o[card['set']].base_set_owned++
+      } else {
+        collection_stock.o[card['set']].extra_owned++
+      }
+    }
+  } else {
+    const new_card = {
+      [card['collector_number']] : {
+        count: card['amount'],
+        foil: card['foil']
+      }
+    }
+    collection_stock.o[card['set']].cards[card['name']] = new_card
+    switch(response_data[0].rarity){
+      case 'common':
+        collection_stock.o[card_data['set']].commons++
+        break
+      case 'uncommon':
+      collection_stock.o[card_data['set']].uncommons++
+        break
+      case 'rare':
+      collection_stock.o[card_data['set']].rares++
+        break
+      case 'mythic':
+      collection_stock.o[card_data['set']].mythics++
+        break
+      default:
+        break
+    }
+    if(card.collector_number == response_data[0].collector_number) {
+      collection_stock.o[card['set']].base_set_owned++
+    } else {
+      collection_stock.o[card['set']].extra_owned++
+    }
+  }
 }
 
 function clear_all_data() {
@@ -426,18 +567,35 @@ const pageSliceEnd = computed(() => {
   return (page_options.card_per_page_option_selected.value != 4 ? Math.min(current_set_base_cards.value.length, current_page.value * page_options.card_per_page_option_selected.title) : current_set_base_cards.value.length)
 })
 
-// aux functions for checking rarity
-function is_common(card){
-  return card['rarity'] == 'common'
-}
-function is_uncommon(card){
-  return card['rarity'] == 'uncommon'
-}
-function is_rare(card){
-  return card['rarity'] == 'rare'
-}
-function is_mythic(card){
-  return card['rarity'] == 'mythic'
+// returns object with the distinct rarities of passed set
+function get_rarities(set) {
+  var cards_checked = []
+  var rarities = {'common':0, 'uncommon':0, 'rare': 0, 'mythic':0 }
+  for(let i = 0; i < set.length; i++) {
+    if(!cards_checked.includes(set[i].name))
+    {
+      cards_checked.push(set[i].name)
+      switch(set[i].rarity)
+      {
+        case 'common':
+          rarities.common++
+          break
+        case 'uncommon':
+          rarities.uncommon++
+          break
+        case 'rare':
+          rarities.rare++
+          break
+        case 'mythic':
+          rarities.mythic++
+          break
+        default:
+          break
+      }
+    }
+  }
+  console.log('get_rarities return',rarities)
+  return rarities
 }
 
 </script>
@@ -539,10 +697,15 @@ function is_mythic(card){
   height: 300px;
   text-align: center;
 }
+.import_window_header {
+  width: 100%;
+  height: 70px;
+}
 .import_text_field {
   width: 450px;
   height: 150px;
   display: inline-block;
+  margin-top: 10px;
 }
 @media screen and (max-width: 1350px) {
   .set_stats_box {
