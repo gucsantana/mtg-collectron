@@ -82,7 +82,7 @@
           <div>
             <p class="set_page_title">{{ current_set['name'] }}</p>
           </div>
-          <div style="display:inline-block">
+          <div style="display:inline-block; margin-right: 30px;">
             <p class="set_page_subtitle">Release Date:</p><p class="set_page_subtext">{{ current_set['released_at'] }}</p>
           </div>
           <div style="display:inline-block">
@@ -229,9 +229,9 @@ const full_set_options = [
 // -------------------------------------------------------------------------------------------------- //
 
 onMounted(() => {
-  // localStorage.removeItem('collection_stock')
+  // // localStorage.removeItem('collection_stock')
   set_list.value = sets_json['data']
-
+  
   // get the list of set options from local storage
   const set_options = JSON.parse(localStorage.getItem('set_options'))
   if(set_options)  {  set_types_shown.value = set_options  }
@@ -239,6 +239,8 @@ onMounted(() => {
   
   const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
   if(local_stock) { collection_stock.o = local_stock }
+
+  // delete collection_stock.o['snc']
 })
 
 // watch keeps track of variable changes
@@ -278,27 +280,33 @@ async function select_set(set)
   if(['core','draft_innovation','masters','expansion','starter'].includes(set.set_type)) {
     current_set_base_cards.value = await get_set_base_cards(set.code)
     current_set_base_cards_qty = current_set_base_cards.value.length
-
+    
     current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
     current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
     current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
     current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
     current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
     current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
-
+    
     const extra_set_cards = await get_set_extra_cards(set.code)
     current_set_extra_cards_qty.value = extra_set_cards.length
     current_set_base_cards.value = current_set_base_cards.value.concat( extra_set_cards )
   } else {
     current_set_base_cards.value = await get_set_all_cards(set.code)
     current_set_base_cards_qty = current_set_base_cards.value.length
-
+    
     current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
     current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
     current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
     current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
     current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
     current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
+  }
+
+  // sets added via import card may not have this info, so we'll add it in as needed
+  if(collection_stock.o[set.code].base_set_total == 0) {
+    collection_stock.o[set.code].base_set_total = current_set_base_cards_qty
+    collection_stock.o[set.code].extra_set_total = current_set_extra_cards_qty ? current_set_extra_cards_qty : 0
   }
   loading.value = false
 }
@@ -399,7 +407,8 @@ async function get_set_all_cards(set_code) {
 }
 
 // parse and import list of cards on the text box
-function import_cards() {
+async function import_cards() {
+  loading.value = true
   // first, we split the list of cards imported, one per line
   var split_cards = import_text.split('\n')
   var error_list = []
@@ -410,25 +419,28 @@ function import_cards() {
       // for each card, we set up a return object to later use to push the card
       var card = {'name': '', 'amount': 0, 'set': '', 'collector_number': 0, 'foil': false}
 
-      // first we split the card by '(', the first half is the quantity and card name, the second half is the set name and modifiers
-      const card_elements = split_cards[i].split('(')
-      // then we split the first part in two at the first space
-      const first_part = card_elements[0].split(' ',2)  
-      console.log('first_part',first_part)
+      // first we split the card by ' (' (note the space), the first half is the quantity and card name, the second half is the set name, collector number and modifiers
+      const card_elements = split_cards[i].split(' (')
+      // then we split the first part in two at the first space, and grab the first element as the amount
+      const amount = card_elements[0].split(' ',1)[0]
+      console.log('amount',amount)
       // if the first element is not a number, it's an error
-      if(typeof(first_part[0]) === 'number') {
-        card.amount = first_part[0]
+      if(parseInt(amount)) {
+        card.amount = amount
       } else {
         throw EvalError()
       }
       // the remaining elements of the first part should be the card name
-      card.name = first_part[1]
+      card.name = card_elements[0].substring(card_elements[0].indexOf(' ')+1)
+      console.log('card.name',card.name)
 
       // the second part, past the first parentheses, is further split by the second parentheses; the first element is the set, the second (if exists) may indicate foil
-      const second_part = card_elements[1].split(')')
+      const second_part = card_elements[1].split(') ')
+      console.log('second_part',second_part)
       const third_part = second_part[1]?.split(' ')
+      console.log('third_part',third_part)
       card.set = second_part[0].toLowerCase()
-      if(typeof(third_part[0]) === 'number') {
+      if(parseInt(third_part[0])) {
         card.collector_number = third_part[0]
       } else {
         throw EvalError()
@@ -436,23 +448,27 @@ function import_cards() {
       if(third_part.length >= 2 && ['*F*','*E*'].includes(third_part[1]))
       {
         card.foil = true
+        console.log('card.foil = true')
       }
 
-      add_card_to_stock(card)
+      await add_card_to_stock(card)
     }
     catch (e){
       console.log("Error: ",e)
       error_list.push(split_cards[i])
     }
   }
+  console.log("error list",error_list)
+  loading.value = false
 }
 
 // a simplified version of the add_card_to_stock function in CardSlot.vue
 async function add_card_to_stock(card) {
   // scryfall fetch for the card, to get the rarity and is_extra info
-  var fetch_url = "https://api.scryfall.com/cards/search?q="+card.name+"%28+set%3A"+card.set+"+%28game%3Apaper%29&unique=prints&order=set"
+  var fetch_url = 'https://api.scryfall.com/cards/search?q=%21"'+card.name+'"+set%3A'+card.set+'+%28game%3Apaper%29&unique=prints&order=set'
   const response = await fetch(fetch_url);
-  const response_data = await response.json()['data'];
+  const response_contents = await response.json();
+  const response_data = response_contents['data']
 
   // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
   if(!(card['set'] in collection_stock.o)) {
@@ -464,8 +480,8 @@ async function add_card_to_stock(card) {
       mythics: 0,
       base_set_owned: 0,
       extra_owned: 0,
-      base_set_total: this.base_set_total,
-      extra_set_total: this.extra_set_total
+      base_set_total: 0,  // both this and below are zeroed due to not enough info at this stage, but we will overwrite it later as needed on CardSlot.vue
+      extra_set_total: 0
     }
     collection_stock.o[card['set']] = new_set
   }
@@ -474,16 +490,15 @@ async function add_card_to_stock(card) {
   if(card['name'] in collection_stock.o[card['set']].cards){
     if(card['collector_number'] in collection_stock.o[card['set']].cards[card['name']])
     {
-      collection_stock.o[card['set']].cards[card['name']][card['collector_number']].count+= card['amount']
+      collection_stock.o[card['set']].cards[card['name']][card['collector_number']].count+= parseInt(card['amount'])
     }
     else
     {
       collection_stock.o[card['set']].cards[card['name']][card['collector_number']] = {
-        count: card['amount'],
+        count: parseInt(card['amount']),
         foil: card['foil']
       }
       
-      // TODO: how can I check if this is base set or extra?
       if(card.collector_number == response_data[0].collector_number) {
         collection_stock.o[card['set']].base_set_owned++
       } else {
@@ -491,25 +506,26 @@ async function add_card_to_stock(card) {
       }
     }
   } else {
+    console.log('response_data',response_data)
     const new_card = {
       [card['collector_number']] : {
-        count: card['amount'],
+        count: parseInt(card['amount']),
         foil: card['foil']
       }
     }
     collection_stock.o[card['set']].cards[card['name']] = new_card
     switch(response_data[0].rarity){
       case 'common':
-        collection_stock.o[card_data['set']].commons++
+        collection_stock.o[card['set']].commons++
         break
       case 'uncommon':
-      collection_stock.o[card_data['set']].uncommons++
+      collection_stock.o[card['set']].uncommons++
         break
       case 'rare':
-      collection_stock.o[card_data['set']].rares++
+      collection_stock.o[card['set']].rares++
         break
       case 'mythic':
-      collection_stock.o[card_data['set']].mythics++
+      collection_stock.o[card['set']].mythics++
         break
       default:
         break
