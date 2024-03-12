@@ -29,6 +29,21 @@
         </v-row>
       </v-card>
     </v-overlay>
+    <v-overlay :model-value="import_results_active" class="align-center justify-center">
+      <v-card class="import_results_window">
+        <v-card-item>
+          <h2 v-show="import_success == true">Import Success</h2>
+          <h2 v-show="import_success == false">Import Failure</h2>
+        </v-card-item>
+        <v-divider/>
+        <br/>
+        <p v-show="import_card_total > 0">Imported {{ import_card_total }} unique cards.</p>
+        <br/>
+        <p v-show="import_errors.length > 0">The following lines could not be imported:</p>
+        <br/>
+        <p>{{ import_errors }}</p>
+      </v-card>
+    </v-overlay>
     <v-app-bar>
       <v-btn @click="drawer = !drawer">
         <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
@@ -69,7 +84,9 @@
               <p style="display: inline-block;">Other Sets</p>
           </v-list-item>
         </v-list>
-        <v-list-item id="column_set_list_title"><p class="column_header">List of Sets</p></v-list-item>
+        <v-list-item><p class="column_header">Search for Set</p></v-list-item>
+        <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact" clearable></v-text-field></v-list-item>
+        <v-list-item><p class="column_header">List of Sets</p></v-list-item>
         <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','masterpiece'].includes(set['set_type'])))" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
           <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
           <p class="set_list_name">{{ set['name'] }}</p>
@@ -170,8 +187,12 @@ var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // 
 var import_window_active = ref(false) // signals the import dialog is visible
+var import_results_active = ref(false) // signals the import dialog results are visible
 
 var import_text = ''
+var import_success = ref(true)
+var import_errors = ref([])
+var import_card_total = ref(0)
 
 var page_options = reactive({
   show_option_selected: 1,
@@ -181,6 +202,7 @@ var page_options = reactive({
 
 var set_list = ref([])
 var set_types_shown = ref(['core','expansion'])
+var set_search = ref('')
 
 var collection_stock = reactive({o:{}})  // the user's total card stock, a json object that includes every single card they own (oof?)
 // the .o initial object is required to maintain reactivity, because if we overwrite the parent object, we lose reactive()
@@ -409,8 +431,13 @@ async function get_set_all_cards(set_code) {
 // parse and import list of cards on the text box
 async function import_cards() {
   loading.value = true
+  import_results_active.value = false
+
+  let cards_imported = 0
   // first, we split the list of cards imported, one per line
   var split_cards = import_text.split('\n')
+  import_text = ''
+
   var error_list = []
   // then, we iterate through the list
   for(let i = 0; i < split_cards.length; i++) {
@@ -452,14 +479,21 @@ async function import_cards() {
       }
 
       await add_card_to_stock(card)
+      cards_imported++
     }
     catch (e){
       console.log("Error: ",e)
       error_list.push(split_cards[i])
     }
   }
-  console.log("error list",error_list)
+  // we consider the import a success if at least one card was imported
+  import_success = (cards_imported > 0)
+  import_card_total.value = cards_imported
+  import_errors.value = error_list.join(', ')
   loading.value = false
+
+  console.log("error list",error_list)
+  import_results_active.value = true
 }
 
 // a simplified version of the add_card_to_stock function in CardSlot.vue
@@ -711,6 +745,13 @@ function get_rarities(set) {
 .import_window {
   width: 500px;
   height: 300px;
+  text-align: center;
+}
+.import_results_window {
+  width: 450px;
+  min-height: 250px;
+  max-height: 600px;
+  height: 100%;
   text-align: center;
 }
 .import_window_header {
