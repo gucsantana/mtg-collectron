@@ -133,7 +133,11 @@
               <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
             </v-row>
           </v-card>
-          <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' "/>
+          <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
+            <template v-slot:default="{ value }">
+              <strong>{{ Math.round(value * 10) / 10 }}%</strong>
+            </template>
+          </v-progress-linear>
         </v-card>
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
@@ -326,7 +330,7 @@ async function select_set(set)
   }
 
   // sets added via import card may not have this info, so we'll add it in as needed
-  if(collection_stock.o[set.code].base_set_total == 0) {
+  if(collection_stock.o[set.code]?.base_set_total == 0) {
     collection_stock.o[set.code].base_set_total = current_set_base_cards_qty
     collection_stock.o[set.code].extra_set_total = current_set_extra_cards_qty ? current_set_extra_cards_qty : 0
   }
@@ -644,7 +648,6 @@ function get_rarities(set) {
       }
     }
   }
-  console.log('get_rarities return',rarities)
   return rarities
 }
 
