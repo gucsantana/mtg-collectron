@@ -76,6 +76,10 @@
               <p style="display: inline-block;">Commander Sets</p>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
+            <input type="checkbox" value="draft_innovation" v-model="set_types_shown" class="set_check">
+              <p style="display: inline-block;">Draft Innovation Sets</p>
+          </v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
             <input type="checkbox" value="masterpiece" v-model="set_types_shown" class="set_check">
               <p style="display: inline-block;">Masterpieces</p>
           </v-list-item>
@@ -87,13 +91,13 @@
         <v-list-item><p class="column_header">Search for Set</p></v-list-item>
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"></v-text-field></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()))" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
+        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()))" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
           <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
           <p class="set_list_name">{{ set['name'] }}</p>
         </div> </v-list-item>
       </v-navigation-drawer>
     </v-card>
-    <v-main name="main" v-if="current_set && current_set_base_cards">
+    <v-main id="main_body" v-if="current_set && current_set_base_cards">
       <v-sheet class="main_body">
         <v-card class="set_page_title_card" flat>
           <div>
@@ -148,14 +152,21 @@
         </v-sheet>
       </v-sheet>
       <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" total-visible="8"/>
-      <v-card class="set_stats_box" :elevation="10">
-        <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p>
-        <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
-        <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
-        <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
-        <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
-        <p v-if="current_set_extra_cards_qty > 0">Extra Cards: {{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p>
-        <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
+      <v-card class="set_stats_box" :elevation="10" v-scroll="on_scroll_stats_box" v-show="stats_box_visible">
+        <v-card class="set_stats_inner_box" flat>
+          <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p>
+          <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
+          <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
+          <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
+          <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
+          <p v-if="current_set_extra_cards_qty > 0">Extra Cards: {{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p>
+          <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
+        </v-card>
+        <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
+            <template v-slot:default="{ value }">
+              <strong>{{ Math.round(value * 10) / 10 }}%</strong>
+            </template>
+          </v-progress-linear>
       </v-card>
     </v-main>
     <v-card >
@@ -212,6 +223,7 @@ var collection_stock = reactive({o:{}})  // the user's total card stock, a json 
 // the .o initial object is required to maintain reactivity, because if we overwrite the parent object, we lose reactive()
 
 var rerenderCards = ref(0)
+var stats_box_visible = ref(false)
 
 var clicks_to_clear = ref(0)
 
@@ -320,6 +332,7 @@ async function select_set(set)
   } else {
     current_set_base_cards.value = await get_set_all_cards(set.code)
     current_set_base_cards_qty = current_set_base_cards.value.length
+    current_set_extra_cards_qty.value = 0
     
     current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
     current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
@@ -651,6 +664,10 @@ function get_rarities(set) {
   return rarities
 }
 
+function on_scroll_stats_box () {
+  stats_box_visible.value = window.scrollY > 280
+}
+
 </script>
 
 <style scoped>
@@ -722,14 +739,21 @@ function get_rarities(set) {
 }
 .set_stats_box {
   width: 200px;
-  height: 200px;
+  height: 215px;
   border-radius: 5%;
   display: block;
   float:right;
   position: fixed;
   top: 20%;
   right: 50px;
+}
+.set_stats_inner_box {
+  width: 200px;
+  height: 200px;
+  border-radius: 5%;
+  display: inline-block;
   padding: 15px;
+  margin-top:-7px;
 }
 .page_header {
   height: 105px;
