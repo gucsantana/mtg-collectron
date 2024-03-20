@@ -111,9 +111,12 @@
           </div>
         </v-card>
         <v-row>
+          <v-col cols="3">
+            <v-text-field v-model="card_search" label="Card Search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/>
+          </v-col>
           <v-spacer/>
           <v-col cols="3">
-            <v-select v-model="page_options.card_per_page_option_selected" label="Cards per Page:" :items="card_per_page_options" return-object density="compact"/>
+            <v-select v-model="page_options.card_per_page_option_selected" label="Cards per Page" :items="card_per_page_options" return-object density="compact" variant="outlined"/>
           </v-col>
           <v-col cols="3" v-show="false">
             <v-select v-model="page_options.show_option_selected" label="Show:" :items="show_options" return-object density="compact"/>
@@ -256,7 +259,7 @@ const card_per_page_options = [
   {value: 1, title: 36},
   {value: 2, title: 60},
   {value: 3, title: 120},
-  {value: 4, title: 'All'}
+  //{value: 4, title: 'All'}
 ]
 const full_set_options = [
   {value: 1, title: 'Every single card, variants included'},
@@ -753,7 +756,7 @@ function on_scroll_stats_box () {
   border-radius: 5%;
   display: inline-block;
   padding: 15px;
-  margin-top:-7px;
+  margin-top:-6px;
 }
 .page_header {
   height: 105px;
