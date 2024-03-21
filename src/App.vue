@@ -112,7 +112,7 @@
         </v-card>
         <v-row>
           <v-col cols="3">
-            <v-text-field v-model="card_search" label="Card Search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/>
+            <v-text-field v-model="card_search" label="Card Search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact" clearable @click:clear="card_search = ''"/>
           </v-col>
           <v-spacer/>
           <v-col cols="3">
@@ -148,7 +148,7 @@
         </v-card>
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
-            <v-col v-for="(item,index) in current_set_base_cards.slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
+            <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
               <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="(index+pageSliceStart) >= current_set_base_cards_qty" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty"></CardSlot>
             </v-col>
           </v-row>
@@ -221,6 +221,7 @@ var page_options = reactive({
 var set_list = ref([])
 var set_types_shown = ref(['core','expansion'])
 var set_search = ref('')
+var card_search = ref('')
 
 var collection_stock = reactive({o:{}})  // the user's total card stock, a json object that includes every single card they own (oof?)
 // the .o initial object is required to maintain reactivity, because if we overwrite the parent object, we lose reactive()
@@ -306,6 +307,9 @@ watch(page_options, v => {
   localStorage.setItem('stored_options',JSON.stringify(page_options))
   current_page.value = 1
 })
+watch(card_search, v => {
+  current_page.value = 1
+})
 
 // activated when a set is selected on the left column
 // clean up previous values, set up the loading overlay, and grab the new data from the next set
@@ -314,6 +318,7 @@ async function select_set(set)
   loading.value = true
 
   current_page.value = 1
+  card_search.value = ''
   current_set.value = set
   current_set_code.value = set.code
   
@@ -626,7 +631,7 @@ const getProgressForSet = computed(() => {
   } else {return 0}
 })
 const pageCount = computed(() => {
-  const total_cards_to_display = current_set_base_cards.value ? current_set_base_cards.value.length : 0
+  const total_cards_to_display = current_set_base_cards.value.filter((card) => (card.name.toLowerCase().includes(card_search.value) || card_search.value == '')).length
   return (page_options && page_options.card_per_page_option_selected && (page_options.card_per_page_option_selected.value != 4)) 
     ? Math.ceil(total_cards_to_display / page_options.card_per_page_option_selected.title) : 0
 })
@@ -675,7 +680,7 @@ function on_scroll_stats_box () {
 
 <style scoped>
 .left-column {
-  width: 180px;
+  width: 200px;
   display: inline-block;
 }
 .column_header {
