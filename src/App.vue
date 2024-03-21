@@ -92,7 +92,7 @@
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"></v-text-field></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
         <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()))" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
-          <!-- <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/> -->
+          <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/>
           <p class="set_list_name">{{ set['name'] }}</p>
         </div> </v-list-item>
       </v-navigation-drawer>
