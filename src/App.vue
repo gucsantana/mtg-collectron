@@ -89,9 +89,9 @@
           </v-list-item>
         </v-list>
         <v-list-item><p class="column_header">Search for Set</p></v-list-item>
-        <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"></v-text-field></v-list-item>
+        <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()))" class="set_list_element" :class="{'set_list_element_selected': set['code'] == current_set_code }" >
+        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase())) && (new Date().toISOString().substring(0,10) > set.released_at)" class="set_list_element" :class="{'set_list_element_selected': set.code == current_set_code }" >
           <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/>
           <p class="set_list_name">{{ set['name'] }}</p>
         </div> </v-list-item>
@@ -127,17 +127,26 @@
             <v-row style="height: 70px;" align="center" >
               <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p></v-col>
               <v-divider vertical/>
-              <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>{{ current_set_owned_commons }}/{{ current_set_commons }}</p></v-col>
+              <!-- <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>{{ current_set_owned_commons }}/{{ current_set_commons }}</p></v-col>
               <v-divider vertical v-if="current_set_commons > 0"/>
               <v-col v-if="current_set_uncommons > 0"><p>Uncommons:</p><p>{{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p></v-col>
               <v-divider vertical v-if="current_set_uncommons > 0"/>
                 <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>{{ current_set_owned_rares }}/{{ current_set_rares }}</p></v-col>
                 <v-divider vertical v-if="current_set_rares > 0"/>
               <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>{{ current_set_owned_mythics }}/{{ current_set_mythics }}</p></v-col>
-              <v-divider vertical v-if="current_set_mythics > 0"/>
-              <v-col v-if="current_set_extra_cards_qty > 0"><p>Extra Cards:</p><p>{{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p></v-col>
+              <v-divider vertical v-if="current_set_mythics > 0"/> -->
+              <v-col v-if="current_set_extra_cards_qty > 0">
+                <p style="display:inline;">Extra Cards:</p>
+                <v-tooltip text="/n" location="bottom" style="display:inline;">
+                  <template v-slot:activator="{ props }">
+                    <v-icon :="props" icon="mdi-help-circle" size="medium" style="margin-left:10px;"/>
+                  </template>
+                  <p>Showcase frame cards, extended art carts, borderless cards, Buy-a-Box, etc</p>
+                </v-tooltip>
+                <p>{{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p></v-col>
               <v-divider vertical v-if="current_set_extra_cards_qty > 0"/>
               <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
+              <v-col><p>Foil Cards:</p><p>{{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
             </v-row>
           </v-card>
           <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
@@ -248,6 +257,7 @@ var current_set_owned_uncommons = ref(0)
 var current_set_owned_rares = ref(0)
 var current_set_owned_mythics = ref(0)
 var current_set_owned_extra_cards = ref(0)
+var current_set_owned_foils = ref(0)
 
 // -------------------------------------------------------------------------------------------------- //
 
@@ -295,6 +305,7 @@ watch(collection_stock, new_obj => {
   current_set_owned_mythics.value = new_obj.o[cur_set_code]?.mythics
   current_set_owned_base_cards.value = new_obj.o[cur_set_code]?.base_set_owned
   current_set_owned_extra_cards.value = new_obj.o[cur_set_code]?.extra_owned
+  current_set_owned_foils.value = new_obj.o[cur_set_code]?.foils_owned
   rerenderCards.value++
 
   localStorage.setItem('collection_stock',JSON.stringify(new_obj.o))
@@ -315,12 +326,17 @@ watch(card_search, v => {
 // clean up previous values, set up the loading overlay, and grab the new data from the next set
 async function select_set(set) 
 {
+  console.log("collection stock",collection_stock.o)
   loading.value = true
 
   current_page.value = 1
   card_search.value = ''
   current_set.value = set
   current_set_code.value = set.code
+
+  if(collection_stock.o[set.code] && !collection_stock.o[set.code].foils_owned) {
+    collection_stock.o[set.code].foils_owned = tally_foils(set.code)
+  }
   
   // for any sets with traditional boosters and structure, we get their base cards and extra cards separately
   if(['core','draft_innovation','masters','expansion','starter'].includes(set.set_type)) {
@@ -333,6 +349,7 @@ async function select_set(set)
     current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
     current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
     current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
+    current_set_owned_foils.value = collection_stock.o[set.code] ? collection_stock.o[set.code].foils_owned : 0
     
     const extra_set_cards = await get_set_extra_cards(set.code)
     current_set_extra_cards_qty.value = extra_set_cards.length
@@ -348,6 +365,7 @@ async function select_set(set)
     current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
     current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
     current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
+    current_set_owned_foils.value = collection_stock.o[set.code] ? collection_stock.o[set.code].foils_owned : 0
   }
 
   // sets added via import card may not have this info, so we'll add it in as needed
@@ -597,6 +615,16 @@ async function add_card_to_stock(card) {
   }
 }
 
+function tally_foils(set_code) {
+  const data = collection_stock.o[set_code].cards
+  console.log('data',data[0])
+  for(card in data){
+    for(card_print in card){
+      console.log('print num',card_print)
+    }
+  }
+}
+
 function clear_all_data() {
   if(clicks_to_clear.value < 9)
   {
@@ -679,10 +707,6 @@ function on_scroll_stats_box () {
 </script>
 
 <style scoped>
-.left-column {
-  width: 200px;
-  display: inline-block;
-}
 .column_header {
   font-weight: bold; 
   text-align: left;
