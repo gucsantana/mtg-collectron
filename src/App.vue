@@ -139,7 +139,7 @@
         </v-card>
         <v-row>
           <v-col cols="3">
-            <v-text-field v-model="card_search" label="Card Search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact" clearable @click:clear="card_search = ''"/>
+            <v-text-field v-model="card_search" label="Card Search" prepend-inner-icon="mdi-magnify" variant="outlined" color="primary" density="compact" clearable @click:clear="card_search = ''"/>
           </v-col>
           <v-spacer/>
           <v-col cols="3">
@@ -238,6 +238,8 @@ import { onMounted, ref, watch, reactive, computed } from 'vue'
 import { useTheme } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import sets_json from './scryfall_data/sets.json'
+
+const theme = useTheme()
 
 var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
