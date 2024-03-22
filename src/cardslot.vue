@@ -156,11 +156,11 @@ export default {
         },
         mark_card_as_foil(card_data){
           this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number].foil = true
-          this.collection_stock[card_data.set].foil_owned++
+          this.collection_stock[card_data.set].foils_owned++
         },
         mark_card_as_nonfoil(card_data){
           this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number].foil = false
-          this.collection_stock[card_data.set].foil_owned--
+          this.collection_stock[card_data.set].foils_owned--
         }
     },
     computed: {
