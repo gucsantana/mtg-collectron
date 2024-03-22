@@ -44,6 +44,33 @@
         <p>{{ import_errors }}</p>
       </v-card>
     </v-overlay>
+    <v-overlay persistent :model-value="export_window_active" class="align-center justify-center">
+      <v-card class="import_window">
+        <v-card-item>
+          <v-row class="import_window_header align-center">
+            <v-col cols="6"><h2>Export Cards</h2></v-col>
+            <v-spacer/>
+            <v-col cols="1">
+              <v-tooltip text="/n" location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon :="props" icon="mdi-help-box" size="x-large"/>
+                </template>
+                <p>Exports the collection stock as a JSON file readable by this system</p>
+                <p class="mb-0">Save it somewhere if you need a backup to be safe</p>
+              </v-tooltip>
+            </v-col>
+          </v-row>
+        </v-card-item>
+        <v-divider/>
+        <v-textarea v-model="export_text" class="import_text_field" variant="outlined" :readonly="true"/>
+        <v-row>
+          <v-spacer/>
+          <v-col cols="4"><v-btn @click="copyCollectionToClipboard">Copy to Clipboard</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="export_window_active=false">Close</v-btn></v-col>
+        </v-row>
+      </v-card>
+    </v-overlay>
+    <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
     <v-app-bar>
       <v-btn @click="drawer = !drawer">
         <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
@@ -195,6 +222,7 @@
           <v-list-item><p class="column_header">Collection Functions</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
             <v-btn @click="import_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">Import Cards</v-btn>
+            <v-btn @click="exportCollection" class="side_drawer_button" density="comfortable" variant="outlined">Export Collection</v-btn>
             <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
             <v-btn @click="clear_all_data()" class="side_drawer_button" density="comfortable" variant="outlined">Clear ALL card data</v-btn>
           </v-list-item>
@@ -216,11 +244,14 @@ var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // 
 var import_window_active = ref(false) // signals the import dialog is visible
 var import_results_active = ref(false) // signals the import dialog results are visible
+var export_window_active = ref(false) // signals the import dialog is visible
 
 var import_text = ''
 var import_success = ref(true)
 var import_errors = ref([])
 var import_card_total = ref(0)
+var export_text = ''
+var toast = ref(false)
 
 var page_options = reactive({
   show_option_selected: 1,
@@ -538,6 +569,16 @@ async function import_cards() {
 
   console.log("error list",error_list)
   import_results_active.value = true
+}
+
+function exportCollection () {
+  export_text = JSON.stringify(collection_stock.o)
+  export_window_active.value = true
+}
+
+async function copyCollectionToClipboard() {
+  await navigator.clipboard.writeText(export_text);
+  toast.value = true
 }
 
 // a simplified version of the add_card_to_stock function in CardSlot.vue
