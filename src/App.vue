@@ -173,6 +173,7 @@
           <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
           <p v-if="current_set_extra_cards_qty > 0">Extra Cards: {{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p>
           <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
+          <p>Foil Cards: {{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
         </v-card>
         <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
             <template v-slot:default="{ value }">
@@ -326,7 +327,7 @@ watch(card_search, v => {
 // clean up previous values, set up the loading overlay, and grab the new data from the next set
 async function select_set(set) 
 {
-  console.log("collection stock",collection_stock.o)
+  // console.log("collection stock for selected set",collection_stock.o[set.code])
   loading.value = true
 
   current_page.value = 1
@@ -616,13 +617,19 @@ async function add_card_to_stock(card) {
 }
 
 function tally_foils(set_code) {
-  const data = collection_stock.o[set_code].cards
-  console.log('data',data[0])
-  for(card in data){
-    for(card_print in card){
-      console.log('print num',card_print)
+  console.log('Running tally_foils to set missing parameter')
+  const data = JSON.parse(JSON.stringify(collection_stock.o[set_code].cards))
+  var foiltotal = 0
+  const cardlist = Object.entries(data)
+  for(let i = 0; i < cardlist.length; i++){
+    const elem = Object.entries(cardlist[i][1])
+    for(let j = 0; j < elem.length; j++){
+      if(elem[j][1]['foil']) {
+        foiltotal++
+      }
     }
   }
+  return foiltotal
 }
 
 function clear_all_data() {
@@ -771,7 +778,7 @@ function on_scroll_stats_box () {
 }
 .set_stats_box {
   width: 200px;
-  height: 215px;
+  height: 225px;
   border-radius: 5%;
   display: block;
   float:right;
@@ -781,7 +788,7 @@ function on_scroll_stats_box () {
 }
 .set_stats_inner_box {
   width: 200px;
-  height: 200px;
+  height: 210px;
   border-radius: 5%;
   display: inline-block;
   padding: 15px;
