@@ -71,7 +71,7 @@
       </v-card>
     </v-overlay>
     <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
-    <v-app-bar>
+    <v-app-bar color="pink-lighten-1">
       <v-btn @click="drawer = !drawer">
         <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
         <v-icon icon="mdi-chevron-left-circle" size="x-large" v-if="drawer"/>
@@ -209,6 +209,9 @@
           </v-progress-linear>
       </v-card>
     </v-main>
+    <!-- <v-footer absolute height="300px" width="100%" color="pink-lighten-2">
+      
+    </v-footer> -->
     <v-card >
       <v-navigation-drawer app temporary v-model="settings" location="right">
         <v-list dense>
@@ -592,7 +595,7 @@ async function add_card_to_stock(card) {
   const response_data = response_contents['data']
 
   // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
-  if(!(card['set'] in collection_stock.o)) {
+  if(!(card.set in collection_stock.o)) {
     var new_set = {
       cards:{},
       commons: 0,
@@ -604,61 +607,62 @@ async function add_card_to_stock(card) {
       base_set_total: 0,  // both this and below are zeroed due to not enough info at this stage, but we will overwrite it later as needed on CardSlot.vue
       extra_set_total: 0
     }
-    collection_stock.o[card['set']] = new_set
+    collection_stock.o[card.set] = new_set
   }
   
   // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
-  if(card['name'] in collection_stock.o[card['set']].cards){
-    if(card['collector_number'] in collection_stock.o[card['set']].cards[card['name']])
+  if(card.name in collection_stock.o[card.set].cards){
+    if(card.collector_number in collection_stock.o[card.set].cards[card.name])
     {
-      collection_stock.o[card['set']].cards[card['name']][card['collector_number']].count+= parseInt(card['amount'])
+      collection_stock.o[card.set].cards[card.name][card.collector_number].count+= parseInt(card.amount)
     }
     else
     {
-      collection_stock.o[card['set']].cards[card['name']][card['collector_number']] = {
-        count: parseInt(card['amount']),
-        foil: card['foil']
+      collection_stock.o[card.set].cards[card.name][card.collector_number] = {
+        count: parseInt(card.amount),
+        foil: card.foil
       }
       
       if(card.collector_number == response_data[0].collector_number) {
-        collection_stock.o[card['set']].base_set_owned++
+        collection_stock.o[card.set].base_set_owned++
       } else {
-        collection_stock.o[card['set']].extra_owned++
+        collection_stock.o[card.set].extra_owned++
       }
     }
   } else {
     console.log('response_data',response_data)
     const new_card = {
-      [card['collector_number']] : {
-        count: parseInt(card['amount']),
-        foil: card['foil']
+      [card.collector_number] : {
+        count: parseInt(card.amount),
+        foil: card.foil
       }
     }
-    collection_stock.o[card['set']].cards[card['name']] = new_card
+    collection_stock.o[card.set].cards[card.name] = new_card
     switch(response_data[0].rarity){
       case 'common':
-        collection_stock.o[card['set']].commons++
+        collection_stock.o[card.set].commons++
         break
       case 'uncommon':
-      collection_stock.o[card['set']].uncommons++
+      collection_stock.o[card.set].uncommons++
         break
       case 'rare':
-      collection_stock.o[card['set']].rares++
+      collection_stock.o[card.set].rares++
         break
       case 'mythic':
-      collection_stock.o[card['set']].mythics++
+      collection_stock.o[card.set].mythics++
         break
       default:
         break
     }
     if(card.collector_number == response_data[0].collector_number) {
-      collection_stock.o[card['set']].base_set_owned++
+      collection_stock.o[card.set].base_set_owned++
     } else {
-      collection_stock.o[card['set']].extra_owned++
+      collection_stock.o[card.set].extra_owned++
     }
   }
 }
 
+// this counts the foils for a set and adds the variable; mostly for backfilling, should be eventually obsolete
 function tally_foils(set_code) {
   console.log('Running tally_foils to set missing parameter')
   const data = JSON.parse(JSON.stringify(collection_stock.o[set_code].cards))
@@ -675,6 +679,7 @@ function tally_foils(set_code) {
   return foiltotal
 }
 
+// removes the collection stock entirely, deleting all data
 function clear_all_data() {
   if(clicks_to_clear.value < 9)
   {
@@ -757,6 +762,9 @@ function on_scroll_stats_box () {
 </script>
 
 <style scoped>
+.page_title_bar {
+  background-color: ffffff;
+}
 .column_header {
   font-weight: bold; 
   text-align: left;
@@ -800,6 +808,7 @@ function on_scroll_stats_box () {
 .set_logo, .set_check {
   display: inline-block;
   margin-right: 5px;
+  accent-color: rgb(255, 162, 190);
 }
 .set_list_name {
   display: inline-block;
@@ -850,6 +859,9 @@ function on_scroll_stats_box () {
 .side_drawer_button {
   margin-top: 10px;
   margin-bottom: 10px;
+}
+.side_drawer_button:hover {
+  background-color: #F8BBD0;
 }
 .import_window {
   width: 500px;
