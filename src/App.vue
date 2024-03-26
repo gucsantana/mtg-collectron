@@ -12,10 +12,12 @@
             <v-col cols="1">
               <v-tooltip text="/n" location="bottom">
                 <template v-slot:activator="{ props }">
-                  <v-icon :="props" icon="mdi-help-box" size="x-large"/>
+                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="pink-lighten-1"/>
                 </template>
-                <p>Uses the Moxfield syntax, one card per line</p>
+                <p>'Moxfield' uses the Moxfield syntax, one card per line</p>
                 <p class="mb-0">e.g. "1 Loran's Escape (BRO) *F*"</p>
+                <p class="mb-0">'Native' uses the JSON syntax exported by the 'Export Collection' button</p>
+                <p class="mb-0">It will REWRITE the entire collection, not add to it</p>
               </v-tooltip>
             </v-col>
           </v-row>
@@ -57,7 +59,7 @@
             <v-col cols="1">
               <v-tooltip text="/n" location="bottom">
                 <template v-slot:activator="{ props }">
-                  <v-icon :="props" icon="mdi-help-box" size="x-large"/>
+                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="pink-lighten-1"/>
                 </template>
                 <p>Exports the collection stock as a JSON file readable by this system</p>
                 <p class="mb-0">Save it somewhere if you need a backup to be safe</p>
@@ -514,6 +516,19 @@ async function import_cards() {
   loading.value = true
   import_results_active.value = false
 
+  if(import_syntax == 'moxfield') {
+    await import_from_moxfield()
+  }
+  else if(import_syntax == 'native') {
+    await import_from_native()
+  }
+  loading.value = false
+
+  import_results_active.value = true
+}
+
+// imports cards with the moxfield syntax
+async function import_from_moxfield() {
   let cards_imported = 0
   // first, we split the list of cards imported, one per line
   var split_cards = import_text.split('\n')
@@ -571,10 +586,11 @@ async function import_cards() {
   import_success = (cards_imported > 0)
   import_card_total.value = cards_imported
   import_errors.value = error_list.join(', ')
-  loading.value = false
+}
 
-  console.log("error list",error_list)
-  import_results_active.value = true
+// imports cards using the native json format
+async function import_from_native(){
+
 }
 
 function exportCollection () {
