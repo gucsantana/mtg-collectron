@@ -21,6 +21,10 @@
           </v-row>
         </v-card-item>
         <v-divider/>
+        <v-radio-group inline v-model="import_syntax" density="compact" hide-details style="display:inline-block;">
+          <v-radio color="pink-lighten-1" label="Moxfield" value="moxfield"/>
+          <v-radio color="pink-lighten-1" label="Native" value="native"/>
+        </v-radio-group>
         <v-textarea v-model="import_text" class="import_text_field" variant="outlined"/>
         <v-row>
           <v-spacer/>
@@ -124,7 +128,7 @@
         </div> </v-list-item>
       </v-navigation-drawer>
     </v-card>
-    <v-main id="main_body" v-if="current_set && current_set_base_cards">
+    <v-main v-if="current_set && current_set_base_cards">
       <v-sheet class="main_body">
         <v-card class="set_page_title_card" flat>
           <div>
@@ -209,9 +213,6 @@
           </v-progress-linear>
       </v-card>
     </v-main>
-    <!-- <v-footer absolute height="300px" width="100%" color="pink-lighten-2">
-      
-    </v-footer> -->
     <v-card >
       <v-navigation-drawer app temporary v-model="settings" location="right">
         <v-list dense>
@@ -232,7 +233,6 @@
         </v-list>
       </v-navigation-drawer>
     </v-card>
-    <!-- <v-footer></v-footer> -->
   </v-app>
 </template>
 
@@ -246,11 +246,12 @@ const theme = useTheme()
 
 var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
-var loading = ref(false)  // 
+var loading = ref(false)  // signals the loading circle is visible
 var import_window_active = ref(false) // signals the import dialog is visible
 var import_results_active = ref(false) // signals the import dialog results are visible
 var export_window_active = ref(false) // signals the import dialog is visible
 
+var import_syntax = ref('moxfield')
 var import_text = ''
 var import_success = ref(true)
 var import_errors = ref([])
@@ -818,11 +819,9 @@ function on_scroll_stats_box () {
   width: 100%;
 }
 .main_body {
-  /* background-color: aquamarine; */
   width: 60%;
   max-width: 1400px;
   display: inline-block;
-  /* margin-top: 50px; */
   text-align: center;
 }
 .v-col {
@@ -865,7 +864,7 @@ function on_scroll_stats_box () {
 }
 .import_window {
   width: 500px;
-  height: 300px;
+  height: 330px;
   text-align: center;
 }
 .import_results_window {
@@ -884,6 +883,11 @@ function on_scroll_stats_box () {
   height: 150px;
   display: inline-block;
   margin-top: 10px;
+}
+.page_footer {
+  width: 100% !important;
+  height: 400px;
+  bottom: 0;
 }
 @media screen and (max-width: 1350px) {
   .set_stats_box {
