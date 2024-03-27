@@ -44,10 +44,12 @@
         <v-divider/>
         <br/>
         <p v-show="import_card_total > 0">Imported {{ import_card_total }} unique cards.</p>
+        <p v-show="import_errors == '' && import_syntax == 'native'">Imported and replaced collection succesfully.</p>
+        <p v-show="import_errors && import_syntax == 'native'" style="padding:4px;">Failed to import the data. Make sure you copy and paste all of the characters. In case of importing an unrelated JSON object, the site will very likely stop working properly until you clear all data again.</p>
         <br/>
         <p v-show="import_errors.length > 0">The following lines could not be imported:</p>
-        <br/>
-        <p>{{ import_errors }}</p>
+        <br v-show="import_errors.length > 0"/>
+        <p v-show="import_errors">{{ import_errors }}</p>
       </v-card>
     </v-overlay>
     <v-overlay persistent :model-value="export_window_active" class="align-center justify-center">
@@ -516,10 +518,10 @@ async function import_cards() {
   loading.value = true
   import_results_active.value = false
 
-  if(import_syntax == 'moxfield') {
+  if(import_syntax.value == 'moxfield') {
     await import_from_moxfield()
   }
-  else if(import_syntax == 'native') {
+  else if(import_syntax.value == 'native') {
     await import_from_native()
   }
   loading.value = false
@@ -590,7 +592,21 @@ async function import_from_moxfield() {
 
 // imports cards using the native json format
 async function import_from_native(){
+  var error_list = ''
+  console.log('import from native')
+  try {
+    const imported_data = JSON.parse(import_text)
+    import_text = ''
 
+    collection_stock.o = imported_data
+  }
+  catch (e){
+    error_list = e
+    console.log('error:',e)
+  }
+  // we consider the import a success if there is no error listed
+  import_success = (error_list == '')
+  import_errors.value = error_list
 }
 
 function exportCollection () {
