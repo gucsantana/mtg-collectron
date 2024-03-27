@@ -52,6 +52,24 @@
         <p v-show="import_errors">{{ import_errors }}</p>
       </v-card>
     </v-overlay>
+    <v-overlay id="about_window" :model-value="about_window_active" class="align-center justify-center">
+      <v-card class="about_window">
+        <v-card-item>
+          <h2>About the Collectron</h2>
+        </v-card-item>
+        <v-divider/>
+        <p style="padding:4px; font-size: 13px;">This website has been built from scratch and maintained by Guilherme Santana, with Vue/Vuetify, tested on Chrome desktop. I'm sure there are way better collection tools out there, but none that did quite what I wanted.</p>
+        <p style="padding:4px; font-size: 13px;">The site is presented as-is - consider it an ongoing beta - and I make no guarantee about its accuracy, continued functionality, or backwards compatibility of new functions, but I hope you enjoy using it nonetheless.</p>
+        <br/>
+        <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
+        <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
+        <br/>
+        <v-row>
+          <v-spacer/>
+          <v-col cols="3"><v-btn @click="about_window_active=false">Close</v-btn></v-col>
+        </v-row>
+      </v-card>
+    </v-overlay>
     <v-overlay persistent :model-value="export_window_active" class="align-center justify-center">
       <v-card class="import_window">
         <v-card-item>
@@ -234,6 +252,11 @@
             <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
             <v-btn @click="clear_all_data()" class="side_drawer_button" density="comfortable" variant="outlined">Clear ALL card data</v-btn>
           </v-list-item>
+          <v-divider/>
+          <v-list-item><p class="column_header">Information</p></v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <v-btn @click="about_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">About the Collectron</v-btn>
+          </v-list-item>
         </v-list>
       </v-navigation-drawer>
     </v-card>
@@ -254,6 +277,7 @@ var loading = ref(false)  // signals the loading circle is visible
 var import_window_active = ref(false) // signals the import dialog is visible
 var import_results_active = ref(false) // signals the import dialog results are visible
 var export_window_active = ref(false) // signals the import dialog is visible
+var about_window_active = ref(false) // signals the import dialog is visible
 
 var import_syntax = ref('moxfield')
 var import_text = ''
@@ -900,6 +924,13 @@ function on_scroll_stats_box () {
   text-align: center;
 }
 .import_results_window {
+  width: 450px;
+  min-height: 250px;
+  max-height: 600px;
+  height: 100%;
+  text-align: center;
+}
+.about_window {
   width: 450px;
   min-height: 250px;
   max-height: 600px;
