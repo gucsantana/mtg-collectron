@@ -64,7 +64,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br/>
-        <v-row>
+        <v-row style="padding: 2px;">
           <v-spacer/>
           <v-col cols="3"><v-btn @click="about_window_active=false">Close</v-btn></v-col>
         </v-row>
@@ -931,10 +931,8 @@ function on_scroll_stats_box () {
   text-align: center;
 }
 .about_window {
-  width: 450px;
-  min-height: 250px;
-  max-height: 600px;
-  height: 100%;
+  width: 600px;
+  height: 410px;
   text-align: center;
 }
 .import_window_header {
