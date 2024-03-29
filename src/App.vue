@@ -110,9 +110,9 @@
     </v-app-bar>
     <v-main v-if="current_set && current_set_base_cards">
       <v-sheet class="main_body">
-        <v-card class="set_page_title_card" flat>
+        <v-card id="set_page_title_card" :height="isMobile ? 140 : 100" flat>
           <div>
-            <p class="set_page_title">{{ current_set['name'] }}</p>
+            <p class="set_page_title">{{ current_set.name }} ({{ current_set.code.toUpperCase() }})</p>
           </div>
           <div style="display:inline-block; margin-right: 30px;">
             <p class="set_page_subtitle">Release Date:</p><p class="set_page_subtext">{{ current_set['released_at'] }}</p>
@@ -125,7 +125,7 @@
           <v-col cols="12" sm="3">
             <v-text-field v-model="card_search" label="Card Search" prepend-inner-icon="mdi-magnify" variant="outlined" color="primary" density="compact" clearable @click:clear="card_search = ''"/>
           </v-col>
-          <v-spacer/>
+          <v-spacer v-show="!isMobile"/>
           <v-col cols="12" sm="3">
             <v-select v-model="page_options.card_per_page_option_selected" label="Cards per Page" :items="card_per_page_options" return-object density="compact" variant="outlined"/>
           </v-col>
@@ -163,7 +163,7 @@
           </v-row>
         </v-sheet>
       </v-sheet>
-      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" :total-visible="isMobile ? 5 : 8"/>
+      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" :total-visible="isMobile ? 4 : 8"/>
       <v-card class="set_stats_box" :elevation="10" v-scroll="on_scroll_stats_box" v-show="stats_box_visible">
         <v-card class="set_stats_inner_box" flat>
           <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p>
@@ -218,7 +218,7 @@
         <v-list-item><p class="column_header">Search for Set</p></v-list-item>
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase())) && (new Date().toISOString().substring(0,10) > set.released_at)" class="set_list_element" :class="{'set_list_element_selected': set.code == current_set_code }" >
+        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && (new Date().toISOString().substring(0,10) > set.released_at)" class="set_list_element" :class="{'set_list_element_selected': set.code == current_set_code }" >
           <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/>
           <p class="set_list_name">{{ set['name'] }}</p>
         </div> </v-list-item>
@@ -435,6 +435,11 @@ async function select_set(set)
   if(collection_stock.o[set.code]?.base_set_total == 0) {
     collection_stock.o[set.code].base_set_total = current_set_base_cards_qty
     collection_stock.o[set.code].extra_set_total = current_set_extra_cards_qty ? current_set_extra_cards_qty : 0
+  }
+
+  // close the set navigation tab after selecting the set, if on mobile
+  if(unref(display.mobile)) {
+    drawer.value = false
   }
   loading.value = false
 }
@@ -831,9 +836,6 @@ function on_scroll_stats_box () {
   padding: 0 16px !important;
   margin: 0 !important;
   min-height: 0 !important;  
-}
-.set_page_title_card {
-  height: 100px;
 }
 .set_page_title {
   font-weight: bold;
