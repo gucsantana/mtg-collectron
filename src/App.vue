@@ -52,7 +52,7 @@
         <p v-show="import_errors">{{ import_errors }}</p>
       </v-card>
     </v-overlay>
-    <v-overlay id="about_window" :model-value="about_window_active" class="align-center justify-center">
+    <v-overlay id="about_window" :model-value="about_window_active" class="align-center justify-center" @click:outside="about_window_active = false">
       <v-card class="about_window">
         <v-card-item>
           <h2>About the Collectron</h2>
@@ -64,10 +64,14 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br/>
-        <v-row style="padding: 2px;">
+        <v-card-actions>
+          <v-spacer/>
+          <v-btn @click="about_window_active=false" variant="outlined" style="margin-right: 10px; margin-bottom: 10px;">Close</v-btn>
+        </v-card-actions>
+        <!-- <v-row style="padding: 2px;">
           <v-spacer/>
           <v-col cols="3"><v-btn @click="about_window_active=false">Close</v-btn></v-col>
-        </v-row>
+        </v-row> -->
       </v-card>
     </v-overlay>
     <v-overlay persistent :model-value="export_window_active" class="align-center justify-center">
@@ -933,8 +937,9 @@ function on_scroll_stats_box () {
   text-align: center;
 }
 .about_window {
-  width: 600px;
-  height: 410px;
+  width: 100%;
+  max-width: 600px;
+  height: 100%;
   text-align: center;
 }
 .import_window_header {
