@@ -105,11 +105,85 @@
       </v-btn>
       <v-spacer/>
       <v-btn @click="settings = !settings">
-        <v-icon icon="mdi-cog" size="x-large"/>
+        <v-icon icon="mdi-menu" size="x-large"/>
       </v-btn>
     </v-app-bar>
+    <v-main v-if="current_set && current_set_base_cards">
+      <v-sheet class="main_body">
+        <v-card class="set_page_title_card" flat>
+          <div>
+            <p class="set_page_title">{{ current_set['name'] }}</p>
+          </div>
+          <div style="display:inline-block; margin-right: 30px;">
+            <p class="set_page_subtitle">Release Date:</p><p class="set_page_subtext">{{ current_set['released_at'] }}</p>
+          </div>
+          <div style="display:inline-block">
+            <p class="set_page_subtitle">Set Type:</p><p class="set_page_subtext">{{ current_set['set_type'] }}</p>
+          </div>
+        </v-card>
+        <v-row>
+          <v-col cols="12" sm="3">
+            <v-text-field v-model="card_search" label="Card Search" prepend-inner-icon="mdi-magnify" variant="outlined" color="primary" density="compact" clearable @click:clear="card_search = ''"/>
+          </v-col>
+          <v-spacer/>
+          <v-col cols="12" sm="3">
+            <v-select v-model="page_options.card_per_page_option_selected" label="Cards per Page" :items="card_per_page_options" return-object density="compact" variant="outlined"/>
+          </v-col>
+        </v-row>
+        <v-card class="page_header">
+          <v-card class="set_stats_banner" flat>
+            <v-row style="height: 70px;" align="center" >
+              <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p></v-col>
+              <v-divider vertical/>
+              <v-col v-if="current_set_extra_cards_qty > 0">
+                <p style="display:inline;">Extra Cards:</p>
+                <v-tooltip text="/n" location="bottom" style="display:inline;">
+                  <template v-slot:activator="{ props }">
+                    <v-icon :="props" icon="mdi-help-circle" size="medium" color="pink-lighten-1" style="margin-left:10px;"/>
+                  </template>
+                  <p>Showcase frame cards, extended art carts, borderless cards, Buy-a-Box, etc</p>
+                </v-tooltip>
+                <p>{{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p></v-col>
+              <v-divider vertical v-if="current_set_extra_cards_qty > 0"/>
+              <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
+              <v-col><p>Foil Cards:</p><p>{{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
+            </v-row>
+          </v-card>
+          <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
+            <template v-slot:default="{ value }">
+              <strong>{{ Math.round(value * 10) / 10 }}%</strong>
+            </template>
+          </v-progress-linear>
+        </v-card>
+        <v-sheet name="normal_cards_holder">
+          <v-row no-gutters>
+            <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
+              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="(index+pageSliceStart) >= current_set_base_cards_qty" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty"></CardSlot>
+            </v-col>
+          </v-row>
+        </v-sheet>
+      </v-sheet>
+      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" :total-visible="isMobile ? 5 : 8"/>
+      <v-card class="set_stats_box" :elevation="10" v-scroll="on_scroll_stats_box" v-show="stats_box_visible">
+        <v-card class="set_stats_inner_box" flat>
+          <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p>
+          <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
+          <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
+          <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
+          <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
+          <p v-if="current_set_extra_cards_qty > 0">Extra Cards: {{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p>
+          <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
+          <p>Foil Cards: {{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
+        </v-card>
+        <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
+            <template v-slot:default="{ value }">
+              <strong>{{ Math.round(value * 10) / 10 }}%</strong>
+            </template>
+          </v-progress-linear>
+      </v-card>
+    </v-main>
     <v-card>
-      <v-navigation-drawer app v-model="drawer">
+      <v-navigation-drawer app :temporary="isMobile" v-model="drawer" elevation="2" :width="isMobile ? '100%' : 260">
         <v-list dense>
           <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
@@ -150,93 +224,8 @@
         </div> </v-list-item>
       </v-navigation-drawer>
     </v-card>
-    <v-main v-if="current_set && current_set_base_cards">
-      <v-sheet class="main_body">
-        <v-card class="set_page_title_card" flat>
-          <div>
-            <p class="set_page_title">{{ current_set['name'] }}</p>
-          </div>
-          <div style="display:inline-block; margin-right: 30px;">
-            <p class="set_page_subtitle">Release Date:</p><p class="set_page_subtext">{{ current_set['released_at'] }}</p>
-          </div>
-          <div style="display:inline-block">
-            <p class="set_page_subtitle">Set Type:</p><p class="set_page_subtext">{{ current_set['set_type'] }}</p>
-          </div>
-        </v-card>
-        <v-row>
-          <v-col cols="3">
-            <v-text-field v-model="card_search" label="Card Search" prepend-inner-icon="mdi-magnify" variant="outlined" color="primary" density="compact" clearable @click:clear="card_search = ''"/>
-          </v-col>
-          <v-spacer/>
-          <v-col cols="3">
-            <v-select v-model="page_options.card_per_page_option_selected" label="Cards per Page" :items="card_per_page_options" return-object density="compact" variant="outlined"/>
-          </v-col>
-          <v-col cols="3" v-show="false">
-            <v-select v-model="page_options.show_option_selected" label="Show:" :items="show_options" return-object density="compact"/>
-          </v-col>
-        </v-row>
-        <v-card class="page_header">
-          <v-card class="set_stats_banner" flat>
-            <v-row style="height: 70px;" align="center" >
-              <v-col><p>Base Set:</p><p>{{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p></v-col>
-              <v-divider vertical/>
-              <!-- <v-col v-if="current_set_commons > 0"><p>Commons:</p><p>{{ current_set_owned_commons }}/{{ current_set_commons }}</p></v-col>
-              <v-divider vertical v-if="current_set_commons > 0"/>
-              <v-col v-if="current_set_uncommons > 0"><p>Uncommons:</p><p>{{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p></v-col>
-              <v-divider vertical v-if="current_set_uncommons > 0"/>
-                <v-col v-if="current_set_rares > 0"><p>Rares:</p><p>{{ current_set_owned_rares }}/{{ current_set_rares }}</p></v-col>
-                <v-divider vertical v-if="current_set_rares > 0"/>
-              <v-col v-if="current_set_mythics > 0"><p>Mythic Rares:</p><p>{{ current_set_owned_mythics }}/{{ current_set_mythics }}</p></v-col>
-              <v-divider vertical v-if="current_set_mythics > 0"/> -->
-              <v-col v-if="current_set_extra_cards_qty > 0">
-                <p style="display:inline;">Extra Cards:</p>
-                <v-tooltip text="/n" location="bottom" style="display:inline;">
-                  <template v-slot:activator="{ props }">
-                    <v-icon :="props" icon="mdi-help-circle" size="medium" style="margin-left:10px;"/>
-                  </template>
-                  <p>Showcase frame cards, extended art carts, borderless cards, Buy-a-Box, etc</p>
-                </v-tooltip>
-                <p>{{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p></v-col>
-              <v-divider vertical v-if="current_set_extra_cards_qty > 0"/>
-              <v-col><p>Grand Total:</p><p>{{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
-              <v-col><p>Foil Cards:</p><p>{{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
-            </v-row>
-          </v-card>
-          <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
-            <template v-slot:default="{ value }">
-              <strong>{{ Math.round(value * 10) / 10 }}%</strong>
-            </template>
-          </v-progress-linear>
-        </v-card>
-        <v-sheet name="normal_cards_holder">
-          <v-row no-gutters>
-            <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
-              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="(index+pageSliceStart) >= current_set_base_cards_qty" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty"></CardSlot>
-            </v-col>
-          </v-row>
-        </v-sheet>
-      </v-sheet>
-      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" total-visible="8"/>
-      <v-card class="set_stats_box" :elevation="10" v-scroll="on_scroll_stats_box" v-show="stats_box_visible">
-        <v-card class="set_stats_inner_box" flat>
-          <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p>
-          <p v-if="current_set_commons > 0">Commons: {{ current_set_owned_commons }}/{{ current_set_commons }}</p>
-          <p v-if="current_set_uncommons > 0">Uncommons: {{ current_set_owned_uncommons }}/{{ current_set_uncommons }}</p>
-          <p v-if="current_set_rares > 0">Rares: {{ current_set_owned_rares }}/{{ current_set_rares }}</p>
-          <p v-if="current_set_mythics > 0">Mythic Rares: {{ current_set_owned_mythics }}/{{ current_set_mythics }}</p>
-          <p v-if="current_set_extra_cards_qty > 0">Extra Cards: {{ current_set_owned_extra_cards }}/{{ current_set_extra_cards_qty }}</p>
-          <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
-          <p>Foil Cards: {{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
-        </v-card>
-        <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
-            <template v-slot:default="{ value }">
-              <strong>{{ Math.round(value * 10) / 10 }}%</strong>
-            </template>
-          </v-progress-linear>
-      </v-card>
-    </v-main>
     <v-card >
-      <v-navigation-drawer app temporary v-model="settings" location="right">
+      <v-navigation-drawer app temporary v-model="settings" elevation="2" location="right">
         <v-list dense>
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
@@ -246,6 +235,7 @@
           </v-list-item>
           <v-divider/>
           <v-list-item><p class="column_header">Collection Functions</p></v-list-item>
+          <!-- <v-list-item title="Import Cards" @click="import_window_active = true" /> -->
           <v-list-item style="display: inline-block; width:100%;">
             <v-btn @click="import_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">Import Cards</v-btn>
             <v-btn @click="exportCollection" class="side_drawer_button" density="comfortable" variant="outlined">Export Collection</v-btn>
@@ -265,11 +255,13 @@
 
 <script setup>
 import { onMounted, ref, watch, reactive, computed } from 'vue'
-import { useTheme } from 'vuetify'
+import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import sets_json from './scryfall_data/sets.json'
+import { unref } from 'vue';
 
 const theme = useTheme()
+const display = useDisplay()
 
 var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
@@ -349,6 +341,11 @@ const full_set_options = [
 onMounted(() => {
   // // localStorage.removeItem('collection_stock')
   set_list.value = sets_json['data']
+
+  // start the set navigation closed on mobile
+  if(unref(display.mobile)){
+    drawer.value = false
+  }
   
   // get the list of set options from local storage
   const set_options = JSON.parse(localStorage.getItem('set_options'))
@@ -780,6 +777,9 @@ const pageSliceStart = computed(() => {
 })
 const pageSliceEnd = computed(() => {
   return (page_options.card_per_page_option_selected.value != 4 ? Math.min(current_set_base_cards.value.length, current_page.value * page_options.card_per_page_option_selected.title) : current_set_base_cards.value.length)
+})
+const isMobile = computed(() => {
+  return unref(display.mobile)
 })
 
 // returns object with the distinct rarities of passed set
