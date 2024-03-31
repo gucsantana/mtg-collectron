@@ -3,6 +3,34 @@
     <v-overlay :model-value="loading" class="align-center justify-center">
       <v-progress-circular color="primary" indeterminate size="64"/>
     </v-overlay>
+    <v-overlay persistent :model-value="card_finder_window_active" class="align-center justify-center">
+      <v-card class="card_finder_window">
+        <v-card-item>
+          <v-row class="import_window_header align-center">
+            <v-col cols="6"><h2>Card Finder</h2></v-col>
+            <v-spacer/>
+            <v-col cols="1">
+              <v-tooltip text="/n" location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="pink-lighten-1"/>
+                </template>
+                <p>Searches your card collection for matches with the typed card name</p>
+              </v-tooltip>
+            </v-col>
+          </v-row>
+        </v-card-item>
+        <v-divider/>
+        <v-text-field v-model="card_finder_text" label="Search" prepend-inner-icon="mdi-magnify" class="card_finder_text_field" variant="outlined"/>
+        <v-list nav class="card_finder_results_list align-left" v-show="cardFinderResults.length > 0">
+          <v-list-item v-for="card in cardFinderResults" :title="card.cardName + '(' + card.cardSet.toUpperCase() + ')'" @click="goToFoundCard(card.cardName,card.cardSet)" class="card_finder_results_element" />
+        </v-list>
+        <v-card-actions>
+          <v-spacer/>
+          <v-col cols="3"><v-btn @click="findCardsInCollection" variant="outlined" :disabled="cardFinderDisabled">Find Cards</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="card_finder_window_active=false" variant="outlined">Close</v-btn></v-col>
+        </v-card-actions>
+      </v-card>
+    </v-overlay>
     <v-overlay persistent :model-value="import_window_active" class="align-center justify-center">
       <v-card class="import_window">
         <v-card-item>
@@ -161,7 +189,7 @@
         </v-card>
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
-            <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
+            <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search.toLowerCase()) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
               <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="(index+pageSliceStart) >= current_set_base_cards_qty" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty"></CardSlot>
             </v-col>
           </v-row>
@@ -241,6 +269,7 @@
           <v-list-item><p class="column_header">Collection Functions</p></v-list-item>
           <!-- <v-list-item title="Import Cards" @click="import_window_active = true" /> -->
           <v-list-item style="display: inline-block; width:100%;">
+            <v-btn @click="card_finder_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">Card Finder</v-btn>
             <v-btn @click="import_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">Import Cards</v-btn>
             <v-btn @click="exportCollection" class="side_drawer_button" density="comfortable" variant="outlined">Export Collection</v-btn>
             <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
@@ -270,10 +299,15 @@ const display = useDisplay()
 var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // signals the loading circle is visible
+var card_finder_window_active = ref(false) // signals the card search dialog is visible
 var import_window_active = ref(false) // signals the import dialog is visible
 var import_results_active = ref(false) // signals the import dialog results are visible
 var export_window_active = ref(false) // signals the import dialog is visible
 var about_window_active = ref(false) // signals the import dialog is visible
+
+var card_finder_text = ref('')
+var cardFinderDisabled = ref(true)
+var cardFinderResults = ref([])
 
 var import_syntax = ref('moxfield')
 var import_text = ''
@@ -387,6 +421,9 @@ watch(page_options, v => {
 })
 watch(card_search, v => {
   current_page.value = 1
+})
+watch(card_finder_text, v => {
+  cardFinderDisabled.value = v.length < 3
 })
 
 // activated when a set is selected on the left column
@@ -543,6 +580,38 @@ async function get_set_all_cards(set_code) {
   return total_data
 }
 
+// returns a list of every card in the collection that matches the typed string
+function findCardsInCollection(){
+  const cardName = card_finder_text.value.toLowerCase()
+  var cardList = []
+  for(var set in collection_stock.o){
+    for(var card in collection_stock.o[set].cards)
+    {
+      if(card.toLowerCase().includes(cardName))
+      {
+        cardList.push({cardName:card, cardSet:set})
+      }
+    }
+  }
+  cardList.sort(compareCards)
+  cardFinderResults.value = cardList
+}
+
+// upon selecting a card on the card finder, go to the set selected and search for the typed card
+async function goToFoundCard(cardName, cardSet){
+  try {
+    const set = set_list.value.find(e => e.code.toLowerCase() == cardSet.toLowerCase())
+    await select_set(set)
+    card_finder_window_active.value = false
+    card_finder_text.value = ''
+    cardFinderResults.value = []
+    card_search.value = cardName
+  }
+  catch(err){
+    console.log("An error has occurred on goToFoundCard:",err)
+  }
+}
+
 // parse and import list of cards on the text box
 async function import_cards() {
   loading.value = true
@@ -678,6 +747,9 @@ async function add_card_to_stock(card) {
     if(card.collector_number in collection_stock.o[card.set].cards[card.name])
     {
       collection_stock.o[card.set].cards[card.name][card.collector_number].count+= parseInt(card.amount)
+      if(card.foil) {
+        collection_stock.o[card.set].cards[card.name][card.collector_number].foil = true
+      }
     }
     else
     {
@@ -825,6 +897,16 @@ function on_scroll_stats_box () {
   stats_box_visible.value = window.scrollY > 280
 }
 
+function compareCards(a,b){
+  if ( a.cardName < b.cardName ){
+    return -1;
+  }
+  if ( a.cardName > b.cardName ){
+    return 1;
+  }
+  return 0;
+}
+
 </script>
 
 <style scoped>
@@ -859,6 +941,7 @@ function on_scroll_stats_box () {
   display: flex;
   width: 100%;
   max-height: 25px;
+  border-radius: 4px;
 }
 .set_list_element:hover {
   cursor:pointer;
@@ -870,7 +953,7 @@ function on_scroll_stats_box () {
 }
 .set_logo, .set_check {
   display: inline-block;
-  margin-right: 5px;
+  margin: 2px 5px;
   accent-color: rgb(255, 162, 190);
 }
 .set_list_name {
@@ -920,17 +1003,36 @@ function on_scroll_stats_box () {
 .side_drawer_button {
   margin-top: 10px;
   margin-bottom: 10px;
+  width: 222px;
 }
 .side_drawer_button:hover {
   background-color: #F8BBD0;
 }
-.import_window {
+.card_finder_window {
   width: 500px;
+  height: 100%;
+  text-align: center;
+}
+.card_finder_results_list {
+  height: 100%;
+  max-height: 400px;
+  overflow-y: auto;
+}
+/* .card_finder_results_element {
+  border-radius: 10%;
+} */
+.card_finder_results_element:hover {
+  background-color: #F8BBD0;
+}
+.import_window {
+  width: 100%;
+  max-width: 500px;
   height: 330px;
   text-align: center;
 }
 .import_results_window {
-  width: 450px;
+  width: 100%;
+  max-width: 450px;
   min-height: 250px;
   max-height: 600px;
   height: 100%;
@@ -951,6 +1053,9 @@ function on_scroll_stats_box () {
   height: 150px;
   display: inline-block;
   margin-top: 10px;
+}
+.card_finder_text_field {
+  padding: 10px 20px;
 }
 .page_footer {
   width: 100% !important;
