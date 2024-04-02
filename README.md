@@ -24,3 +24,5 @@ Better formatting on mobile.
 # Known Issues
 
 Certain sets, like 'Universes Within', load no cards. Not sure what I need to add to the syntax.
+
+Certain sets, like 'Lost Caverns of Ixalan', have weeeeeird numbering, and thus the displayed order is not the same as the numbered order.

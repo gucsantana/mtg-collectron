@@ -848,7 +848,8 @@ const getProgressForSet = computed(() => {
         // console.log("getProgressForSet, switch 2, value", (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100)
         return (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100
       case 3: // at least one version of every card
-        // console.log("getProgressForSet, switch 3, value",((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / collection_stock.o[current_set_code.value].base_set_total)*100)
+        // console.log("getProgressForSet, switch 3, value",((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / (current_set_commons.value + current_set_uncommons.value +current_set_rares.value + current_set_mythics.value))*100)
+        console.log("collection_stock.o[current_set_code.value]",collection_stock.o[current_set_code.value])
         return ((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / (current_set_commons.value + current_set_uncommons.value +current_set_rares.value + current_set_mythics.value))*100
       default:
         console.log("Something very wrong happened with page_options.full_set_option_selected on render")
