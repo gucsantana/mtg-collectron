@@ -43,6 +43,12 @@ export default {
         else return
         },
         add_card_to_stock(card_data){
+          // for "token" sets, since we can have multiple identically named tokens that are actually different tokens/creatures
+          // we will append the card number to the token name to differentiate
+          if(card_data.set_type == 'token'){
+            card_data.name = card_data.name + " " + card_data.collector_number
+          }
+
           // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
           if(!(card_data.set in this.collection_stock)) {
             var new_set = {
@@ -72,8 +78,7 @@ export default {
                 count: 1,
                 foil: false
               }
-              // console.log("is booster fun? ",this.is_booster_fun)
-              // console.log(JSON.stringify(this.collection_stock[card_data.set]))
+              
               if(this.is_extra){
                 this.collection_stock[card_data.set].extra_owned++
               } else {

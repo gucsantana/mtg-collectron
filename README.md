@@ -13,18 +13,14 @@ Card search to filter through cards in a set, set search to filter through the l
 Allows users to import cards with the Moxfield export syntax, or export and import their entire collection as JSON-stringified text.
 Storage is local, no plans for adding accounts or databases.
 
+'Card Finder' checks which versions of a card you have in your stock, if any.
+
 # Upcoming Features and Improvements
 
 Logos, introductory text and other such niceties.
 
 Better formatting on mobile.
 
-'Card Finder' to check which versions of a card you have in your stock, if any.
-
 # Known Issues
 
-The percent tracker isn't playing all too nice for me. Don't trust it that much yet.
-
-Certain sets, like 'Universes Within', break on trying to load them. Gotta improve the search syntax.
-
-I've noticed a few cards missing from sets, like the normal version of the set-specific Jumpstart pack cards (for instance, Geology Enthusiast in BRO).
+Certain sets, like 'Universes Within', load no cards. Not sure what I need to add to the syntax.
