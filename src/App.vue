@@ -214,6 +214,10 @@
           </v-progress-linear>
       </v-card>
     </v-main>
+    <v-main v-if="!current_set || !current_set_base_cards">
+      <v-sheet class="intro_message_body">
+      </v-sheet>
+    </v-main>
     <v-card>
       <v-navigation-drawer app :temporary="isMobile" v-model="drawer" elevation="2" :width="isMobile ? '100%' : 260">
         <v-list dense>
@@ -979,6 +983,14 @@ function sleep(ms) {
 .main_body {
   width: 60%;
   max-width: 1400px;
+  display: inline-block;
+  text-align: center;
+}
+.intro_message_body {
+  width: 80%;
+  max-width: 1200px;
+  padding: 0 10%;
+  background-color: purple;
   display: inline-block;
   text-align: center;
 }
