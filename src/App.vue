@@ -86,7 +86,7 @@
           <h2>About the Collectron</h2>
         </v-card-item>
         <v-divider/>
-        <p style="padding:4px; font-size: 13px;">This website has been built from scratch and maintained by Guilherme Santana, with Vue/Vuetify, tested on Chrome desktop. I'm sure there are way better collection tools out there, but none that did quite what I wanted.</p>
+        <p style="padding:4px; font-size: 13px;">This website has been built from scratch and maintained by Guilherme Santana, with Vue/Vuetify, tested on Chrome desktop and Firefox mobile. I'm sure there are way better collection tools out there, but none that did quite what I wanted.</p>
         <p style="padding:4px; font-size: 13px;">The site is presented as-is - consider it an ongoing beta - and I make no guarantee about its accuracy, continued functionality, or backwards compatibility of new functions, but I hope you enjoy using it nonetheless.</p>
         <br/>
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
@@ -216,6 +216,16 @@
     </v-main>
     <v-main v-if="!current_set || !current_set_base_cards">
       <v-sheet class="intro_message_body">
+        <h2 class="intro_title">Welcome to the MTG Collectron</h2>
+        <h3 class="intro_title">A visual collection tracker tool for Magic: the Gathering</h3>
+        <br>
+        <p>To get started, select a set name on the Set Navigation to the left, or open the Tools menu on the right.</p>
+        <br>
+        <v-divider/>
+        <br>
+        <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
+        <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
+        
       </v-sheet>
     </v-main>
     <v-card>
@@ -927,6 +937,7 @@ function sleep(ms) {
 </script>
 
 <style scoped>
+
 .page_title_bar {
   background-color: ffffff;
 }
@@ -987,12 +998,16 @@ function sleep(ms) {
   text-align: center;
 }
 .intro_message_body {
-  width: 80%;
+  width: 90%;
   max-width: 1200px;
-  padding: 0 10%;
-  background-color: purple;
+  padding: 0 3%;
+  /* background-color: rgb(255, 240, 255); */
   display: inline-block;
   text-align: center;
+}
+.intro_title {
+  /* font-family: "Lucida Console", "Courier New", monospace; */
+  font-family: 'Aoboshi One', "Lucida Console", "Courier New", monospace;
 }
 .v-col {
   padding: 0;

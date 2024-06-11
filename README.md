@@ -26,3 +26,7 @@ Better formatting on mobile.
 Certain sets, like 'Universes Within', load no cards. Not sure what I need to add to the syntax.
 
 Certain sets, like 'Lost Caverns of Ixalan', have weeeeeird numbering, and thus the displayed order is not the same as the numbered order.
+
+# Pages Deployment
+
+Run "npm run deploy". Branch gh-pages is set up to automatically publish to the Github pages when committed to.
