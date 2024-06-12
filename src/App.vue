@@ -229,7 +229,7 @@
       </v-sheet>
     </v-main>
     <v-card>
-      <v-navigation-drawer app :temporary="isMobile" v-model="drawer" elevation="2" :width="isMobile ? '100%' : 260">
+      <v-navigation-drawer app :temporary="isMobile" v-model="drawer" elevation="2" :width="isMobile ? '100%' : 300">
         <v-list dense>
           <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
@@ -264,9 +264,9 @@
         <v-list-item><p class="column_header">Search for Set</p></v-list-item>
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && (new Date().toISOString().substring(0,10) > set.released_at)" class="set_list_element" :class="{'set_list_element_selected': set.code == current_set_code }" >
-          <img :src="set['icon_svg_uri']" class="set_logo" width="18px" height="18px"/>
-          <p class="set_list_name">{{ set['name'] }}</p>
+        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)" class="set_list_element" :class="{'set_list_element_selected': set.code == current_set_code }" >
+          <img :src="set.icon_svg_uri" class="set_logo" width="18px" height="18px"/>
+          <p class="set_list_name">{{ set.name }}</p>
         </div> </v-list-item>
       </v-navigation-drawer>
     </v-card>
