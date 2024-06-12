@@ -26,7 +26,7 @@
         </v-list>
         <v-card-actions>
           <v-spacer/>
-          <v-col cols="3"><v-btn @click="findCardsInCollection" variant="outlined" :disabled="cardFinderDisabled">Find Cards</v-btn></v-col>
+          <!-- <v-col cols="3"><v-btn @click="findCardsInCollection" variant="outlined" :disabled="cardFinderDisabled">Find Cards</v-btn></v-col> -->
           <v-col cols="3"><v-btn @click="card_finder_window_active=false" variant="outlined">Close</v-btn></v-col>
         </v-card-actions>
       </v-card>
@@ -320,7 +320,7 @@ var export_window_active = ref(false) // signals the import dialog is visible
 var about_window_active = ref(false) // signals the import dialog is visible
 
 var card_finder_text = ref('')
-var cardFinderDisabled = ref(true)
+// var cardFinderDisabled = ref(true)
 var cardFinderResults = ref([])
 
 var import_syntax = ref('moxfield')
@@ -437,7 +437,11 @@ watch(card_search, v => {
   current_page.value = 1
 })
 watch(card_finder_text, v => {
-  cardFinderDisabled.value = v.length < 3
+  if(v.length >= 3){
+    findCardsInCollection()
+  } else {
+    cardFinderResults.value = []
+  }
 })
 
 // activated when a set is selected on the left column
