@@ -257,7 +257,7 @@ export default {
 .foil_card_frame {
   background: linear-gradient(to bottom right, #b827fc 0%, #2c90fc 25%, #b8fd33 50%, #fec837 75%, #fd1892 100%) !important;
   box-sizing: border-box;
-  height: 100%;
+  height: 97.5%;
   width: 100%;
   overflow: hidden;
   position: absolute !important;
