@@ -614,23 +614,18 @@ function findCardsInCollection(){
   const cardName = card_finder_text.value.toLowerCase()
   var cardList = []
   for(var set in collection_stock.o){
-    for(var card in collection_stock.o[set].cards)
-    // console.log
-    // for(var i = 0; i < Object.keys(collection_stock.o[set].cards).length; i++)
-    {
-      // console.log("x",collection_stock.o[set].cards[i])
+    for(var card in collection_stock.o[set].cards) {
       if(card.toLowerCase().includes(cardName))
       {
-        // for(cardVer in collection_stock.o[set].cards[card])
-        // {
-        //   console.log("card ver for "+card,cardVer)
-        // }
-        const tagSquare = card.tag_square ? '■' : ''
-        const tagTriangle = card.tag_triangle ? '▲' : ''
-        const tagCircle = card.tag_circle ? '●' : ''
-        const tagCross = card.tag_cross ? '✖' : ''
-        const formattedCardName = card + ' (' + set.toUpperCase() + ')' + tagSquare + tagTriangle + tagCircle + tagCross
-        cardList.push({cardName:card, cardSet:set, formattedCardName:formattedCardName})
+        for(var cardVer in collection_stock.o[set].cards[card])
+        {
+          const tagSquare = collection_stock.o[set].cards[card][cardVer].tag_square ? '■' : ''
+          const tagTriangle = collection_stock.o[set].cards[card][cardVer].tag_triangle ? '▲' : ''
+          const tagCircle = collection_stock.o[set].cards[card][cardVer].tag_circle ? '⬤' : ''
+          const tagCross = collection_stock.o[set].cards[card][cardVer].tag_cross ? '✖' : ''
+          const formattedCardName = card + ' (' + set.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
+          cardList.push({cardName:card, cardSet:set, formattedCardName:formattedCardName})
+        }
       }
     }
   }
