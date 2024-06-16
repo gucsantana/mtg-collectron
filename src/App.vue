@@ -21,6 +21,10 @@
         </v-card-item>
         <v-divider/>
         <v-text-field v-model="card_finder_text" label="Search" prepend-inner-icon="mdi-magnify" class="card_finder_text_field" variant="outlined"/>
+        <!-- <v-card class="align-right">
+          <input type="checkbox" value="tag_square_marked" v-model="tags_selected" class="tag_check">
+          <label for="tag_square_marked" style="display: inline-block;">■</label>
+        </v-card> -->
         <v-list nav class="card_finder_results_list align-left" v-show="cardFinderResults.length > 0">
           <v-list-item v-for="card in cardFinderResults" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)" class="card_finder_results_element" />
         </v-list>
@@ -769,7 +773,8 @@ async function add_card_to_stock(card) {
       base_set_owned: 0,
       extra_owned: 0,
       base_set_total: 0,  // both this and below are zeroed due to not enough info at this stage, but we will overwrite it later as needed on CardSlot.vue
-      extra_set_total: 0
+      extra_set_total: 0,
+      released_at: response_data[0].released_at
     }
     collection_stock.o[card.set] = new_set
   }
