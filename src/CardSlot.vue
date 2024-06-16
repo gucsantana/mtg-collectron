@@ -22,6 +22,15 @@
               <v-col cols="4" class="sub_add_card_btn" @click="add_card_to_stock(card)"><v-icon icon="mdi-plus-thick" size="large" color="teal-lighten-5"/></v-col>
             </v-row>
           </v-card>
+          <v-card v-show="isHovering" v-if="isCardOwned" class="tag_card_controls">
+            <v-row no-gutters align="center">
+              <v-col cols="3" class="sub_tag_btn tag_square" @click="set_tag(card,'square')" v-ripple><v-icon :icon="isCardTaggedSquare ? 'mdi-square' : 'mdi-square-outline'" size="large" color="teal"/></v-col>
+              <v-col cols="3" class="sub_tag_btn tag_triangle" @click="set_tag(card,'triangle')" v-ripple><v-icon :icon="isCardTaggedTriangle ? 'mdi-triangle' : 'mdi-triangle-outline'" size="large" color="pink"/></v-col>
+              <v-col cols="3" class="sub_tag_btn tag_circle" @click="set_tag(card,'circle')" v-ripple><v-icon :icon="isCardTaggedCircle ? 'mdi-circle' : 'mdi-circle-outline'" size="large" color="indigo"/></v-col>
+              <v-col cols="3" class="sub_tag_btn tag_cross" @click="set_tag(card,'cross')" v-ripple><v-icon :icon="isCardTaggedCross ? 'mdi-close-thick' : 'mdi-close-outline'" size="large" color="orange"/></v-col>
+              <v-tooltip activator="parent" location="bottom">Tag cards for identification</v-tooltip>
+            </v-row>
+          </v-card>
         </v-card>
     </v-hover>
 </template>
@@ -61,7 +70,8 @@ export default {
               extra_owned: 0,
               foils_owned: 0,
               base_set_total: this.base_set_total,
-              extra_set_total: this.extra_set_total
+              extra_set_total: this.extra_set_total,
+              released_at: card_data.released_at
             }
             this.collection_stock[card_data.set] = new_set
           }
@@ -166,7 +176,11 @@ export default {
         mark_card_as_nonfoil(card_data){
           this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number].foil = false
           this.collection_stock[card_data.set].foils_owned--
-        }
+        },
+        set_tag(card_data,tag){
+          this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number]['tag_'+tag] = !this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number]['tag_'+tag]
+          console.log("current tag for tag_"+tag,this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number]['tag_'+tag])
+        },
     },
     computed: {
       isCardOwned: function() {
@@ -177,6 +191,26 @@ export default {
         return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
         && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
         && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].foil == true
+      },
+      isCardTaggedSquare: function() {
+        return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
+        && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
+        && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].tag_square == true
+      },
+      isCardTaggedCircle: function() {
+        return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
+        && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
+        && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].tag_circle == true
+      },
+      isCardTaggedTriangle: function() {
+        return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
+        && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
+        && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].tag_triangle == true
+      },
+      isCardTaggedCross: function() {
+        return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards 
+        && this.card.collector_number in this.collection_stock[this.current_set_code].cards[this.card.name]
+        && this.collection_stock[this.current_set_code].cards[this.card.name][this.card.collector_number].tag_cross == true
       },
       isCardVisible: function() {
         // show option 1 is 'all cards', 2 is 'only owned', and 3 is 'only unowned', so an owned card will show up as long as the option is not 3
@@ -253,6 +287,46 @@ export default {
 .sub_add_card_btn:hover {
   background-color: #00BFA5;
   cursor: pointer;
+}
+.tag_card_controls {
+  display:inline-block;
+  position:absolute !important; 
+  bottom: 15px;
+  left: 10px;
+  border-radius: 10px;
+  width: 120px;
+  height: 30px;
+  padding: 0;
+}
+.sub_tag_btn {
+  height: 30px;
+}
+.sub_tag_btn:hover {
+  cursor: pointer;
+}
+.tag_square {
+  background-color: #E0F2F1;
+}
+.tag_square:hover {
+  background-color: #B2DFDB;
+}
+.tag_circle {
+  background-color: #E8EAF6;
+}
+.tag_circle:hover {
+  background-color: #C5CAE9;
+}
+.tag_triangle {
+  background-color: #FCE4EC;
+}
+.tag_triangle:hover {
+  background-color: #F8BBD0;
+}
+.tag_cross {
+  background-color: #FFF3E0;
+}
+.tag_cross:hover {
+  background-color: #FFE0B2;
 }
 .foil_card_frame {
   background: linear-gradient(to bottom right, #b827fc 0%, #2c90fc 25%, #b8fd33 50%, #fec837 75%, #fd1892 100%) !important;

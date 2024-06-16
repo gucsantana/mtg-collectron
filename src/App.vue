@@ -22,7 +22,7 @@
         <v-divider/>
         <v-text-field v-model="card_finder_text" label="Search" prepend-inner-icon="mdi-magnify" class="card_finder_text_field" variant="outlined"/>
         <v-list nav class="card_finder_results_list align-left" v-show="cardFinderResults.length > 0">
-          <v-list-item v-for="card in cardFinderResults" :title="card.cardName + '(' + card.cardSet.toUpperCase() + ')'" @click="goToFoundCard(card.cardName,card.cardSet)" class="card_finder_results_element" />
+          <v-list-item v-for="card in cardFinderResults" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)" class="card_finder_results_element" />
         </v-list>
         <v-card-actions>
           <v-spacer/>
@@ -456,8 +456,12 @@ async function select_set(set)
   current_set.value = set
   current_set_code.value = set.code
 
+  // the following blocks are safeguards and ideally are never called in production use
   if(collection_stock.o[set.code] && !collection_stock.o[set.code].foils_owned) {
     collection_stock.o[set.code].foils_owned = tally_foils(set.code)
+  }
+  if(collection_stock.o[set.code] && !collection_stock.o[set.code].released_at) {
+    collection_stock.o[set.code].released_at = set.released_at
   }
   
   // for any sets with traditional boosters and structure, we get their base cards and extra cards separately
@@ -611,10 +615,22 @@ function findCardsInCollection(){
   var cardList = []
   for(var set in collection_stock.o){
     for(var card in collection_stock.o[set].cards)
+    // console.log
+    // for(var i = 0; i < Object.keys(collection_stock.o[set].cards).length; i++)
     {
+      // console.log("x",collection_stock.o[set].cards[i])
       if(card.toLowerCase().includes(cardName))
       {
-        cardList.push({cardName:card, cardSet:set})
+        // for(cardVer in collection_stock.o[set].cards[card])
+        // {
+        //   console.log("card ver for "+card,cardVer)
+        // }
+        const tagSquare = card.tag_square ? '■' : ''
+        const tagTriangle = card.tag_triangle ? '▲' : ''
+        const tagCircle = card.tag_circle ? '●' : ''
+        const tagCross = card.tag_cross ? '✖' : ''
+        const formattedCardName = card + ' (' + set.toUpperCase() + ')' + tagSquare + tagTriangle + tagCircle + tagCross
+        cardList.push({cardName:card, cardSet:set, formattedCardName:formattedCardName})
       }
     }
   }
