@@ -31,6 +31,15 @@
               <v-tooltip activator="parent" location="bottom">Tag cards for identification</v-tooltip>
             </v-row>
           </v-card>
+          <v-card v-show="!isHovering" v-if="isCardOwned" class="tag_card_icons" color="transparent" :style={}>
+            <v-row no-gutters align="center">
+              <v-col cols="3" :class="{sub_tag_icon:true, tag_visible:isCardTaggedSquare, tag_invisible:!isCardTaggedSquare}"><v-icon icon="mdi-square" size="large" color="teal"/></v-col>
+              <v-col cols="3" :class="{sub_tag_icon:true, tag_visible:isCardTaggedTriangle, tag_invisible:!isCardTaggedTriangle}"><v-icon icon="mdi-triangle" size="large" color="pink"/></v-col>
+              <v-col cols="3" :class="{sub_tag_icon:true, tag_visible:isCardTaggedCircle, tag_invisible:!isCardTaggedCircle}"><v-icon icon="mdi-circle" size="large" color="indigo"/></v-col>
+              <v-col cols="3" :class="{sub_tag_icon:true, tag_visible:isCardTaggedCross, tag_invisible:!isCardTaggedCross}"><v-icon icon="mdi-close-thick" size="large" color="orange"/></v-col>
+              <v-tooltip activator="parent" location="bottom">Tag cards for identification</v-tooltip>
+            </v-row>
+          </v-card>
         </v-card>
     </v-hover>
 </template>
@@ -327,6 +336,25 @@ export default {
 }
 .tag_cross:hover {
   background-color: #FFE0B2;
+}
+.tag_card_icons {
+  display:inline-block;
+  position:absolute !important; 
+  bottom: 15px;
+  left: 10px;
+  border-radius: 10px;
+  width: 120px;
+  height: 30px;
+  padding: 0;
+}
+.sub_tag_icon {
+  height: 30px;
+}
+.tag_visible {
+  opacity: 0.5;
+}
+.tag_invisible {
+  opacity: 0;
 }
 .foil_card_frame {
   background: linear-gradient(to bottom right, #b827fc 0%, #2c90fc 25%, #b8fd33 50%, #fec837 75%, #fd1892 100%) !important;
