@@ -77,37 +77,15 @@
         <br/>
         <p v-show="import_card_total > 0">Imported {{ import_card_total }} unique cards.</p>
         <p v-show="import_errors == '' && import_syntax == 'native'">Imported and replaced collection succesfully.</p>
-        <p v-show="import_errors && import_syntax == 'native'" style="padding:4px;">Failed to import the data. Make sure you copy and paste all of the characters. In case of importing an unrelated JSON object, the site will very likely stop working properly until you clear all data again.</p>
+        <p v-show="import_errors && import_syntax == 'native'" style="padding:4px;">Failed to import the data. Make sure you copy and paste all of the characters. In case of importing an unrelated JSON object, I will not stop you from shooting your own foot, the site will very likely stop working properly until you clear all data again.</p>
         <br/>
         <p v-show="import_errors.length > 0">The following lines could not be imported:</p>
         <br v-show="import_errors.length > 0"/>
         <p v-show="import_errors">{{ import_errors }}</p>
       </v-card>
     </v-overlay>
-    <v-overlay id="about_window" :model-value="about_window_active" class="align-center justify-center" @click:outside="about_window_active = false">
-      <v-card class="about_window">
-        <v-card-item>
-          <h2>About the Collectron</h2>
-        </v-card-item>
-        <v-divider/>
-        <p style="padding:4px; font-size: 13px;">This website has been built from scratch and maintained by Guilherme Santana, with Vue/Vuetify, tested on Chrome desktop and Firefox mobile. I'm sure there are way better collection tools out there, but none that did quite what I wanted.</p>
-        <p style="padding:4px; font-size: 13px;">The site is presented as-is - consider it an ongoing beta - and I make no guarantee about its accuracy, continued functionality, or backwards compatibility of new functions, but I hope you enjoy using it nonetheless.</p>
-        <br/>
-        <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
-        <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
-        <br/>
-        <v-card-actions>
-          <v-spacer/>
-          <v-btn @click="about_window_active=false" variant="outlined" style="margin-right: 10px; margin-bottom: 10px;">Close</v-btn>
-        </v-card-actions>
-        <!-- <v-row style="padding: 2px;">
-          <v-spacer/>
-          <v-col cols="3"><v-btn @click="about_window_active=false">Close</v-btn></v-col>
-        </v-row> -->
-      </v-card>
-    </v-overlay>
     <v-overlay persistent :model-value="export_window_active" class="align-center justify-center">
-      <v-card class="import_window">
+      <v-card class="export_window">
         <v-card-item>
           <v-row class="import_window_header align-center">
             <v-col cols="6"><h2>Export Cards</h2></v-col>
@@ -130,6 +108,28 @@
           <v-col cols="4"><v-btn @click="copyCollectionToClipboard">Copy to Clipboard</v-btn></v-col>
           <v-col cols="3"><v-btn @click="export_window_active=false">Close</v-btn></v-col>
         </v-row>
+      </v-card>
+    </v-overlay>
+    <v-overlay id="about_window" :model-value="about_window_active" class="align-center justify-center" @click:outside="about_window_active = false">
+      <v-card class="about_window">
+        <v-card-item>
+          <h2>About the Collectron</h2>
+        </v-card-item>
+        <v-divider/>
+        <p style="padding:4px; font-size: 13px;">This website has been built from scratch and maintained by Guilherme Santana, with Vue/Vuetify, tested on Chrome desktop and Firefox mobile. I'm sure there are way better collection tools out there, but none that did quite what I wanted.</p>
+        <p style="padding:4px; font-size: 13px;">The site is presented as-is - consider it an ongoing beta - and I make no guarantee about its accuracy, continued functionality, or backwards compatibility of new functions, but I hope you enjoy using it nonetheless.</p>
+        <br/>
+        <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
+        <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
+        <br/>
+        <v-card-actions>
+          <v-spacer/>
+          <v-btn @click="about_window_active=false" variant="outlined" style="margin-right: 10px; margin-bottom: 10px;">Close</v-btn>
+        </v-card-actions>
+        <!-- <v-row style="padding: 2px;">
+          <v-spacer/>
+          <v-col cols="3"><v-btn @click="about_window_active=false">Close</v-btn></v-col>
+        </v-row> -->
       </v-card>
     </v-overlay>
     <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
@@ -1092,14 +1092,22 @@ function sleep(ms) {
 }
 .import_results_window {
   width: 100%;
-  max-width: 450px;
+  min-width: 250px;
+  max-width: 500px;
+  height: 100%;
   min-height: 250px;
   max-height: 600px;
-  height: 100%;
+  text-align: center;
+  padding: 0 20px;
+}
+.export_window {
+  width: 100%;
+  max-width: 500px;
+  height: 300px;
   text-align: center;
 }
 .about_window {
-  width: 100%;
+  width: 95%;
   max-width: 600px;
   height: 100%;
   text-align: center;
@@ -1110,6 +1118,7 @@ function sleep(ms) {
 }
 .import_text_field {
   width: 450px;
+  max-width: 90%;
   height: 150px;
   display: inline-block;
   margin-top: 10px;
