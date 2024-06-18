@@ -7,6 +7,7 @@ There are tons of arguably better, more efficient tools out there, like DelverLe
 
 Tracks cards for each set in the game, including promo sets, tokens and all that. Can track amount per card, and whether foil or not.
 No distinction between multiple copies of the same card, because that's not the point here. Use Moxfield or something for that.
+Up to four separate tags per card, also indicated in Card Finder. You can use them to track cards in foreign languages, or in your trade binder, or whatever else.
 
 Card search to filter through cards in a set, set search to filter through the list of sets (matches either set name or set code).
 
@@ -17,15 +18,17 @@ Storage is local, no plans for adding accounts or databases.
 
 # Upcoming Features and Improvements
 
-Logos, introductory text and other such niceties.
+Some manner of "find these cards for me" deck builder helper
 
-Better formatting on mobile.
+Tightening up the code for edge cases
 
 # Known Issues
 
 Certain sets, like 'Universes Within', load no cards. Not sure what I need to add to the syntax.
 
 Certain sets, like 'Lost Caverns of Ixalan', have weeeeeird numbering, and thus the displayed order is not the same as the numbered order.
+
+I don't -fully- trust the collection percentages, it's very much reverse-engineered and with a lot of guessing and fiddly counters.
 
 # Pages Deployment
 

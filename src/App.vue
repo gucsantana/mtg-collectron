@@ -220,7 +220,7 @@
     </v-main>
     <v-main v-if="!current_set || !current_set_base_cards">
       <v-sheet class="intro_message_body">
-        <v-img class="title_logo" :src="require('@/assets/collectron-title-logo.png')" />
+        <img class="title_logo" src="@/assets/collectron-title-logo.png" />
         <h2 class="intro_title">Welcome to the MTG Collectron</h2>
         <h3 class="intro_title">A visual collection tracker tool for Magic: the Gathering</h3>
         <br>
