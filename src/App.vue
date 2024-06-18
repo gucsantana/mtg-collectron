@@ -220,6 +220,7 @@
     </v-main>
     <v-main v-if="!current_set || !current_set_base_cards">
       <v-sheet class="intro_message_body">
+        <v-img class="title_logo" :src="require('@/assets/collectron-title-logo.png')" />
         <h2 class="intro_title">Welcome to the MTG Collectron</h2>
         <h3 class="intro_title">A visual collection tracker tool for Magic: the Gathering</h3>
         <br>
@@ -229,6 +230,8 @@
         <br>
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
+        <br>
+        <p style="padding:4px; font-size: 11px;">version 1.0.0 - last update 18/06/24</p>
         
       </v-sheet>
     </v-main>
@@ -970,6 +973,13 @@ function sleep(ms) {
   padding: 0 16px !important;
   margin: 0 !important;
   min-height: 0 !important;  
+}
+.title_logo {
+  width: 80%;
+  max-width: 320px;
+  display: inline-block;
+  margin-left: auto;
+  margin-right: auto;
 }
 .set_page_title {
   font-weight: bold;
