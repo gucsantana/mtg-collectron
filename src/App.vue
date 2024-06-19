@@ -215,7 +215,7 @@
     </v-main>
     <v-main class="intro_message_main" v-if="!current_set || !current_set_base_cards">
       <v-sheet class="intro_message_body" justify="center">
-        <img class="title_logo" src="@/assets/collectron-title-logo.png" />
+        <img class="title_logo" src="@/assets/collectron-title-logo.png"/>
         <h2 class="intro_title">Welcome to the MTG Collectron</h2>
         <h3 class="intro_title">A visual collection tracker tool for Magic: the Gathering</h3>
         <br>
@@ -278,6 +278,7 @@
         <v-list dense>
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
+            <v-switch v-model="page_options.dark_mode" label="Toggle Dark Mode" hide-details="true" style="margin-left:10px;"/>
             <v-select v-model="page_options.full_set_option_selected" label="Full Set Definition" :items="full_set_options" return-object>
               <v-tooltip activator="parent" location="bottom">Defines the objective considered for the progress bars and 'full set' message displays for each set</v-tooltip>
             </v-select>
@@ -313,6 +314,10 @@ import { unref } from 'vue';
 const theme = useTheme()
 const display = useDisplay()
 
+function toggleTheme () {
+  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
+}
+
 var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // signals the loading circle is visible
@@ -336,7 +341,8 @@ var toast = ref(false)
 var page_options = reactive({
   show_option_selected: 1,
   full_set_option_selected: 1,
-  card_per_page_option_selected: 1
+  card_per_page_option_selected: 1,
+  dark_mode: false,
 })
 
 var set_list = ref([])
@@ -523,6 +529,7 @@ function get_preferences_from_storage() {
   if(stored_options) {
     page_options.full_set_option_selected = stored_options.full_set_option_selected
     page_options.card_per_page_option_selected = stored_options.card_per_page_option_selected
+    // page_options.dark_mode
   } else {
     const user_options = {
       full_set_option_selected: {value: 1, title: 'Every single card, variants included'},
@@ -1164,6 +1171,7 @@ function sleep(ms) {
 @media screen and (max-width: 960px) {
   .card_list_body {
     width: 95%;
+    margin: 0 auto;
   }
 }
 </style>
