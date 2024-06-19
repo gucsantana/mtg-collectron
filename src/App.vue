@@ -30,7 +30,6 @@
         </v-list>
         <v-card-actions>
           <v-spacer/>
-          <!-- <v-col cols="3"><v-btn @click="findCardsInCollection" variant="outlined" :disabled="cardFinderDisabled">Find Cards</v-btn></v-col> -->
           <v-col cols="3"><v-btn @click="card_finder_window_active=false" variant="outlined">Close</v-btn></v-col>
         </v-card-actions>
       </v-card>
@@ -126,10 +125,6 @@
           <v-spacer/>
           <v-btn @click="about_window_active=false" variant="outlined" style="margin-right: 10px; margin-bottom: 10px;">Close</v-btn>
         </v-card-actions>
-        <!-- <v-row style="padding: 2px;">
-          <v-spacer/>
-          <v-col cols="3"><v-btn @click="about_window_active=false">Close</v-btn></v-col>
-        </v-row> -->
       </v-card>
     </v-overlay>
     <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
@@ -144,8 +139,8 @@
         <v-icon icon="mdi-menu" size="x-large"/>
       </v-btn>
     </v-app-bar>
-    <v-main v-if="current_set && current_set_base_cards">
-      <v-sheet class="main_body">
+    <v-main class="card_list_main" v-if="current_set && current_set_base_cards">
+      <v-sheet class="card_list_body">
         <v-card id="set_page_title_card" :height="isMobile ? 140 : 100" flat>
           <div>
             <p class="set_page_title">{{ current_set.name }} ({{ current_set.code.toUpperCase() }})</p>
@@ -218,13 +213,14 @@
           </v-progress-linear>
       </v-card>
     </v-main>
-    <v-main v-if="!current_set || !current_set_base_cards">
-      <v-sheet class="intro_message_body">
+    <v-main class="intro_message_main" v-if="!current_set || !current_set_base_cards">
+      <v-sheet class="intro_message_body" justify="center">
         <img class="title_logo" src="@/assets/collectron-title-logo.png" />
         <h2 class="intro_title">Welcome to the MTG Collectron</h2>
         <h3 class="intro_title">A visual collection tracker tool for Magic: the Gathering</h3>
         <br>
         <p>To get started, select a set name on the Set Navigation to the left, or open the Tools menu on the right.</p>
+        <p>Hover/tap over cards to see the controls and add cards to your collection, or directly import them with the 'Import Cards' tool.</p>
         <br>
         <v-divider/>
         <br>
@@ -236,7 +232,7 @@
       </v-sheet>
     </v-main>
     <v-card>
-      <v-navigation-drawer app :temporary="isMobile" v-model="drawer" elevation="2" :width="isMobile ? '100%' : 300">
+      <v-navigation-drawer app temporary v-model="drawer" elevation="2" :width="isMobile ? '100%' : 300">
         <v-list dense>
           <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
@@ -278,7 +274,7 @@
       </v-navigation-drawer>
     </v-card>
     <v-card >
-      <v-navigation-drawer app temporary v-model="settings" elevation="2" location="right">
+      <v-navigation-drawer app temporary v-model="settings" elevation="2" location="right" :width="isMobile ? '100%' : 300">
         <v-list dense>
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
@@ -327,7 +323,6 @@ var export_window_active = ref(false) // signals the import dialog is visible
 var about_window_active = ref(false) // signals the import dialog is visible
 
 var card_finder_text = ref('')
-// var cardFinderDisabled = ref(true)
 var cardFinderResults = ref([])
 
 var import_syntax = ref('moxfield')
@@ -1021,17 +1016,27 @@ function sleep(ms) {
   white-space: nowrap;
   width: 100%;
 }
-.main_body {
-  width: 60%;
-  max-width: 1400px;
+.card_list_main {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 800px;
+}
+.card_list_body {
+  width: 100%;
+  margin-top: 30px;
   display: inline-block;
   text-align: center;
 }
+.intro_message_main {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 800px;
+}
 .intro_message_body {
-  width: 90%;
+  width: 100%;
   max-width: 1200px;
+  margin-top: 50px;
   padding: 0 3%;
-  /* background-color: rgb(255, 240, 255); */
   display: inline-block;
   text-align: center;
 }
@@ -1050,7 +1055,7 @@ function sleep(ms) {
   float:right;
   position: fixed;
   top: 20%;
-  right: 50px;
+  right: 80px;
 }
 .set_stats_inner_box {
   width: 200px;
@@ -1073,7 +1078,7 @@ function sleep(ms) {
 .side_drawer_button {
   margin-top: 10px;
   margin-bottom: 10px;
-  width: 222px;
+  width: 260px;
 }
 .side_drawer_button:hover {
   background-color: #F8BBD0;
@@ -1146,18 +1151,18 @@ function sleep(ms) {
     display: none;
   }
 }
-@media screen and (min-width: 1530px) {
-  .main_body {
+/* @media screen and (min-width: 1530px) {
+  .card_list_body {
     width: 900px;
   }
-}
-@media screen and (max-width: 1529px) {
-  .main_body {
+} */
+/* @media screen and (max-width: 1529px) {
+  .card_list_body {
     width: 80%;
   }
-}
+} */
 @media screen and (max-width: 960px) {
-  .main_body {
+  .card_list_body {
     width: 95%;
   }
 }
