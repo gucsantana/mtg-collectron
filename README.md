@@ -28,6 +28,8 @@ Certain sets, like 'Universes Within', load no cards. Not sure what I need to ad
 
 Certain sets, like 'Lost Caverns of Ixalan', have weeeeeird numbering, and thus the displayed order is not the same as the numbered order.
 
+There are also many one-off sets that have unique rules, like 'Modern Horizons 2 Timeshifts' being technically its own set separated from both MH2 and MH3 and being only available from collector boosters (so it doesn't fit the usual filtering in any way). Card numbering, base set/extra cards split, and collection percentages could end up wrong because of this. Just roll with it.
+
 I don't -fully- trust the collection percentages, it's very much reverse-engineered and with a lot of guessing and fiddly counters.
 
 # Pages Deployment
