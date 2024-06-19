@@ -12,7 +12,7 @@
             <v-col cols="1">
               <v-tooltip text="/n" location="bottom">
                 <template v-slot:activator="{ props }">
-                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="pink-lighten-1"/>
+                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="primary"/>
                 </template>
                 <p>Searches your card collection for matches with the typed card name</p>
               </v-tooltip>
@@ -43,7 +43,7 @@
             <v-col cols="1">
               <v-tooltip text="/n" location="bottom">
                 <template v-slot:activator="{ props }">
-                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="pink-lighten-1"/>
+                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="primary"/>
                 </template>
                 <p>'Moxfield' uses the Moxfield syntax, one card per line</p>
                 <p class="mb-0">e.g. "1 Loran's Escape (BRO) *F*"</p>
@@ -55,8 +55,8 @@
         </v-card-item>
         <v-divider/>
         <v-radio-group inline v-model="import_syntax" density="compact" hide-details style="display:inline-block;">
-          <v-radio color="pink-lighten-1" label="Moxfield" value="moxfield"/>
-          <v-radio color="pink-lighten-1" label="Native" value="native"/>
+          <v-radio color="primary" label="Moxfield" value="moxfield"/>
+          <v-radio color="primary" label="Native" value="native"/>
         </v-radio-group>
         <v-textarea v-model="import_text" class="import_text_field" variant="outlined"/>
         <v-row>
@@ -92,7 +92,7 @@
             <v-col cols="1">
               <v-tooltip text="/n" location="bottom">
                 <template v-slot:activator="{ props }">
-                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="pink-lighten-1"/>
+                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="primary"/>
                 </template>
                 <p>Exports the collection stock as a JSON file readable by this system</p>
                 <p class="mb-0">Save it somewhere if you need a backup to be safe</p>
@@ -128,7 +128,7 @@
       </v-card>
     </v-overlay>
     <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
-    <v-app-bar color="pink-lighten-1">
+    <v-app-bar color="primary">
       <v-btn @click="drawer = !drawer">
         <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
         <v-icon icon="mdi-chevron-left-circle" size="x-large" v-if="drawer"/>
@@ -170,7 +170,7 @@
                 <p style="display:inline;">Extra Cards:</p>
                 <v-tooltip text="/n" location="bottom" style="display:inline;">
                   <template v-slot:activator="{ props }">
-                    <v-icon :="props" icon="mdi-help-circle" size="medium" color="pink-lighten-1" style="margin-left:10px;"/>
+                    <v-icon :="props" icon="mdi-help-circle" size="medium" color="primary" style="margin-left:10px;"/>
                   </template>
                   <p>Showcase frame cards, extended art carts, borderless cards, Buy-a-Box, etc</p>
                 </v-tooltip>
@@ -180,7 +180,7 @@
               <v-col><p>Foil Cards:</p><p>{{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p></v-col>
             </v-row>
           </v-card>
-          <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
+          <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'primary' : 'amber-lighten-2' ">
             <template v-slot:default="{ value }">
               <strong>{{ Math.round(value * 10) / 10 }}%</strong>
             </template>
@@ -206,7 +206,7 @@
           <p>Grand Total: {{ current_set_owned_base_cards + current_set_owned_extra_cards }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
           <p>Foil Cards: {{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
         </v-card>
-        <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'pink-lighten-1' : 'amber-lighten-2' ">
+        <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'primary' : 'amber-lighten-2' ">
             <template v-slot:default="{ value }">
               <strong>{{ Math.round(value * 10) / 10 }}%</strong>
             </template>
@@ -236,38 +236,38 @@
         <v-list dense>
           <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="core" v-model="set_types_shown" class="set_check">
+            <input type="checkbox" value="core" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <label for="check_core" style="display: inline-block;">Core Sets</label>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="expansion" v-model="set_types_shown" class="set_check">
+            <input type="checkbox" value="expansion" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Expansions</p>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="masters" v-model="set_types_shown" class="set_check">
+            <input type="checkbox" value="masters" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Masters Sets</p>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="commander" v-model="set_types_shown" class="set_check">
+            <input type="checkbox" value="commander" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Commander Sets</p>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="draft_innovation" v-model="set_types_shown" class="set_check">
+            <input type="checkbox" value="draft_innovation" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Draft Innovation Sets</p>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="masterpiece" v-model="set_types_shown" class="set_check">
+            <input type="checkbox" value="masterpiece" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Masterpieces</p>
           </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <input type="checkbox" value="all" v-model="set_types_shown" class="set_check">
+            <input type="checkbox" value="all" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Other Sets</p>
           </v-list-item>
         </v-list>
         <v-list-item><p class="column_header">Search for Set</p></v-list-item>
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)" class="set_list_element" :class="{'set_list_element_selected': set.code == current_set_code }" >
+        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)" class="set_list_element" :class="{'set_list_element_selected_light': set.code == current_set_code && !page_options.dark_mode, 'set_list_element_selected_dark': set.code == current_set_code && page_options.dark_mode, 'set_list_element_hover_light': !page_options.dark_mode, 'set_list_element_hover_dark': page_options.dark_mode }" >
           <img :src="set.icon_svg_uri" class="set_logo" width="18px" height="18px"/>
           <p class="set_list_name">{{ set.name }}</p>
         </div> </v-list-item>
@@ -278,7 +278,7 @@
         <v-list dense>
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <v-switch v-model="page_options.dark_mode" label="Toggle Dark Mode" hide-details="true" style="margin-left:10px;"/>
+            <v-switch v-model="page_options.dark_mode" label="Toggle Dark Mode" hide-details="true" style="margin-left:10px;" color="primary"/>
             <v-select v-model="page_options.full_set_option_selected" label="Full Set Definition" :items="full_set_options" return-object>
               <v-tooltip activator="parent" location="bottom">Defines the objective considered for the progress bars and 'full set' message displays for each set</v-tooltip>
             </v-select>
@@ -311,12 +311,100 @@ import CardSlot from './CardSlot.vue'
 import sets_json from './scryfall_data/sets.json'
 import { unref } from 'vue';
 
+// -------------------- THEME BLOCK --------------------------- //
+
+const lightTheme = {
+  dark: false,
+  colors: {
+    background: '#FFFFFF',
+    surface: '#FFFFFF',
+    'surface-bright': '#FFFFFF',
+    'surface-light': '#EEEEEE',
+    'surface-variant': '#424242',
+    'on-surface-variant': '#EEEEEE',
+    primary: '#FE4E6A',
+    // primary: '#EC407A',
+    'primary-darken-1': '#D81B60',
+    secondary: '#FF899C',
+    'secondary-darken-1': '#E53F59',
+    error: '#B00020',
+    info: '#2196F3',
+    success: '#4CAF50',
+    warning: '#FB8C00',
+  },
+  variables: {
+    'border-color': '#000000',
+    'border-opacity': 0.12,
+    'high-emphasis-opacity': 0.87,
+    'medium-emphasis-opacity': 0.60,
+    'disabled-opacity': 0.38,
+    'idle-opacity': 0.04,
+    'hover-opacity': 0.04,
+    'focus-opacity': 0.12,
+    'selected-opacity': 0.08,
+    'activated-opacity': 0.12,
+    'pressed-opacity': 0.12,
+    'dragged-opacity': 0.08,
+    'theme-kbd': '#212529',
+    'theme-on-kbd': '#FFFFFF',
+    'theme-code': '#F5F5F5',
+    'theme-on-code': '#000000',
+  }
+}
+
+const darkTheme = {
+  dark: true,
+  colors: {
+    background: '#444444',
+    surface: '#444444',
+    'surface-bright': '#FFFFFF',
+    'surface-light': '#EEEEEE',
+    'surface-variant': '#424242',
+    'on-surface-variant': '#EEEEEE',
+    primary: '#66A0D8',
+    'primary-darken-1': '#3E789F',
+    secondary: '#9EC5F7',
+    'secondary-darken-1': '#80a5d3',
+    error: '#B00020',
+    info: '#2196F3',
+    success: '#4CAF50',
+    warning: '#FB8C00',
+  },
+  variables: {
+    'border-color': '#000000',
+    'border-opacity': 0.12,
+    'high-emphasis-opacity': 0.87,
+    'medium-emphasis-opacity': 0.60,
+    'disabled-opacity': 0.38,
+    'idle-opacity': 0.04,
+    'hover-opacity': 0.04,
+    'focus-opacity': 0.12,
+    'selected-opacity': 0.08,
+    'activated-opacity': 0.12,
+    'pressed-opacity': 0.12,
+    'dragged-opacity': 0.08,
+    'theme-kbd': '#212529',
+    'theme-on-kbd': '#FFFFFF',
+    'theme-code': '#F5F5F5',
+    'theme-on-code': '#000000',
+  }
+}
+
 const theme = useTheme()
 const display = useDisplay()
 
-function toggleTheme () {
-  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
+theme.themes.value.light = lightTheme
+theme.themes.value.dark = darkTheme
+
+// toggles between light and dark mode for the color scheme
+function toggleDarkMode (bool) {
+  theme.global.name.value = bool ? 'dark' : 'light'
+  // console.log(theme)
+  // theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
 }
+
+
+// ------------------------------------------------------------ //
 
 var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
@@ -439,6 +527,7 @@ watch(set_types_shown, new_array => {
 })
 watch(page_options, v => {
   localStorage.setItem('stored_options',JSON.stringify(page_options))
+  toggleDarkMode(page_options.dark_mode)
   current_page.value = 1
 })
 watch(card_search, v => {
@@ -529,7 +618,7 @@ function get_preferences_from_storage() {
   if(stored_options) {
     page_options.full_set_option_selected = stored_options.full_set_option_selected
     page_options.card_per_page_option_selected = stored_options.card_per_page_option_selected
-    // page_options.dark_mode
+    page_options.dark_mode = stored_options.dark_mode
   } else {
     const user_options = {
       full_set_option_selected: {value: 1, title: 'Every single card, variants included'},
@@ -537,6 +626,7 @@ function get_preferences_from_storage() {
     }
     page_options.full_set_option_selected = user_options.full_set_option_selected
     page_options.card_per_page_option_selected = user_options.card_per_page_option_selected
+    page_options.dark_mode = false
 
     localStorage.setItem('stored_options',JSON.stringify(page_options))
   }
@@ -630,7 +720,7 @@ function findCardsInCollection(){
         {
           const tagSquare = collection_stock.o[set].cards[card][cardVer].tag_square ? '■' : ''
           const tagTriangle = collection_stock.o[set].cards[card][cardVer].tag_triangle ? '▲' : ''
-          const tagCircle = collection_stock.o[set].cards[card][cardVer].tag_circle ? '⬤' : ''
+          const tagCircle = collection_stock.o[set].cards[card][cardVer].tag_circle ? '⚫︎' : ''
           const tagCross = collection_stock.o[set].cards[card][cardVer].tag_cross ? '✖' : ''
           const formattedCardName = card + ' (' + set.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
           cardList.push({cardName:card, cardSet:set, formattedCardName:formattedCardName})
@@ -1003,18 +1093,31 @@ function sleep(ms) {
   max-height: 25px;
   border-radius: 4px;
 }
-.set_list_element:hover {
+.set_list_element_hover_light:hover {
   cursor:pointer;
-  background-color: rgb(255, 221, 231);
+  background-color: #FFC0CA;
 }
-.set_list_element_selected {
-  background-color: rgb(255, 162, 190);
+.set_list_element_hover_dark:hover {
+  cursor:pointer;
+  background-color: #BDD8FB;
+}
+.set_list_element_selected_light {
+  background-color: #FF899C;
+  font-weight: bold;
+}
+.set_list_element_selected_dark {
+  background-color:#9EC5F7;
   font-weight: bold;
 }
 .set_logo, .set_check {
   display: inline-block;
   margin: 2px 5px;
-  accent-color: rgb(255, 162, 190);
+  accent-color: #FF899C;
+}
+.set_logo_dark, .set_check_dark {
+  display: inline-block;
+  margin: 2px 5px;
+  accent-color: #9EC5F7;
 }
 .set_list_name {
   display: inline-block;
