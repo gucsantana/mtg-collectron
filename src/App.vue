@@ -547,7 +547,7 @@ watch(card_finder_text, v => {
 // clean up previous values, set up the loading overlay, and grab the new data from the next set
 async function select_set(set) 
 {
-  console.log("collection stock for selected set",collection_stock.o[set.code])
+  // console.log("collection stock for selected set",collection_stock.o[set.code])
   loading.value = true
 
   current_page.value = 1
@@ -791,7 +791,7 @@ async function import_from_moxfield() {
       }
       // the remaining elements of the first part should be the card name
       card.name = card_elements[0].substring(card_elements[0].indexOf(' ')+1)
-      console.log('card.name',card.name)
+      // console.log('card.name',card.name)
 
       // the second part, past the first parentheses, is further split by the second parentheses; the first element is the set, the second (if exists) may indicate foil
       const second_part = card_elements[1].split(') ')
@@ -805,7 +805,7 @@ async function import_from_moxfield() {
       if(third_part.length >= 2 && ['*F*','*E*'].includes(third_part[1]))
       {
         card.foil = true
-        console.log('card.foil = true')
+        // console.log('card.foil = true')
       }
 
       await add_card_to_stock(card)
@@ -923,7 +923,7 @@ async function add_card_to_stock(card) {
       default:
         break
     }
-    console.log("is extra?",card.collector_number != response_data[0].collector_number)
+    // console.log("is extra?",card.collector_number != response_data[0].collector_number)
     if(card.collector_number == response_data[0].collector_number || response_data[0].type_line.toLowerCase().includes('basic') || response_data[0].type_line.toLowerCase().includes('token') || card.set in ['fem','hml','all']) {
       collection_stock.o[card.set].base_set_owned++
     } else {
