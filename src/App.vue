@@ -20,7 +20,7 @@
           </v-row>
         </v-card-item>
         <v-divider/>
-        <v-text-field v-model="card_finder_text" label="Search" prepend-inner-icon="mdi-magnify" class="card_finder_text_field" variant="outlined"/>
+        <v-text-field v-model="card_finder_text" label="Search" autofocus prepend-inner-icon="mdi-magnify" class="card_finder_text_field" variant="outlined"/>
         <!-- <v-card class="align-right">
           <input type="checkbox" value="tag_square_marked" v-model="tags_selected" class="tag_check">
           <label for="tag_square_marked" style="display: inline-block;">■</label>
@@ -30,7 +30,7 @@
         </v-list>
         <v-card-actions>
           <v-spacer/>
-          <v-col cols="3"><v-btn @click="card_finder_window_active=false" variant="outlined">Close</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="card_finder_window_active=false; card_finder_text.value = ''" variant="outlined">Close</v-btn></v-col>
         </v-card-actions>
       </v-card>
     </v-overlay>
@@ -58,7 +58,7 @@
           <v-radio color="primary" label="Moxfield" value="moxfield"/>
           <v-radio color="primary" label="Native" value="native"/>
         </v-radio-group>
-        <v-textarea v-model="import_text" class="import_text_field" variant="outlined"/>
+        <v-textarea v-model="import_text" autofocus class="import_text_field" variant="outlined"/>
         <v-row>
           <v-spacer/>
           <v-col cols="3"><v-btn @click="import_cards">Import</v-btn></v-col>
@@ -227,7 +227,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.0.1 - last update 21/06/24</p>
+        <p style="padding:4px; font-size: 11px;">version 1.0.2 - last update 21/06/24</p>
         
       </v-sheet>
     </v-main>
@@ -273,7 +273,7 @@
         </div> </v-list-item>
       </v-navigation-drawer>
     </v-card>
-    <v-card >
+    <v-card>
       <v-navigation-drawer app temporary v-model="settings" elevation="2" location="right" :width="isMobile ? '100%' : 300">
         <v-list dense>
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
@@ -285,7 +285,6 @@
           </v-list-item>
           <v-divider/>
           <v-list-item><p class="column_header">Collection Functions</p></v-list-item>
-          <!-- <v-list-item title="Import Cards" @click="import_window_active = true" /> -->
           <v-list-item style="display: inline-block; width:100%;">
             <v-btn @click="card_finder_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Card Finder</v-btn>
             <v-btn @click="import_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Import Cards</v-btn>
@@ -743,6 +742,9 @@ async function goToFoundCard(cardName, cardSet){
     card_finder_text.value = ''
     cardFinderResults.value = []
     card_search.value = cardName
+    if(isMobile){   // on mobile we hide the settings window again to get it out of the way
+      settings.value = false
+    }
   }
   catch(err){
     console.log("An error has occurred on goToFoundCard:",err)
