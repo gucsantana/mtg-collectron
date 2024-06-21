@@ -143,7 +143,7 @@ export default {
             // remove it from the foil tracker
             if(this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number].foil)
             { 
-              this.collection_stock[card_data.set].foil_owned-- 
+              this.collection_stock[card_data.set].foils_owned-- 
             }
             delete this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number]
             // remove it from the base set/extra tracker
