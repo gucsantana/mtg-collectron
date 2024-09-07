@@ -20,17 +20,17 @@
           </v-row>
         </v-card-item>
         <v-divider/>
-        <v-text-field v-model="card_finder_text" label="Search" prepend-inner-icon="mdi-magnify" class="card_finder_text_field" variant="outlined"/>
+        <v-text-field v-model="card_finder_text" label="Search" autofocus prepend-inner-icon="mdi-magnify" class="card_finder_text_field" variant="outlined"/>
         <!-- <v-card class="align-right">
           <input type="checkbox" value="tag_square_marked" v-model="tags_selected" class="tag_check">
           <label for="tag_square_marked" style="display: inline-block;">■</label>
         </v-card> -->
         <v-list nav class="card_finder_results_list align-left" v-show="cardFinderResults.length > 0">
-          <v-list-item v-for="card in cardFinderResults" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)" class="card_finder_results_element" />
+          <v-list-item v-for="card in cardFinderResults" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)"  :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" />
         </v-list>
         <v-card-actions>
           <v-spacer/>
-          <v-col cols="3"><v-btn @click="card_finder_window_active=false" variant="outlined">Close</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="card_finder_window_active=false; card_finder_text.value = ''" variant="outlined">Close</v-btn></v-col>
         </v-card-actions>
       </v-card>
     </v-overlay>
@@ -58,7 +58,7 @@
           <v-radio color="primary" label="Moxfield" value="moxfield"/>
           <v-radio color="primary" label="Native" value="native"/>
         </v-radio-group>
-        <v-textarea v-model="import_text" class="import_text_field" variant="outlined"/>
+        <v-textarea v-model="import_text" autofocus class="import_text_field" variant="outlined"/>
         <v-row>
           <v-spacer/>
           <v-col cols="3"><v-btn @click="import_cards">Import</v-btn></v-col>
@@ -104,7 +104,7 @@
         <v-textarea v-model="export_text" class="import_text_field" variant="outlined" :readonly="true"/>
         <v-row>
           <v-spacer/>
-          <v-col cols="4"><v-btn @click="copyCollectionToClipboard">Copy to Clipboard</v-btn></v-col>
+          <v-col cols="5"><v-btn @click="copyCollectionToClipboard">Copy to Clipboard</v-btn></v-col>
           <v-col cols="3"><v-btn @click="export_window_active=false">Close</v-btn></v-col>
         </v-row>
       </v-card>
@@ -140,7 +140,7 @@
       </v-btn>
     </v-app-bar>
     <v-main class="card_list_main" v-if="current_set && current_set_base_cards">
-      <v-sheet class="card_list_body">
+      <v-sheet class="card_list_body rounded-lg">
         <v-card id="set_page_title_card" :height="isMobile ? 140 : 100" flat>
           <div>
             <p class="set_page_title">{{ current_set.name }} ({{ current_set.code.toUpperCase() }})</p>
@@ -214,7 +214,7 @@
       </v-card>
     </v-main>
     <v-main class="intro_message_main" v-if="!current_set || !current_set_base_cards">
-      <v-sheet class="intro_message_body" justify="center">
+      <v-sheet class="intro_message_body rounded-lg" justify="center">
         <img class="title_logo" src="@/assets/collectron-title-logo.png"/>
         <h2 class="intro_title">Welcome to the MTG Collectron</h2>
         <h3 class="intro_title">A visual collection tracker tool for Magic: the Gathering</h3>
@@ -227,7 +227,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.0.0 - last update 18/06/24</p>
+        <p style="padding:4px; font-size: 11px;">version 1.0.2 - last update 21/06/24</p>
         
       </v-sheet>
     </v-main>
@@ -267,13 +267,13 @@
         <v-list-item><p class="column_header">Search for Set</p></v-list-item>
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)" class="set_list_element" :class="{'set_list_element_selected_light': set.code == current_set_code && !page_options.dark_mode, 'set_list_element_selected_dark': set.code == current_set_code && page_options.dark_mode, 'set_list_element_hover_light': !page_options.dark_mode, 'set_list_element_hover_dark': page_options.dark_mode }" >
-          <img :src="set.icon_svg_uri" class="set_logo" width="18px" height="18px"/>
+        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)" class="set_list_element" :class="{'set_list_element_selected_light': set.code == current_set_code && !page_options.dark_mode, 'set_list_element_selected_dark': set.code == current_set_code && page_options.dark_mode, 'tertiary_hover_light': !page_options.dark_mode, 'tertiary_hover_dark': page_options.dark_mode }" >
+          <v-img :src="set.icon_svg_uri" class="set_logo" :class="{ set_logo_white : page_options.dark_mode }" width="18px" height="18px"/>
           <p class="set_list_name">{{ set.name }}</p>
         </div> </v-list-item>
       </v-navigation-drawer>
     </v-card>
-    <v-card >
+    <v-card>
       <v-navigation-drawer app temporary v-model="settings" elevation="2" location="right" :width="isMobile ? '100%' : 300">
         <v-list dense>
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
@@ -285,18 +285,17 @@
           </v-list-item>
           <v-divider/>
           <v-list-item><p class="column_header">Collection Functions</p></v-list-item>
-          <!-- <v-list-item title="Import Cards" @click="import_window_active = true" /> -->
           <v-list-item style="display: inline-block; width:100%;">
-            <v-btn @click="card_finder_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">Card Finder</v-btn>
-            <v-btn @click="import_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">Import Cards</v-btn>
-            <v-btn @click="exportCollection" class="side_drawer_button" density="comfortable" variant="outlined">Export Collection</v-btn>
+            <v-btn @click="card_finder_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Card Finder</v-btn>
+            <v-btn @click="import_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Import Cards</v-btn>
+            <v-btn @click="exportCollection" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Export Collection</v-btn>
             <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
-            <v-btn @click="clear_all_data()" class="side_drawer_button" density="comfortable" variant="outlined">Clear ALL card data</v-btn>
+            <v-btn @click="clear_all_data()" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Clear ALL card data</v-btn>
           </v-list-item>
           <v-divider/>
           <v-list-item><p class="column_header">Information</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <v-btn @click="about_window_active = true" class="side_drawer_button" density="comfortable" variant="outlined">About the Collectron</v-btn>
+            <v-btn @click="about_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">About the Collectron</v-btn>
           </v-list-item>
         </v-list>
       </v-navigation-drawer>
@@ -327,6 +326,7 @@ const lightTheme = {
     'primary-darken-1': '#D81B60',
     secondary: '#FF899C',
     'secondary-darken-1': '#E53F59',
+    tertiary: '#FFC0CA',
     error: '#B00020',
     info: '#2196F3',
     success: '#4CAF50',
@@ -356,7 +356,7 @@ const darkTheme = {
   dark: true,
   colors: {
     background: '#444444',
-    surface: '#444444',
+    surface: '#484848',
     'surface-bright': '#FFFFFF',
     'surface-light': '#EEEEEE',
     'surface-variant': '#424242',
@@ -365,6 +365,7 @@ const darkTheme = {
     'primary-darken-1': '#3E789F',
     secondary: '#9EC5F7',
     'secondary-darken-1': '#80a5d3',
+    tertiary: '#BDD8FB',
     error: '#B00020',
     info: '#2196F3',
     success: '#4CAF50',
@@ -545,7 +546,7 @@ watch(card_finder_text, v => {
 // clean up previous values, set up the loading overlay, and grab the new data from the next set
 async function select_set(set) 
 {
-  console.log("collection stock for selected set",collection_stock.o[set.code])
+  // console.log("collection stock for selected set",collection_stock.o[set.code])
   loading.value = true
 
   current_page.value = 1
@@ -741,6 +742,9 @@ async function goToFoundCard(cardName, cardSet){
     card_finder_text.value = ''
     cardFinderResults.value = []
     card_search.value = cardName
+    if(isMobile){   // on mobile we hide the settings window again to get it out of the way
+      settings.value = false
+    }
   }
   catch(err){
     console.log("An error has occurred on goToFoundCard:",err)
@@ -789,7 +793,7 @@ async function import_from_moxfield() {
       }
       // the remaining elements of the first part should be the card name
       card.name = card_elements[0].substring(card_elements[0].indexOf(' ')+1)
-      console.log('card.name',card.name)
+      // console.log('card.name',card.name)
 
       // the second part, past the first parentheses, is further split by the second parentheses; the first element is the set, the second (if exists) may indicate foil
       const second_part = card_elements[1].split(') ')
@@ -803,7 +807,7 @@ async function import_from_moxfield() {
       if(third_part.length >= 2 && ['*F*','*E*'].includes(third_part[1]))
       {
         card.foil = true
-        console.log('card.foil = true')
+        // console.log('card.foil = true')
       }
 
       await add_card_to_stock(card)
@@ -921,7 +925,7 @@ async function add_card_to_stock(card) {
       default:
         break
     }
-    console.log("is extra?",card.collector_number != response_data[0].collector_number)
+    // console.log("is extra?",card.collector_number != response_data[0].collector_number)
     if(card.collector_number == response_data[0].collector_number || response_data[0].type_line.toLowerCase().includes('basic') || response_data[0].type_line.toLowerCase().includes('token') || card.set in ['fem','hml','all']) {
       collection_stock.o[card.set].base_set_owned++
     } else {
@@ -1093,13 +1097,8 @@ function sleep(ms) {
   max-height: 25px;
   border-radius: 4px;
 }
-.set_list_element_hover_light:hover {
+.set_list_element:hover {
   cursor:pointer;
-  background-color: #FFC0CA;
-}
-.set_list_element_hover_dark:hover {
-  cursor:pointer;
-  background-color: #BDD8FB;
 }
 .set_list_element_selected_light {
   background-color: #FF899C;
@@ -1114,7 +1113,10 @@ function sleep(ms) {
   margin: 2px 5px;
   accent-color: #FF899C;
 }
-.set_logo_dark, .set_check_dark {
+.set_logo_white {
+  filter: invert(100)
+}
+.set_check_dark {
   display: inline-block;
   margin: 2px 5px;
   accent-color: #9EC5F7;
@@ -1190,8 +1192,12 @@ function sleep(ms) {
   margin-bottom: 10px;
   width: 260px;
 }
-.side_drawer_button:hover {
-  background-color: #F8BBD0;
+.tertiary_hover_light:hover {
+  background-color: #FFC0CA;
+}
+.tertiary_hover_dark:hover {
+  background-color: #BDD8FB;
+  color: black;
 }
 .card_finder_window {
   width: 500px;
@@ -1203,9 +1209,6 @@ function sleep(ms) {
   max-height: 400px;
   overflow-y: auto;
 }
-/* .card_finder_results_element {
-  border-radius: 10%;
-} */
 .card_finder_results_element:hover {
   background-color: #F8BBD0;
 }
