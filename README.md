@@ -24,6 +24,8 @@ Tightening up the code for edge cases
 
 # Known Issues
 
+Clicking 'Close' on Card Finder without text seems to crash it. How did I not see that before? Lol.
+
 Certain sets, like 'Universes Within', load no cards. Not sure what I need to add to the syntax.
 
 Certain sets, like 'Lost Caverns of Ixalan', have weeeeeird numbering, and thus the displayed order is not the same as the numbered order.

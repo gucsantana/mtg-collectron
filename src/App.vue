@@ -34,6 +34,37 @@
         </v-card-actions>
       </v-card>
     </v-overlay>
+    <v-overlay persistent :model-value="mass_search_window_active" class="align-center justify-center">
+      <v-card class="import_window">
+        <v-card-item>
+          <v-row class="import_window_header align-center">
+            <v-col cols="6"><h2>Mass Card Search</h2></v-col>
+            <v-spacer/>
+            <v-col cols="1">
+              <v-tooltip text="/n" location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="primary"/>
+                </template>
+                <p>Searches your collection for a list of cards, one per line, and returns the ones it matches.</p>
+                <p class="mb-0">You can use either the Moxfield syntax (e.g. "1 Loran's Escape (BRO) *F*") to look for specific prints only,</p>
+                <p class="mb-0">or MTGO syntax (e.g. "1 Mox Diamond") to get any printing of it.</p>
+              </v-tooltip>
+            </v-col>
+          </v-row>
+        </v-card-item>
+        <v-divider/>
+        <v-radio-group inline v-model="mass_search_priority" density="compact" hide-details style="display:inline-block;">
+          <v-radio color="primary" label="Prioritize Oldest Printing" value="oldest"/>
+          <v-radio color="primary" label="Prioritize Newest Printing" value="newest"/>
+        </v-radio-group>
+        <v-textarea v-model="mass_search_text" autofocus class="import_text_field" variant="outlined"/>
+        <v-row>
+          <v-spacer/>
+          <v-col cols="3"><v-btn @click="perform_mass_search">Find List</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="mass_search_window_active=false">Close</v-btn></v-col>
+        </v-row>
+      </v-card>
+    </v-overlay>
     <v-overlay persistent :model-value="import_window_active" class="align-center justify-center">
       <v-card class="import_window">
         <v-card-item>
@@ -287,6 +318,7 @@
           <v-list-item><p class="column_header">Collection Functions</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
             <v-btn @click="card_finder_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Card Finder</v-btn>
+            <v-btn @click="mass_search_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Mass Search</v-btn>
             <v-btn @click="import_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Import Cards</v-btn>
             <v-btn @click="exportCollection" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Export Collection</v-btn>
             <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
@@ -411,6 +443,7 @@ var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // signals the loading circle is visible
 var card_finder_window_active = ref(false) // signals the card search dialog is visible
+var mass_search_window_active = ref(false) // signals the mass card search dialog is visible
 var import_window_active = ref(false) // signals the import dialog is visible
 var import_results_active = ref(false) // signals the import dialog results are visible
 var export_window_active = ref(false) // signals the import dialog is visible
@@ -418,6 +451,10 @@ var about_window_active = ref(false) // signals the import dialog is visible
 
 var card_finder_text = ref('')
 var cardFinderResults = ref([])
+
+var mass_search_priority = ref('oldest')
+var mass_search_text = ''
+var mass_search_results = ref([])
 
 var import_syntax = ref('moxfield')
 var import_text = ''
@@ -503,6 +540,8 @@ onMounted(() => {
   
   const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
   if(local_stock) { collection_stock.o = local_stock }
+
+  backfill_set_release_date()
 
   // delete collection_stock.o['snc']
 })
@@ -733,6 +772,64 @@ function findCardsInCollection(){
   cardFinderResults.value = cardList
 }
 
+// returns a list of every printing of a specific card name in your collection, with optional parameters
+function findSpecificCardInCollection(cardName,setName,number){
+  try {
+    cardName = cardName
+    var cardList = []
+    if(setName) {
+      if(setName in collection_stock.o && cardName in collection_stock.o[setName].cards) {
+        for(var cardVer in collection_stock.o[setName].cards[cardName])
+        {
+          const tagSquare = collection_stock.o[setName].cards[cardName][cardVer].tag_square ? '■' : ''
+          const tagTriangle = collection_stock.o[setName].cards[cardName][cardVer].tag_triangle ? '▲' : ''
+          const tagCircle = collection_stock.o[setName].cards[cardName][cardVer].tag_circle ? '⚫︎' : ''
+          const tagCross = collection_stock.o[setName].cards[cardName][cardVer].tag_cross ? '✖' : ''
+          const cardAmount = collection_stock.o[setName].cards[cardName][cardVer].count
+          const formattedCardName = cardAmount + 'x ' + cardName + ' (' + setName.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
+          if(!number || cardVer == number){
+            cardList.push(
+              {cardName:cardName, 
+                cardSet:setName, 
+                formattedCardName:formattedCardName, 
+                releaseDate:collection_stock.o[setName].released_at, 
+                amount:cardAmount})
+          }
+        }
+      }
+    } else {
+      for(var set in collection_stock.o){
+        for(var card in collection_stock.o[set].cards) {
+          if(card == cardName)
+          {
+            for(var cardVer in collection_stock.o[set].cards[card])
+            {
+              const tagSquare = collection_stock.o[set].cards[card][cardVer].tag_square ? '■' : ''
+              const tagTriangle = collection_stock.o[set].cards[card][cardVer].tag_triangle ? '▲' : ''
+              const tagCircle = collection_stock.o[set].cards[card][cardVer].tag_circle ? '⚫︎' : ''
+              const tagCross = collection_stock.o[set].cards[card][cardVer].tag_cross ? '✖' : ''
+              const cardAmount = collection_stock.o[set].cards[card][cardVer].count
+              const formattedCardName = card + ' (' + set.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
+              cardList.push(
+                {cardName:card, 
+                  cardSet:set, 
+                  formattedCardName:formattedCardName, 
+                  releaseDate:collection_stock.o[set].released_at, 
+                  amount:cardAmount})
+            }
+          }
+        }
+      }
+    }
+    
+    return cardList.sort(function(a,b){
+      return new Date(a.releaseDate) - new Date(b.releaseDate)
+    })
+  } catch (err){
+    console.log("An error has occurred on findSpecificCardInCollection:",err)
+  }
+}
+
 // upon selecting a card on the card finder, go to the set selected and search for the typed card
 async function goToFoundCard(cardName, cardSet){
   try {
@@ -749,6 +846,80 @@ async function goToFoundCard(cardName, cardSet){
   catch(err){
     console.log("An error has occurred on goToFoundCard:",err)
   }
+}
+
+// search for list of cards passed, according to the priority set
+async function perform_mass_search() {
+  loading.value = true
+  import_results_active.value = false
+  var cardList = []
+
+  // first, we split the list of cards to search, one per line
+  var split_cards = mass_search_text.split('\n')
+  mass_search_text = ''
+
+  // then, we iterate through the list
+  for(let i = 0; i < split_cards.length; i++) {
+    try {
+      // for each card, we set up a return object to later use to push the card
+      var card = {'name': '', 'amount': 0, 'set': '', 'collector_number': 0, 'foil': false}
+
+      // first we split the card by ' (' (note the space), the first half is the quantity and card name, the second half is the set name, collector number and modifiers
+      const card_elements = split_cards[i].split(' (')
+      // then we split the first part in two at the first space, and grab the first element as the amount
+      const amount = card_elements[0].split(' ',1)[0]
+      // if the first element is not a number, it's an error
+      if(parseInt(amount)) {
+        card.amount = amount
+      } else {
+        throw EvalError()
+      }
+      // the remaining elements of the first part should be the card name
+      card.name = card_elements[0].substring(card_elements[0].indexOf(' ')+1)
+
+      // if there was no parentheses (and thus no identifying information for the card) we just skip that part
+      if(card_elements.length > 1) {
+        // the second part, past the first parentheses, is further split by the second parentheses; the first element is the set, the second (if exists) may indicate foil
+        const second_part = card_elements[1].split(') ')  // TODO: string that ends in ')' isn't split properly due to this
+        const third_part = second_part[1]?.split(' ')
+        card.set = second_part[0].toLowerCase()
+        if(third_part && parseInt(third_part[0])) {
+          card.collector_number = third_part[0]
+        } else {
+          card.collector_number = 0
+        }
+        if(third_part && third_part.length >= 2 && ['*F*','*E*'].includes(third_part[1]))
+        {
+          card.foil = true
+        }
+      }
+
+      // return a list of all instances of the named card in your collection, optionally narrowing by set and/or number
+      const cardsFound = findSpecificCardInCollection(card.name, card.set != '' ? card.set : undefined, card.collector_number != 0 ? card.collector_number : undefined)
+      // if search priority is newest cards first, we revert the (normally oldest to newest) array
+      if(mass_search_priority.value == "newest") cardsFound = cardsFound.reverse()
+      // console.log("cardsFound",cardsFound)
+
+      // we grab cards from the returned list until we hit the amount specified
+      let totalCards = 0
+      for(var elem in cardsFound) {
+        // edit the formatted card name to include the amount of it we're taking
+        cardsFound[elem].formattedCardName = Math.min(cardsFound[elem].amount,(card.amount - totalCards)) + "x " + cardsFound[elem].formattedCardName
+        cardList.push(cardsFound[elem])
+        
+        totalCards += cardsFound[elem].amount
+        if(totalCards >= card.amount)
+          break
+      }
+    }
+    catch (e){
+      console.log("Error: ",e)
+    }
+  }
+  
+  console.log("cardList",cardList)
+  mass_search_results.value = cardList
+  loading.value = false
 }
 
 // parse and import list of cards on the text box
@@ -934,7 +1105,31 @@ async function add_card_to_stock(card) {
   }
 }
 
-// this counts the foils for a set and adds the variable; mostly for backfilling, should be eventually obsolete
+// for backfilling during dev, will be obsolete for new users
+async function backfill_set_release_date()
+{
+  try {
+    for(var set in collection_stock.o){
+      // if the set in question doesn't have a value set for released_at, we will query the sets api and get said value
+      if(!collection_stock.o[set].released_at){
+        loading.value = true
+        console.log("Set "+set+" missing released_at.")
+        // scryfall fetch for the set, to get the release date
+        var fetch_url = 'https://api.scryfall.com/sets/'+set
+        const response = await fetch(fetch_url);
+        const response_contents = await response.json();
+        await sleep(100);
+        collection_stock.o[set].released_at = response_contents.released_at
+      }
+    }
+  } catch(err) {
+    console.log(err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// this counts the foils for a set and adds the variable; for backfilling, should be eventually obsolete
 function tally_foils(set_code) {
   console.log('Running tally_foils to set missing parameter')
   const data = JSON.parse(JSON.stringify(collection_stock.o[set_code].cards))
