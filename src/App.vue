@@ -67,7 +67,9 @@
     </v-overlay>
     <v-overlay persistent :model-value="mass_search_results_window_active" class="align-center justify-center">
       <v-card class="mass_search_results_window">
-        <v-list nav class="card_finder_results_list align-left" v-show="card_finder_results.length > 0">
+        <v-card-item> <h2>Search Results</h2> </v-card-item>
+        <v-divider/>
+        <v-list nav class="card_finder_results_list align-left" v-show="mass_search_results_processed.length > 0">
           <v-list-item v-for="card in mass_search_results_processed" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)"  :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" />
         </v-list>
         <v-card-actions>
@@ -269,7 +271,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.0.2 - last update 21/06/24</p>
+        <p style="padding:4px; font-size: 11px;">version 1.1.0 - last update 26/12/24</p>
         
       </v-sheet>
     </v-main>
@@ -932,7 +934,9 @@ async function perform_mass_search() {
   }
   
   console.log("cardList",cardList)
-  mass_search_results_processed.value = cardList
+  mass_search_results_processed.value = cardList.sort(function(a,b){
+      return new Date(a.releaseDate) - new Date(b.releaseDate)
+    })
   mass_search_results_window_active.value = true
   loading.value = false
 }
@@ -1421,6 +1425,11 @@ function sleep(ms) {
 }
 .card_finder_results_element:hover {
   background-color: #F8BBD0;
+}
+.mass_search_results_window {
+  width: 500px;
+  height: 100%;
+  text-align: center;
 }
 .import_window {
   width: 100%;

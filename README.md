@@ -16,15 +16,13 @@ Storage is local, no plans for adding accounts or databases.
 
 'Card Finder' checks which versions of a card you have in your stock, if any.
 
-# Upcoming Features and Improvements
+'Mass Search' reads a passed decklist and returns all cards in that list found in your storage, prioritizing oldest or newest prints, in the amount requested.
 
-Some manner of "find these cards for me" deck builder helper
+# Upcoming Features and Improvements
 
 Tightening up the code for edge cases
 
 # Known Issues
-
-Clicking 'Close' on Card Finder without text seems to crash it. How did I not see that before? Lol.
 
 Certain sets, like 'Universes Within', load no cards. Not sure what I need to add to the syntax.
 
