@@ -25,12 +25,12 @@
           <input type="checkbox" value="tag_square_marked" v-model="tags_selected" class="tag_check">
           <label for="tag_square_marked" style="display: inline-block;">■</label>
         </v-card> -->
-        <v-list nav class="card_finder_results_list align-left" v-show="cardFinderResults.length > 0">
-          <v-list-item v-for="card in cardFinderResults" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)"  :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" />
+        <v-list nav class="card_finder_results_list align-left" v-show="card_finder_results.length > 0">
+          <v-list-item v-for="card in card_finder_results" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)"  :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" />
         </v-list>
         <v-card-actions>
           <v-spacer/>
-          <v-col cols="3"><v-btn @click="card_finder_window_active=false; card_finder_text.value = ''" variant="outlined">Close</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="card_finder_window_active=false; card_finder_text = ''" variant="outlined">Close</v-btn></v-col>
         </v-card-actions>
       </v-card>
     </v-overlay>
@@ -63,6 +63,17 @@
           <v-col cols="3"><v-btn @click="perform_mass_search">Find List</v-btn></v-col>
           <v-col cols="3"><v-btn @click="mass_search_window_active=false">Close</v-btn></v-col>
         </v-row>
+      </v-card>
+    </v-overlay>
+    <v-overlay persistent :model-value="mass_search_results_window_active" class="align-center justify-center">
+      <v-card class="mass_search_results_window">
+        <v-list nav class="card_finder_results_list align-left" v-show="card_finder_results.length > 0">
+          <v-list-item v-for="card in mass_search_results_processed" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)"  :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" />
+        </v-list>
+        <v-card-actions>
+          <v-spacer/>
+          <v-col cols="3"><v-btn @click="mass_search_results_window_active=false; mass_search_results_processed.value = []" variant="outlined">Close</v-btn></v-col>
+        </v-card-actions>
       </v-card>
     </v-overlay>
     <v-overlay persistent :model-value="import_window_active" class="align-center justify-center">
@@ -444,17 +455,19 @@ var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // signals the loading circle is visible
 var card_finder_window_active = ref(false) // signals the card search dialog is visible
 var mass_search_window_active = ref(false) // signals the mass card search dialog is visible
+var mass_search_results_window_active = ref(false) // signals the mass card search results dialog is visible
 var import_window_active = ref(false) // signals the import dialog is visible
 var import_results_active = ref(false) // signals the import dialog results are visible
 var export_window_active = ref(false) // signals the import dialog is visible
 var about_window_active = ref(false) // signals the import dialog is visible
 
 var card_finder_text = ref('')
-var cardFinderResults = ref([])
+var card_finder_results = ref([])
 
 var mass_search_priority = ref('oldest')
 var mass_search_text = ''
-var mass_search_results = ref([])
+var mass_search_results = ref([])             // all of the results returned for a mass search, dupes included
+var mass_search_results_processed = ref([])   // the currently filtered mass search results
 
 var import_syntax = ref('moxfield')
 var import_text = ''
@@ -577,7 +590,7 @@ watch(card_finder_text, v => {
   if(v.length >= 3){
     findCardsInCollection()
   } else {
-    cardFinderResults.value = []
+    card_finder_results.value = []
   }
 })
 
@@ -769,7 +782,7 @@ function findCardsInCollection(){
     }
   }
   cardList.sort(compareCards)
-  cardFinderResults.value = cardList
+  card_finder_results.value = cardList
 }
 
 // returns a list of every printing of a specific card name in your collection, with optional parameters
@@ -837,7 +850,7 @@ async function goToFoundCard(cardName, cardSet){
     await select_set(set)
     card_finder_window_active.value = false
     card_finder_text.value = ''
-    cardFinderResults.value = []
+    card_finder_results.value = []
     card_search.value = cardName
     if(isMobile){   // on mobile we hide the settings window again to get it out of the way
       settings.value = false
@@ -898,7 +911,8 @@ async function perform_mass_search() {
       const cardsFound = findSpecificCardInCollection(card.name, card.set != '' ? card.set : undefined, card.collector_number != 0 ? card.collector_number : undefined)
       // if search priority is newest cards first, we revert the (normally oldest to newest) array
       if(mass_search_priority.value == "newest") cardsFound = cardsFound.reverse()
-      // console.log("cardsFound",cardsFound)
+      // add all of the prints found to the search results pile
+      mass_search_results.value = mass_search_results.value.concat(cardsFound)
 
       // we grab cards from the returned list until we hit the amount specified
       let totalCards = 0
@@ -918,7 +932,8 @@ async function perform_mass_search() {
   }
   
   console.log("cardList",cardList)
-  mass_search_results.value = cardList
+  mass_search_results_processed.value = cardList
+  mass_search_results_window_active.value = true
   loading.value = false
 }
 
