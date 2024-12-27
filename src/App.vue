@@ -34,11 +34,11 @@
         </v-card-actions>
       </v-card>
     </v-overlay>
-    <v-overlay persistent :model-value="mass_search_window_active" class="align-center justify-center">
+    <v-overlay persistent :model-value="decklist_finder_window_active" class="align-center justify-center">
       <v-card class="import_window">
         <v-card-item>
           <v-row class="import_window_header align-center">
-            <v-col cols="6"><h2>Mass Card Search</h2></v-col>
+            <v-col cols="6"><h2>Decklist Finder</h2></v-col>
             <v-spacer/>
             <v-col cols="1">
               <v-tooltip text="/n" location="bottom">
@@ -53,28 +53,28 @@
           </v-row>
         </v-card-item>
         <v-divider/>
-        <v-radio-group inline v-model="mass_search_priority" density="compact" hide-details style="display:inline-block;">
+        <v-radio-group inline v-model="decklist_finder_priority" density="compact" hide-details style="display:inline-block;">
           <v-radio color="primary" label="Prioritize Oldest Printing" value="oldest"/>
           <v-radio color="primary" label="Prioritize Newest Printing" value="newest"/>
         </v-radio-group>
-        <v-textarea v-model="mass_search_text" autofocus class="import_text_field" variant="outlined"/>
+        <v-textarea v-model="decklist_finder_text" autofocus class="import_text_field" variant="outlined"/>
         <v-row>
           <v-spacer/>
-          <v-col cols="3"><v-btn @click="perform_mass_search">Find List</v-btn></v-col>
-          <v-col cols="3"><v-btn @click="mass_search_window_active=false">Close</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="perform_decklist_finder_search">Find List</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="decklist_finder_window_active=false">Close</v-btn></v-col>
         </v-row>
       </v-card>
     </v-overlay>
-    <v-overlay persistent :model-value="mass_search_results_window_active" class="align-center justify-center">
-      <v-card class="mass_search_results_window">
+    <v-overlay persistent :model-value="decklist_finder_results_window_active" class="align-center justify-center">
+      <v-card class="decklist_finder_results_window">
         <v-card-item> <h2>Search Results</h2> </v-card-item>
         <v-divider/>
-        <v-list nav class="card_finder_results_list align-left" v-show="mass_search_results_processed.length > 0">
-          <v-list-item v-for="card in mass_search_results_processed" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)"  :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" />
+        <v-list nav class="card_finder_results_list align-left" v-show="decklist_finder_results_processed.length > 0">
+          <v-list-item v-for="card in decklist_finder_results_processed" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)"  :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" />
         </v-list>
         <v-card-actions>
           <v-spacer/>
-          <v-col cols="3"><v-btn @click="mass_search_results_window_active=false; mass_search_results_processed.value = []" variant="outlined">Close</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="decklist_finder_results_window_active=false; decklist_finder_results_processed.value = []" variant="outlined">Close</v-btn></v-col>
         </v-card-actions>
       </v-card>
     </v-overlay>
@@ -331,7 +331,7 @@
           <v-list-item><p class="column_header">Collection Functions</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
             <v-btn @click="card_finder_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Card Finder</v-btn>
-            <v-btn @click="mass_search_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Mass Search</v-btn>
+            <v-btn @click="decklist_finder_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Decklist Finder</v-btn>
             <v-btn @click="import_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Import Cards</v-btn>
             <v-btn @click="exportCollection" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Export Collection</v-btn>
             <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
@@ -456,8 +456,8 @@ var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // signals the loading circle is visible
 var card_finder_window_active = ref(false) // signals the card search dialog is visible
-var mass_search_window_active = ref(false) // signals the mass card search dialog is visible
-var mass_search_results_window_active = ref(false) // signals the mass card search results dialog is visible
+var decklist_finder_window_active = ref(false) // signals the decklist finder dialog is visible
+var decklist_finder_results_window_active = ref(false) // signals the decklist finder results dialog is visible
 var import_window_active = ref(false) // signals the import dialog is visible
 var import_results_active = ref(false) // signals the import dialog results are visible
 var export_window_active = ref(false) // signals the import dialog is visible
@@ -466,10 +466,10 @@ var about_window_active = ref(false) // signals the import dialog is visible
 var card_finder_text = ref('')
 var card_finder_results = ref([])
 
-var mass_search_priority = ref('oldest')
-var mass_search_text = ''
-var mass_search_results = ref([])             // all of the results returned for a mass search, dupes included
-var mass_search_results_processed = ref([])   // the currently filtered mass search results
+var decklist_finder_priority = ref('oldest')
+var decklist_finder_text = ''
+var decklist_finder_results = ref([])             // all of the results returned for a decklist search, dupes included
+var decklist_finder_results_processed = ref([])   // the currently filtered decklist search results
 
 var import_syntax = ref('moxfield')
 var import_text = ''
@@ -533,8 +533,8 @@ const card_per_page_options = [
 ]
 const full_set_options = [
   {value: 1, title: 'Every single card, variants included'},
-  {value: 2, title: 'Base Set only'},
-  {value: 3, title: 'At least one Version of each card name'}
+  {value: 2, title: 'Base set only'},
+  {value: 3, title: 'At least one version of each card name'}
 ]
 
 // -------------------------------------------------------------------------------------------------- //
@@ -864,14 +864,13 @@ async function goToFoundCard(cardName, cardSet){
 }
 
 // search for list of cards passed, according to the priority set
-async function perform_mass_search() {
+async function perform_decklist_finder_search() {
   loading.value = true
   import_results_active.value = false
   var cardList = []
 
   // first, we split the list of cards to search, one per line
-  var split_cards = mass_search_text.split('\n')
-  mass_search_text = ''
+  var split_cards = decklist_finder_text.split('\n')
 
   // then, we iterate through the list
   for(let i = 0; i < split_cards.length; i++) {
@@ -910,11 +909,11 @@ async function perform_mass_search() {
       }
 
       // return a list of all instances of the named card in your collection, optionally narrowing by set and/or number
-      const cardsFound = findSpecificCardInCollection(card.name, card.set != '' ? card.set : undefined, card.collector_number != 0 ? card.collector_number : undefined)
+      let cardsFound = findSpecificCardInCollection(card.name, card.set != '' ? card.set : undefined, card.collector_number != 0 ? card.collector_number : undefined)
       // if search priority is newest cards first, we revert the (normally oldest to newest) array
-      if(mass_search_priority.value == "newest") cardsFound = cardsFound.reverse()
+      if(decklist_finder_priority.value == "newest") cardsFound = cardsFound.reverse()
       // add all of the prints found to the search results pile
-      mass_search_results.value = mass_search_results.value.concat(cardsFound)
+      decklist_finder_results.value = decklist_finder_results.value.concat(cardsFound)
 
       // we grab cards from the returned list until we hit the amount specified
       let totalCards = 0
@@ -934,10 +933,10 @@ async function perform_mass_search() {
   }
   
   console.log("cardList",cardList)
-  mass_search_results_processed.value = cardList.sort(function(a,b){
+  decklist_finder_results_processed.value = cardList.sort(function(a,b){
       return new Date(a.releaseDate) - new Date(b.releaseDate)
     })
-  mass_search_results_window_active.value = true
+  decklist_finder_results_window_active.value = true
   loading.value = false
 }
 
@@ -1426,7 +1425,7 @@ function sleep(ms) {
 .card_finder_results_element:hover {
   background-color: #F8BBD0;
 }
-.mass_search_results_window {
+.decklist_finder_results_window {
   width: 500px;
   height: 100%;
   text-align: center;
