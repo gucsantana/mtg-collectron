@@ -61,17 +61,35 @@
         <v-row>
           <v-spacer/>
           <v-col cols="3"><v-btn @click="perform_decklist_finder_search">Find List</v-btn></v-col>
-          <v-col cols="3"><v-btn @click="decklist_finder_window_active=false">Close</v-btn></v-col>
+          <v-col cols="3"><v-btn @click="decklist_finder_window_active=false; decklist_finder_text = ''">Close</v-btn></v-col>
         </v-row>
       </v-card>
     </v-overlay>
     <v-overlay persistent :model-value="decklist_finder_results_window_active" class="align-center justify-center">
       <v-card class="decklist_finder_results_window">
-        <v-card-item> <h2>Search Results</h2> </v-card-item>
+        <v-card-item> <h2 style="text-align: center;">Search Results</h2> </v-card-item>
         <v-divider/>
         <v-list nav class="card_finder_results_list align-left" v-show="decklist_finder_results_processed.length > 0">
-          <v-list-item v-for="card in decklist_finder_results_processed" :title="card.formattedCardName" @click="goToFoundCard(card.cardName,card.cardSet)"  :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" />
+          <!-- <v-list-item v-for="card in decklist_finder_results_processed" style="display: inline-block; width: auto;" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'"> -->
+          <v-card v-for="card in decklist_finder_results_processed" :class="{ 'decklist_finder_results_list_item' : true, 'tertiary_hover_dark' : page_options.dark_mode, 'tertiary_hover_light' : !page_options.dark_mode }" :flat="true">
+            <!-- <v-icon icon="mdi-check-bold" size="large" color="primary" @click="mark_decklist_card_as_done(card)"/> -->
+            <v-tooltip text="/n" location="bottom" :open-delay="700">
+              <template v-slot:activator="{ props }">
+                <v-icon :="props" icon="mdi-check-bold" @click="mark_decklist_card_as_done(card)" size="large" color="primary"/>
+              </template>
+              <p>Mark as done, removing from list</p>
+            </v-tooltip>
+            <!-- <v-icon icon="mdi-debug-step-over" size="large" color="primary" @click="skip_decklist_card(card)"/> -->
+            <v-tooltip text="/n" location="bottom" :open-delay="700">
+              <template v-slot:activator="{ props }">
+                <v-icon :="props" icon="mdi-debug-step-over" @click="skip_decklist_card(card)" size="large" color="primary"/>
+              </template>
+              <p>Skip this printing, tries to use next printings if available</p>
+            </v-tooltip>
+            <p class="decklist_finder_results_text">{{ card.amount + "x " + card.formattedCardName }}</p>  
+          </v-card>
         </v-list>
+        <v-card-item v-show="decklist_finder_results_processed.length == 0"> <h3>There are no cards to display.</h3> </v-card-item>
         <v-card-actions>
           <v-spacer/>
           <v-col cols="3"><v-btn @click="decklist_finder_results_window_active=false; decklist_finder_results_processed.value = []" variant="outlined">Close</v-btn></v-col>
@@ -455,19 +473,20 @@ function toggleDarkMode (bool) {
 var drawer = ref(true)    // signals the set navigation drawer is open
 var settings = ref(false) // signals the settings menu is open
 var loading = ref(false)  // signals the loading circle is visible
-var card_finder_window_active = ref(false) // signals the card search dialog is visible
-var decklist_finder_window_active = ref(false) // signals the decklist finder dialog is visible
-var decklist_finder_results_window_active = ref(false) // signals the decklist finder results dialog is visible
-var import_window_active = ref(false) // signals the import dialog is visible
-var import_results_active = ref(false) // signals the import dialog results are visible
-var export_window_active = ref(false) // signals the import dialog is visible
-var about_window_active = ref(false) // signals the import dialog is visible
+var card_finder_window_active = ref(false)              // signals the card search dialog is visible
+var decklist_finder_window_active = ref(false)          // signals the decklist finder dialog is visible
+var decklist_finder_results_window_active = ref(false)  // signals the decklist finder results dialog is visible
+var import_window_active = ref(false)   // signals the import dialog is visible
+var import_results_active = ref(false)  // signals the import dialog results are visible
+var export_window_active = ref(false)   // signals the import dialog is visible
+var about_window_active = ref(false)    // signals the import dialog is visible
 
 var card_finder_text = ref('')
 var card_finder_results = ref([])
 
-var decklist_finder_priority = ref('oldest')
-var decklist_finder_text = ''
+var decklist_finder_searchlist = ref([])          // the list of cards passed to be searched on decklist search, as objects
+var decklist_finder_priority = ref('oldest')      // fetch priority of the searched cards ('oldest' or 'newest')
+var decklist_finder_text = ''                     // textbox contents of the decklist search
 var decklist_finder_results = ref([])             // all of the results returned for a decklist search, dupes included
 var decklist_finder_results_processed = ref([])   // the currently filtered decklist search results
 
@@ -908,6 +927,9 @@ async function perform_decklist_finder_search() {
         }
       }
 
+      // push the card element above into our searchlist, to be used later for cleanup/skip purposes
+      decklist_finder_searchlist.value.push(card)
+
       // return a list of all instances of the named card in your collection, optionally narrowing by set and/or number
       let cardsFound = findSpecificCardInCollection(card.name, card.set != '' ? card.set : undefined, card.collector_number != 0 ? card.collector_number : undefined)
       // if search priority is newest cards first, we revert the (normally oldest to newest) array
@@ -916,28 +938,61 @@ async function perform_decklist_finder_search() {
       decklist_finder_results.value = decklist_finder_results.value.concat(cardsFound)
 
       // we grab cards from the returned list until we hit the amount specified
-      let totalCards = 0
-      for(var elem in cardsFound) {
-        // edit the formatted card name to include the amount of it we're taking
-        cardsFound[elem].formattedCardName = Math.min(cardsFound[elem].amount,(card.amount - totalCards)) + "x " + cardsFound[elem].formattedCardName
-        cardList.push(cardsFound[elem])
-        
-        totalCards += cardsFound[elem].amount
-        if(totalCards >= card.amount)
-          break
-      }
+      cardList = cardList.concat(get_enough_cards_from_decklist_filter_results(cardsFound,card.amount))
     }
     catch (e){
       console.log("Error: ",e)
     }
   }
+  console.log("decklist_finder_searchlist.value", decklist_finder_searchlist.value)
   
-  console.log("cardList",cardList)
   decklist_finder_results_processed.value = cardList.sort(function(a,b){
       return new Date(a.releaseDate) - new Date(b.releaseDate)
     })
   decklist_finder_results_window_active.value = true
   loading.value = false
+}
+
+// decklist filter: for each card we are looking for, return cards from the results list until you have enough of each passed
+function get_enough_cards_from_decklist_filter_results(cards,amount){
+  let totalCards = 0, cardList = []
+  for(var elem in cards) {
+    // edit the amount to declare the amount of it we're taking
+    cards[elem].amount = Math.min(cards[elem].amount,(amount - totalCards))
+    cardList.push(cards[elem])
+    
+    totalCards += cards[elem].amount
+    if(totalCards >= amount)
+      return cardList
+  }
+}
+
+// remove the passed card from the list of filtered cards displayed for a decklist finder search
+function mark_decklist_card_as_done(card){
+  try {
+    console.log("card",card)
+    decklist_finder_results_processed.value = decklist_finder_results_processed.value.filter(elem => elem != card)
+    const ind = decklist_finder_searchlist.value.findIndex(item => item.name == card.cardName)
+    console.log("ind",ind)
+    decklist_finder_searchlist.value[ind].amount -= card.amount
+    if(decklist_finder_searchlist.value[ind].amount <= 0){
+      decklist_finder_searchlist.value.splice(ind,1)
+    }
+    console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
+  } catch(err) {
+    console.log(err)
+  }
+}
+
+// attempts to skip the passed card, putting the next available printing
+function skip_decklist_card(card){
+  try {
+    const amt = card.amountx
+    // find the removed card in the mother array
+    const ind = decklist_finder_results.value.indexOf()
+  } catch(err) {
+    console.log(err)
+  }
 }
 
 // parse and import list of cards on the text box
@@ -1428,7 +1483,18 @@ function sleep(ms) {
 .decklist_finder_results_window {
   width: 500px;
   height: 100%;
-  text-align: center;
+  text-align: left;
+}
+.decklist_finder_results_list_item {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: -3px;
+}
+.decklist_finder_results_text {
+  cursor: default;
+  width: auto;
+  display: inline;
+  margin-left: 10px;
 }
 .import_window {
   width: 100%;
