@@ -944,7 +944,6 @@ async function perform_decklist_finder_search() {
       console.log("Error: ",e)
     }
   }
-  console.log("decklist_finder_searchlist.value", decklist_finder_searchlist.value)
   
   decklist_finder_results_processed.value = cardList.sort(function(a,b){
       return new Date(a.releaseDate) - new Date(b.releaseDate)
@@ -970,26 +969,33 @@ function get_enough_cards_from_decklist_filter_results(cards,amount){
 // remove the passed card from the list of filtered cards displayed for a decklist finder search
 function mark_decklist_card_as_done(card){
   try {
-    console.log("card",card)
+    // remove the passed card from the processed list
     decklist_finder_results_processed.value = decklist_finder_results_processed.value.filter(elem => elem != card)
+    // find the original request for the card in the searchlist, reduce its amount by the total in the card we removed, and remove it entirely if <= 0
     const ind = decklist_finder_searchlist.value.findIndex(item => item.name == card.cardName)
-    console.log("ind",ind)
     decklist_finder_searchlist.value[ind].amount -= card.amount
     if(decklist_finder_searchlist.value[ind].amount <= 0){
       decklist_finder_searchlist.value.splice(ind,1)
     }
-    console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
   } catch(err) {
     console.log(err)
   }
 }
 
-// attempts to skip the passed card, putting the next available printing
+// attempts to skip the passed card, putting the next available printing in, if any
 function skip_decklist_card(card){
   try {
-    const amt = card.amountx
-    // find the removed card in the mother array
-    const ind = decklist_finder_results.value.indexOf()
+    // console.log("decklist_finder_searchlist.value", decklist_finder_searchlist.value)
+    // console.log("decklist_finder_results.value", decklist_finder_results.value)
+    // console.log("decklist_finder_results_processed.value", decklist_finder_results_processed.value)
+    // console.log("card",card)
+    decklist_finder_results.value = decklist_finder_results.value.filter(item => item.formattedCardName != card.formattedCardName)
+    var newCardList = []
+    for(let item in decklist_finder_searchlist.value){
+      console.log("item",decklist_finder_searchlist.value[item])
+      newCardList = newCardList.concat(get_enough_cards_from_decklist_filter_results(decklist_finder_results.value.filter(elem => elem.cardName == decklist_finder_searchlist.value[item].name),decklist_finder_searchlist.value[item].amount))
+    }
+    decklist_finder_results_processed.value = newCardList
   } catch(err) {
     console.log(err)
   }
