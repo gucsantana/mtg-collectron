@@ -190,6 +190,7 @@
       </v-card>
     </v-overlay>
     <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
+    <v-snackbar v-model="no_more_of_skipped_card" :timeout="3500">No more printings of this card in your collection!</v-snackbar>
     <v-app-bar color="primary">
       <v-btn @click="drawer = !drawer">
         <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
@@ -289,7 +290,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.1.0 - last update 26/12/24</p>
+        <p style="padding:4px; font-size: 11px;">version 1.1.1 - last update 27/12/24</p>
         
       </v-sheet>
     </v-main>
@@ -497,6 +498,7 @@ var import_errors = ref([])
 var import_card_total = ref(0)
 var export_text = ''
 var toast = ref(false)
+var no_more_of_skipped_card = ref(false)
 
 var page_options = reactive({
   show_option_selected: 1,
@@ -954,22 +956,27 @@ async function perform_decklist_finder_search() {
 
 // decklist filter: for each card we are looking for, return cards from the results list until you have enough of each passed
 function get_enough_cards_from_decklist_filter_results(cards,amount){
-  let totalCards = 0, cardList = []
-  for(var elem in cards) {
-    // edit the amount to declare the amount of it we're taking
-    cards[elem].amount = Math.min(cards[elem].amount,(amount - totalCards))
-    cardList.push(cards[elem])
-    
-    totalCards += cards[elem].amount
-    if(totalCards >= amount)
-      return cardList
+  try {
+    let totalCards = 0, cardList = []
+    for(var elem in cards) {
+      // edit the amount to declare the amount of it we're taking
+      cards[elem].amount = Math.min(cards[elem].amount,(amount - totalCards))
+      cardList.push(cards[elem])
+      
+      totalCards += cards[elem].amount
+      if(totalCards >= amount)
+        return cardList
+    }
+  } catch(err) {
+    console.log("Error in get_enough_cards_from_decklist_filter_results: ",err)
   }
 }
 
 // remove the passed card from the list of filtered cards displayed for a decklist finder search
 function mark_decklist_card_as_done(card){
   try {
-    // remove the passed card from the processed list
+    // remove the passed card from the full and processed lists
+    decklist_finder_results.value = decklist_finder_results.value.filter(elem => elem.formattedCardName != card.formattedCardName)
     decklist_finder_results_processed.value = decklist_finder_results_processed.value.filter(elem => elem != card)
     // find the original request for the card in the searchlist, reduce its amount by the total in the card we removed, and remove it entirely if <= 0
     const ind = decklist_finder_searchlist.value.findIndex(item => item.name == card.cardName)
@@ -977,6 +984,10 @@ function mark_decklist_card_as_done(card){
     if(decklist_finder_searchlist.value[ind].amount <= 0){
       decklist_finder_searchlist.value.splice(ind,1)
     }
+    // console.log("decklist_finder_searchlist.value", decklist_finder_searchlist.value)
+    // console.log("decklist_finder_results.value", decklist_finder_results.value)
+    // console.log("decklist_finder_results_processed.value", decklist_finder_results_processed.value)
+
   } catch(err) {
     console.log(err)
   }
@@ -985,17 +996,22 @@ function mark_decklist_card_as_done(card){
 // attempts to skip the passed card, putting the next available printing in, if any
 function skip_decklist_card(card){
   try {
-    // console.log("decklist_finder_searchlist.value", decklist_finder_searchlist.value)
-    // console.log("decklist_finder_results.value", decklist_finder_results.value)
-    // console.log("decklist_finder_results_processed.value", decklist_finder_results_processed.value)
-    // console.log("card",card)
+    // remove the skipped card from the full results (processed results will be redone, no need)
     decklist_finder_results.value = decklist_finder_results.value.filter(item => item.formattedCardName != card.formattedCardName)
+    // redo the step of fetching enough of each card on the searchlist
     var newCardList = []
     for(let item in decklist_finder_searchlist.value){
-      console.log("item",decklist_finder_searchlist.value[item])
-      newCardList = newCardList.concat(get_enough_cards_from_decklist_filter_results(decklist_finder_results.value.filter(elem => elem.cardName == decklist_finder_searchlist.value[item].name),decklist_finder_searchlist.value[item].amount))
+      // get every card in the results that matches the searched element
+      const filtered_set = decklist_finder_results.value.filter(elem => elem.cardName == decklist_finder_searchlist.value[item].name)
+      if(filtered_set.length > 0)
+        newCardList = newCardList.concat(get_enough_cards_from_decklist_filter_results(filtered_set,decklist_finder_searchlist.value[item].amount))
+      else
+        no_more_of_skipped_card.value = true
     }
-    decklist_finder_results_processed.value = newCardList
+    // sort all of thee matched cards by release order and pop it back in place
+    decklist_finder_results_processed.value = newCardList.sort(function(a,b){
+      return new Date(a.releaseDate) - new Date(b.releaseDate)
+    })
   } catch(err) {
     console.log(err)
   }
