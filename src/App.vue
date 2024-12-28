@@ -305,7 +305,7 @@
           <v-list-item style="display: inline-block; width:100%;">
             <input type="checkbox" value="expansion" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Expansions</p>
-          </v-list-item>
+            </v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
             <input type="checkbox" value="masters" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Masters Sets</p>
@@ -889,6 +889,9 @@ async function perform_decklist_finder_search() {
   loading.value = true
   import_results_active.value = false
   var cardList = []
+  decklist_finder_searchlist.value = []
+  decklist_finder_results.value = []
+  decklist_finder_results_processed.value = []
 
   // first, we split the list of cards to search, one per line
   var split_cards = decklist_finder_text.split('\n')
@@ -951,6 +954,9 @@ async function perform_decklist_finder_search() {
       return new Date(a.releaseDate) - new Date(b.releaseDate)
     })
   decklist_finder_results_window_active.value = true
+  console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
+  console.log("decklist_finder_results.value",decklist_finder_results.value)
+  console.log("decklist_finder_results_processed.value",decklist_finder_results_processed.value)
   loading.value = false
 }
 
@@ -997,21 +1003,30 @@ function mark_decklist_card_as_done(card){
 function skip_decklist_card(card){
   try {
     // remove the skipped card from the full results (processed results will be redone, no need)
-    decklist_finder_results.value = decklist_finder_results.value.filter(item => item.formattedCardName != card.formattedCardName)
+    decklist_finder_results.value = decklist_finder_results.value.filter(x => x.formattedCardName != card.formattedCardName)
     // redo the step of fetching enough of each card on the searchlist
     var newCardList = []
+    console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
     for(let item in decklist_finder_searchlist.value){
+      console.log("item, decklist_finder_searchlist.value[item]",item,decklist_finder_searchlist.value[item])
       // get every card in the results that matches the searched element
       const filtered_set = decklist_finder_results.value.filter(elem => elem.cardName == decklist_finder_searchlist.value[item].name)
-      if(filtered_set.length > 0)
+      if(filtered_set.length > 0) {
         newCardList = newCardList.concat(get_enough_cards_from_decklist_filter_results(filtered_set,decklist_finder_searchlist.value[item].amount))
-      else
+        // console.log("newCardList",newCardList)
+      } else {
+        // if the given card does not exist anymore in the main results list, we also remove it from the searchlist
+        decklist_finder_searchlist.value.splice(item, 1)
         no_more_of_skipped_card.value = true
+      }
     }
     // sort all of thee matched cards by release order and pop it back in place
     decklist_finder_results_processed.value = newCardList.sort(function(a,b){
       return new Date(a.releaseDate) - new Date(b.releaseDate)
     })
+    console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
+    console.log("decklist_finder_results.value",decklist_finder_results.value)
+    console.log("decklist_finder_results_processed.value",decklist_finder_results_processed.value)
   } catch(err) {
     console.log(err)
   }
