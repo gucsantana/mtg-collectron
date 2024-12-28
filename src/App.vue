@@ -290,7 +290,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.1.2 - last update 28/12/24</p>
+        <p style="padding:4px; font-size: 11px;">version 1.1.3 - last update 28/12/24</p>
         
       </v-sheet>
     </v-main>
@@ -828,6 +828,7 @@ function findSpecificCardInCollection(cardName,setName,number){
               {cardName:cardName, 
                 cardSet:setName, 
                 formattedCardName:formattedCardName, 
+                collectorNumber:cardVer,
                 releaseDate:collection_stock.o[setName].released_at, 
                 amount:cardAmount})
           }
@@ -850,6 +851,7 @@ function findSpecificCardInCollection(cardName,setName,number){
                 {cardName:card, 
                   cardSet:set, 
                   formattedCardName:formattedCardName, 
+                  collectorNumber:cardVer,
                   releaseDate:collection_stock.o[set].released_at, 
                   amount:cardAmount})
             }
@@ -955,9 +957,7 @@ async function perform_decklist_finder_search() {
     }
   }
   
-  decklist_finder_results_processed.value = cardList.sort(function(a,b){
-      return new Date(a.releaseDate) - new Date(b.releaseDate)
-    })
+  decklist_finder_results_processed.value = cardList.sort(compareByReleaseAndNumber)
   decklist_finder_results_window_active.value = true
   // console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
   // console.log("decklist_finder_results.value",decklist_finder_results.value)
@@ -1029,10 +1029,8 @@ function skip_decklist_card(card){
     if(index_to_remove != -1)
       decklist_finder_searchlist.value.splice(index_to_remove, 1)
 
-    // sort all of thee matched cards by release order and pop it back in place
-    decklist_finder_results_processed.value = newCardList.sort(function(a,b){
-      return new Date(a.releaseDate) - new Date(b.releaseDate)
-    })
+    // sort all of the matched cards by release order and pop it back in place
+    decklist_finder_results_processed.value = newCardList.sort(compareByReleaseAndNumber)
   } catch(err) {
     console.log(err)
   }
@@ -1363,7 +1361,7 @@ function compareByReleaseAndNumber(a,b){
         return 1;
       }
     } else {
-      return a.collector_number - b.collector_number
+      return parseInt(a.collectorNumber.replace(/\D/g,'')) - parseInt(b.collectorNumber.replace(/\D/g,''))
     }
   }
 }
