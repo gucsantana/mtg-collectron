@@ -290,7 +290,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.1.1 - last update 27/12/24</p>
+        <p style="padding:4px; font-size: 11px;">version 1.1.2 - last update 28/12/24</p>
         
       </v-sheet>
     </v-main>
@@ -943,7 +943,12 @@ async function perform_decklist_finder_search() {
       decklist_finder_results.value = decklist_finder_results.value.concat(cardsFound)
 
       // we grab cards from the returned list until we hit the amount specified
-      cardList = cardList.concat(get_enough_cards_from_decklist_filter_results(cardsFound,card.amount))
+      const matching_cards = get_enough_cards_from_decklist_filter_results(cardsFound,card.amount)
+      if(matching_cards)
+        cardList = cardList.concat(matching_cards)
+      else
+        // if there are no cards that match one of your search terms, we remove it from the list entirely
+        decklist_finder_searchlist.value = decklist_finder_searchlist.value.filter(x => x.name != card.name)
     }
     catch (e){
       console.log("Error: ",e)
@@ -954,9 +959,9 @@ async function perform_decklist_finder_search() {
       return new Date(a.releaseDate) - new Date(b.releaseDate)
     })
   decklist_finder_results_window_active.value = true
-  console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
-  console.log("decklist_finder_results.value",decklist_finder_results.value)
-  console.log("decklist_finder_results_processed.value",decklist_finder_results_processed.value)
+  // console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
+  // console.log("decklist_finder_results.value",decklist_finder_results.value)
+  // console.log("decklist_finder_results_processed.value",decklist_finder_results_processed.value)
   loading.value = false
 }
 
@@ -1005,28 +1010,29 @@ function skip_decklist_card(card){
     // remove the skipped card from the full results (processed results will be redone, no need)
     decklist_finder_results.value = decklist_finder_results.value.filter(x => x.formattedCardName != card.formattedCardName)
     // redo the step of fetching enough of each card on the searchlist
-    var newCardList = []
-    console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
+    var newCardList = [], index_to_remove = -1
     for(let item in decklist_finder_searchlist.value){
-      console.log("item, decklist_finder_searchlist.value[item]",item,decklist_finder_searchlist.value[item])
       // get every card in the results that matches the searched element
       const filtered_set = decklist_finder_results.value.filter(elem => elem.cardName == decklist_finder_searchlist.value[item].name)
       if(filtered_set.length > 0) {
         newCardList = newCardList.concat(get_enough_cards_from_decklist_filter_results(filtered_set,decklist_finder_searchlist.value[item].amount))
-        // console.log("newCardList",newCardList)
       } else {
-        // if the given card does not exist anymore in the main results list, we also remove it from the searchlist
-        decklist_finder_searchlist.value.splice(item, 1)
+        // console log warning in case we get two or more indexes to remove, which logically should not happen
+        if(index_to_remove != -1) console.log("WARNING: unexpected behavior on skip_decklist_card")
+        // if the given card does not exist anymore in the main results list, tag it for removal from the searchlist
+        index_to_remove = item
         no_more_of_skipped_card.value = true
       }
     }
+
+    // if we have run out of printings for a searchlist card and tagged it for removal, this is where it happens
+    if(index_to_remove != -1)
+      decklist_finder_searchlist.value.splice(index_to_remove, 1)
+
     // sort all of thee matched cards by release order and pop it back in place
     decklist_finder_results_processed.value = newCardList.sort(function(a,b){
       return new Date(a.releaseDate) - new Date(b.releaseDate)
     })
-    console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
-    console.log("decklist_finder_results.value",decklist_finder_results.value)
-    console.log("decklist_finder_results_processed.value",decklist_finder_results_processed.value)
   } catch(err) {
     console.log(err)
   }
