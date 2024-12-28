@@ -1350,6 +1350,24 @@ function on_scroll_stats_box () {
   stats_box_visible.value = window.scrollY > 280
 }
 
+// orders two cards by release date, and if the date is the same, order by set name and collector number
+function compareByReleaseAndNumber(a,b){
+  if(a.releaseDate != b.releaseDate)
+    return (new Date(a.releaseDate) - new Date(b.releaseDate))
+  else {
+    if(a.cardSet != b.cardSet) {
+      if ( a.cardSet < b.cardSet ){
+        return -1;
+      }
+      if ( a.cardSet > b.cardSet ){
+        return 1;
+      }
+    } else {
+      return a.collector_number - b.collector_number
+    }
+  }
+}
+
 function compareCards(a,b){
   if ( a.cardName < b.cardName ){
     return -1;
