@@ -22,6 +22,8 @@ Storage is local, no plans for adding accounts or databases.
 
 Tightening up the code for edge cases
 
+More filters for Decklist Finder, maybe a way to show a card's image
+
 # Known Issues
 
 Certain sets, like 'Universes Within', load no cards. Not sure what I need to add to the syntax.
