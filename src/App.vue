@@ -842,6 +842,7 @@ function findSpecificCardInCollection(cardName,setName,number){
         }
       }
     } else {
+      // combs each set for cardnames that match your search; sounds like it SHOULD be hellishly slow, but it isn't? TODO keep an eye on this one for performance
       for(var set in collection_stock.o){
         for(var card in collection_stock.o[set].cards) {
           if(card == cardName)
@@ -902,6 +903,8 @@ async function perform_decklist_finder_search() {
   decklist_finder_results.value = []
   decklist_finder_results_processed.value = []
 
+  var scryfall_query = "https://api.scryfall.com/cards/search?q="
+
   // first, we split the list of cards to search, one per line
   var split_cards = decklist_finder_text.split('\n')
 
@@ -946,6 +949,7 @@ async function perform_decklist_finder_search() {
 
       // return a list of all instances of the named card in your collection, optionally narrowing by set and/or number
       let cardsFound = findSpecificCardInCollection(card.name, card.set != '' ? card.set : undefined, card.collector_number != 0 ? card.collector_number : undefined)
+      for(var card in cardsFound)
       // if search priority is newest cards first, we revert the (normally oldest to newest) array
       if(decklist_finder_priority.value == "newest") cardsFound = cardsFound.reverse()
       // add all of the prints found to the search results pile
