@@ -34,8 +34,6 @@ There are also many one-off sets that have unique rules, like 'Modern Horizons 2
 
 I don't -fully- trust the collection percentages, it's very much reverse-engineered and with a lot of guessing and fiddly counters.
 
-Token sets store what you add in but don't display it properly on return visits.
-
 Some cards on Decklist Finder seem to return lower counts than you actually have of them. Weird.
 
 # Pages Deployment

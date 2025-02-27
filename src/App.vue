@@ -290,7 +290,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.1.3 - last update 28/12/24</p>
+        <p style="padding:4px; font-size: 11px;">version 1.2.0 - last update 27/02/25</p>
         
       </v-sheet>
     </v-main>
@@ -663,6 +663,13 @@ async function select_set(set)
     current_set_base_cards_qty = current_set_base_cards.value.length
     current_set_extra_cards_qty.value = 0
     
+    // for "token" sets, since we can have multiple identically named tokens that are actually different tokens/creatures
+    // we will append the card number to the token name to differentiate
+    if(set.set_type == 'token') {
+      for(var card in current_set_base_cards.value)
+        current_set_base_cards.value[card].name += " " + current_set_base_cards.value[card].collector_number
+    }
+
     current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
     current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
     current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
