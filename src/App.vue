@@ -70,23 +70,25 @@
         <v-card-item> <h2 style="text-align: center;">Search Results</h2> </v-card-item>
         <v-divider/>
         <v-list nav class="card_finder_results_list align-left" v-show="decklist_finder_results_processed.length > 0">
-          <!-- <v-list-item v-for="card in decklist_finder_results_processed" style="display: inline-block; width: auto;" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'"> -->
           <v-card v-for="card in decklist_finder_results_processed" :class="{ 'decklist_finder_results_list_item' : true, 'tertiary_hover_dark' : page_options.dark_mode, 'tertiary_hover_light' : !page_options.dark_mode }" :flat="true">
-            <!-- <v-icon icon="mdi-check-bold" size="large" color="primary" @click="mark_decklist_card_as_done(card)"/> -->
             <v-tooltip text="/n" location="bottom" :open-delay="700">
               <template v-slot:activator="{ props }">
                 <v-icon :="props" icon="mdi-check-bold" @click="mark_decklist_card_as_done(card)" size="large" color="primary"/>
               </template>
               <p>Mark as done, removing from list</p>
             </v-tooltip>
-            <!-- <v-icon icon="mdi-debug-step-over" size="large" color="primary" @click="skip_decklist_card(card)"/> -->
             <v-tooltip text="/n" location="bottom" :open-delay="700">
               <template v-slot:activator="{ props }">
                 <v-icon :="props" icon="mdi-debug-step-over" @click="skip_decklist_card(card)" size="large" color="primary"/>
               </template>
               <p>Skip this printing, tries to use next printings if available</p>
             </v-tooltip>
-            <p class="decklist_finder_results_text">{{ card.amount + "x " + card.formattedCardName }}</p>  
+            <v-hover>
+              <template v-slot:default="{ isHovering, props }">
+                <p :="props" class="decklist_finder_results_text"> {{ card.amount + "x " + card.formattedCardName }} </p>
+                <img :src="card.image" v-show="isHovering" class="decklist_finder_results_image">
+              </template>
+            </v-hover>
           </v-card>
         </v-list>
         <v-card-item v-show="decklist_finder_results_processed.length == 0"> <h3>There are no cards to display.</h3> </v-card-item>
@@ -490,6 +492,7 @@ var decklist_finder_priority = ref('oldest')      // fetch priority of the searc
 var decklist_finder_text = ''                     // textbox contents of the decklist search
 var decklist_finder_results = ref([])             // all of the results returned for a decklist search, dupes included
 var decklist_finder_results_processed = ref([])   // the currently filtered decklist search results
+var decklist_finder_results_scry_data = ref([])   // scryfall card data for every card currently in the filtered search results
 
 var import_syntax = ref('moxfield')
 var import_text = ''
@@ -966,7 +969,13 @@ async function perform_decklist_finder_search() {
   }
   
   decklist_finder_results_processed.value = cardList.sort(compareByReleaseAndNumber)
+  // for each card in the processed list, we query its exact version from scryfall, to grab the card image
+  for(var cd in decklist_finder_results_processed.value) {
+    const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
+    decklist_finder_results_processed.value[cd].image = sf_data.image_uris.normal
+  }
   decklist_finder_results_window_active.value = true
+
   // console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
   // console.log("decklist_finder_results.value",decklist_finder_results.value)
   // console.log("decklist_finder_results_processed.value",decklist_finder_results_processed.value)
@@ -989,6 +998,17 @@ function get_enough_cards_from_decklist_filter_results(cards,amount){
   } catch(err) {
     console.log("Error in get_enough_cards_from_decklist_filter_results: ",err)
   }
+}
+
+// query scryfall for data on a requested card, initially used for decklist finder
+async function query_scryfall_for_card_data(card){
+  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+" + encodeURIComponent(card.cardName) + "+set%3A" + card.cardSet + "+cd%3A" + card.collectorNumber
+  
+  // we will query scryfall for data on a specific card, and return that data
+  const response = await fetch(fetch_url)
+  const response_data = await response.json()
+  await sleep(100) // complying with scryfall good neighbor policy query limits
+  return response_data['data'][0]
 }
 
 // remove the passed card from the list of filtered cards displayed for a decklist finder search
@@ -1562,6 +1582,10 @@ function sleep(ms) {
   width: auto;
   display: inline;
   margin-left: 10px;
+}
+.decklist_finder_results_image {
+  position:absolute;
+  max-width: 200px;
 }
 .import_window {
   width: 100%;
