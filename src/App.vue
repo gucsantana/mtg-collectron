@@ -3,6 +3,7 @@
     <v-overlay :model-value="loading" class="align-center justify-center">
       <v-progress-circular color="primary" indeterminate size="64"/>
     </v-overlay>
+    <v-img v-if="hover_card_src != ''" :src="hover_card_src" class="hover_card_image" :style="{'bottom':mouse_coords.y + 10,'left':mouse_coords.x + 10}"/>
     <v-overlay persistent :model-value="card_finder_window_active" class="align-center justify-center">
       <v-card class="card_finder_window">
         <v-card-item>
@@ -66,7 +67,7 @@
       </v-card>
     </v-overlay>
     <v-overlay persistent :model-value="decklist_finder_results_window_active" class="align-center justify-center">
-      <v-card class="decklist_finder_results_window">
+      <v-card class="decklist_finder_results_window" @mousemove="getMouseCoords">
         <v-card-item> <h2 style="text-align: center;">Search Results</h2> </v-card-item>
         <v-divider/>
         <v-list nav class="card_finder_results_list align-left" v-show="decklist_finder_results_processed.length > 0">
@@ -83,12 +84,14 @@
               </template>
               <p>Skip this printing, tries to use next printings if available</p>
             </v-tooltip>
-            <v-hover>
+            <p class="decklist_finder_results_text"> {{ card.amount + "x " + card.formattedCardName }} </p>
+            <!-- <p @mouseenter="hover_card_src = card.image" @mouseleave="hover_card_src = ''" class="decklist_finder_results_text"> {{ card.amount + "x " + card.formattedCardName }} </p> -->
+            <!-- <v-hover>
               <template v-slot:default="{ isHovering, props }">
                 <p :="props" class="decklist_finder_results_text"> {{ card.amount + "x " + card.formattedCardName }} </p>
                 <img :src="card.image" v-show="isHovering" class="decklist_finder_results_image">
               </template>
-            </v-hover>
+            </v-hover> -->
           </v-card>
         </v-list>
         <v-card-item v-show="decklist_finder_results_processed.length == 0"> <h3>There are no cards to display.</h3> </v-card-item>
@@ -492,7 +495,9 @@ var decklist_finder_priority = ref('oldest')      // fetch priority of the searc
 var decklist_finder_text = ''                     // textbox contents of the decklist search
 var decklist_finder_results = ref([])             // all of the results returned for a decklist search, dupes included
 var decklist_finder_results_processed = ref([])   // the currently filtered decklist search results
-var decklist_finder_results_scry_data = ref([])   // scryfall card data for every card currently in the filtered search results
+var mouse_coords = ref({'x':0,'y':0})             // mouse coords used for displaying the pop up image box
+var show_hover_card = ref(false)
+var hover_card_src = ref("https://cards.scryfall.io/large/front/e/6/e6a06aad-6073-465b-89d0-8c4ae4307aff.jpg?1692933103")
 
 var import_syntax = ref('moxfield')
 var import_text = ''
@@ -619,6 +624,12 @@ watch(card_finder_text, v => {
     card_finder_results.value = []
   }
 })
+
+// sets the mouse coords value, for anything we'd like to track the exact mouse position to display
+function getMouseCoords(event){
+  mouse_coords.value = {'x':event.clientX, 'y':event.clientY}
+  console.log('mouse coords',mouse_coords.value)
+}
 
 // activated when a set is selected on the left column
 // clean up previous values, set up the loading overlay, and grab the new data from the next set
@@ -1341,6 +1352,12 @@ const pageSliceEnd = computed(() => {
 const isMobile = computed(() => {
   return unref(display.mobile)
 })
+const hoverCardLeft = computed(() => {
+  return mouse_coords.value.x + 10
+})
+const hoverCardBottom = computed(() => {
+  return mouse_coords.value.y + 10
+})
 
 // returns object with the distinct rarities of passed set
 function get_rarities(set) {
@@ -1583,8 +1600,11 @@ function sleep(ms) {
   display: inline;
   margin-left: 10px;
 }
-.decklist_finder_results_image {
-  position:absolute;
+.hover_card_image {
+  position: fixed;
+  bottom: v-bind('hoverCardBottom');
+  left: v-bind('hoverCardLeft');
+  width: 100%;
   max-width: 200px;
 }
 .import_window {
