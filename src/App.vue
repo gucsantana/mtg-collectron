@@ -71,13 +71,13 @@
         <v-divider/>
         <v-list nav class="card_finder_results_list align-left" v-show="decklist_finder_results_processed.length > 0">
           <v-card v-for="card in decklist_finder_results_processed" @mouseenter="getMouseCoords($event); hover_card_src = card.image" @mouseleave="hover_card_src = ''" :class="{ 'decklist_finder_results_list_item' : true, 'tertiary_hover_dark' : page_options.dark_mode, 'tertiary_hover_light' : !page_options.dark_mode }" :flat="true">
-            <v-tooltip text="/n" location="bottom" :open-delay="700">
+            <v-tooltip text="/n" location="top" :open-delay="700">
               <template v-slot:activator="{ props }">
                 <v-icon :="props" icon="mdi-check-bold" @click="mark_decklist_card_as_done(card)" size="large" color="primary"/>
               </template>
               <p>Mark as done, removing from list</p>
             </v-tooltip>
-            <v-tooltip text="/n" location="bottom" :open-delay="700">
+            <v-tooltip text="/n" location="top" :open-delay="700">
               <template v-slot:activator="{ props }">
                 <v-icon :="props" icon="mdi-debug-step-over" @click="skip_decklist_card(card)" size="large" color="primary"/>
               </template>
@@ -288,8 +288,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.2.0 - last update 27/02/25</p>
-        
+        <p style="padding:4px; font-size: 11px;">version 1.2.1 - last update 03/03/25</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -1035,8 +1034,10 @@ function mark_decklist_card_as_done(card){
 }
 
 // attempts to skip the passed card, putting the next available printing in, if any
-function skip_decklist_card(card){
+async function skip_decklist_card(card){
   try {
+    // clear the currently hovered card
+    hover_card_src.value = ""
     // remove the skipped card from the full results (processed results will be redone, no need)
     decklist_finder_results.value = decklist_finder_results.value.filter(x => x.formattedCardName != card.formattedCardName)
     // redo the step of fetching enough of each card on the searchlist
@@ -1061,6 +1062,13 @@ function skip_decklist_card(card){
 
     // sort all of the matched cards by release order and pop it back in place
     decklist_finder_results_processed.value = newCardList.sort(compareByReleaseAndNumber)
+    // fill in the image for any cards that are new to the display (should only be one)
+    for(var cd in decklist_finder_results_processed.value){
+      if(!decklist_finder_results_processed.value[cd].image){
+        const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
+        decklist_finder_results_processed.value[cd].image = sf_data.image_uris.normal
+      }
+    }
   } catch(err) {
     console.log(err)
   }
@@ -1347,7 +1355,7 @@ const hoverCardLeft = computed(() => {
   return (mouse_coords.value.x + 30) + 'px'
 })
 const hoverCardTop = computed(() => {
-  return (mouse_coords.value.y + 10) + 'px'
+  return (mouse_coords.value.y + 20) + 'px'
 })
 
 // returns object with the distinct rarities of passed set

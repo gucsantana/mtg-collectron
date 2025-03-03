@@ -22,7 +22,11 @@ Storage is local, no plans for adding accounts or databases.
 
 Tightening up the code for edge cases
 
-More filters for Decklist Finder, maybe a way to show a card's image
+More filters for Decklist Finder, allow user to pass Moxfield url
+
+'Stats' screen with information and trivia about the collection
+
+Precalculated percentages so we can use them outside of the set context
 
 # Known Issues
 
