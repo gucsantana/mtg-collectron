@@ -3,7 +3,6 @@
     <v-overlay :model-value="loading" class="align-center justify-center">
       <v-progress-circular color="primary" indeterminate size="64"/>
     </v-overlay>
-    <v-img v-if="hover_card_src != ''" :src="hover_card_src" class="hover_card_image" :style="{'bottom':mouse_coords.y + 10,'left':mouse_coords.x + 10}"/>
     <v-overlay persistent :model-value="card_finder_window_active" class="align-center justify-center">
       <v-card class="card_finder_window">
         <v-card-item>
@@ -67,11 +66,11 @@
       </v-card>
     </v-overlay>
     <v-overlay persistent :model-value="decklist_finder_results_window_active" class="align-center justify-center">
-      <v-card class="decklist_finder_results_window" @mousemove="getMouseCoords">
+      <v-card class="decklist_finder_results_window">
         <v-card-item> <h2 style="text-align: center;">Search Results</h2> </v-card-item>
         <v-divider/>
         <v-list nav class="card_finder_results_list align-left" v-show="decklist_finder_results_processed.length > 0">
-          <v-card v-for="card in decklist_finder_results_processed" :class="{ 'decklist_finder_results_list_item' : true, 'tertiary_hover_dark' : page_options.dark_mode, 'tertiary_hover_light' : !page_options.dark_mode }" :flat="true">
+          <v-card v-for="card in decklist_finder_results_processed" @mouseenter="getMouseCoords($event); hover_card_src = card.image" @mouseleave="hover_card_src = ''" :class="{ 'decklist_finder_results_list_item' : true, 'tertiary_hover_dark' : page_options.dark_mode, 'tertiary_hover_light' : !page_options.dark_mode }" :flat="true">
             <v-tooltip text="/n" location="bottom" :open-delay="700">
               <template v-slot:activator="{ props }">
                 <v-icon :="props" icon="mdi-check-bold" @click="mark_decklist_card_as_done(card)" size="large" color="primary"/>
@@ -85,13 +84,6 @@
               <p>Skip this printing, tries to use next printings if available</p>
             </v-tooltip>
             <p class="decklist_finder_results_text"> {{ card.amount + "x " + card.formattedCardName }} </p>
-            <!-- <p @mouseenter="hover_card_src = card.image" @mouseleave="hover_card_src = ''" class="decklist_finder_results_text"> {{ card.amount + "x " + card.formattedCardName }} </p> -->
-            <!-- <v-hover>
-              <template v-slot:default="{ isHovering, props }">
-                <p :="props" class="decklist_finder_results_text"> {{ card.amount + "x " + card.formattedCardName }} </p>
-                <img :src="card.image" v-show="isHovering" class="decklist_finder_results_image">
-              </template>
-            </v-hover> -->
           </v-card>
         </v-list>
         <v-card-item v-show="decklist_finder_results_processed.length == 0"> <h3>There are no cards to display.</h3> </v-card-item>
@@ -100,7 +92,8 @@
           <v-col cols="3"><v-btn @click="decklist_finder_results_window_active=false; decklist_finder_results_processed.value = []" variant="outlined">Close</v-btn></v-col>
         </v-card-actions>
       </v-card>
-    </v-overlay>
+    </v-overlay>    
+    <v-img v-if="hover_card_src != ''" :src="hover_card_src" class="hover_card_image rounded-lg" :style="{top:hoverCardTop,left:hoverCardLeft}"/>
     <v-overlay persistent :model-value="import_window_active" class="align-center justify-center">
       <v-card class="import_window">
         <v-card-item>
@@ -496,8 +489,7 @@ var decklist_finder_text = ''                     // textbox contents of the dec
 var decklist_finder_results = ref([])             // all of the results returned for a decklist search, dupes included
 var decklist_finder_results_processed = ref([])   // the currently filtered decklist search results
 var mouse_coords = ref({'x':0,'y':0})             // mouse coords used for displaying the pop up image box
-var show_hover_card = ref(false)
-var hover_card_src = ref("https://cards.scryfall.io/large/front/e/6/e6a06aad-6073-465b-89d0-8c4ae4307aff.jpg?1692933103")
+var hover_card_src = ref("")
 
 var import_syntax = ref('moxfield')
 var import_text = ''
@@ -628,7 +620,6 @@ watch(card_finder_text, v => {
 // sets the mouse coords value, for anything we'd like to track the exact mouse position to display
 function getMouseCoords(event){
   mouse_coords.value = {'x':event.clientX, 'y':event.clientY}
-  console.log('mouse coords',mouse_coords.value)
 }
 
 // activated when a set is selected on the left column
@@ -1353,10 +1344,10 @@ const isMobile = computed(() => {
   return unref(display.mobile)
 })
 const hoverCardLeft = computed(() => {
-  return mouse_coords.value.x + 10
+  return (mouse_coords.value.x + 30) + 'px'
 })
-const hoverCardBottom = computed(() => {
-  return mouse_coords.value.y + 10
+const hoverCardTop = computed(() => {
+  return (mouse_coords.value.y + 10) + 'px'
 })
 
 // returns object with the distinct rarities of passed set
@@ -1596,16 +1587,15 @@ function sleep(ms) {
 }
 .decklist_finder_results_text {
   cursor: default;
-  width: auto;
+  width: 100%;
   display: inline;
   margin-left: 10px;
 }
 .hover_card_image {
   position: fixed;
-  bottom: v-bind('hoverCardBottom');
-  left: v-bind('hoverCardLeft');
   width: 100%;
   max-width: 200px;
+  z-index: 99999;
 }
 .import_window {
   width: 100%;
