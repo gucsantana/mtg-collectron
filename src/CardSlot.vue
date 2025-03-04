@@ -46,7 +46,7 @@
 
 <script>
 export default {
-    props: ['card','collection_stock','current_set_code', 'show_option', 'is_extra', 'base_set_total', 'extra_set_total'],
+    props: ['card','collection_stock','current_set_code', 'show_option', 'is_extra', 'base_set_total', 'extra_set_total', 'current_set_commons', 'current_set_uncommons', 'current_set_rares', 'current_set_mythics'],
     methods: {
         // passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri
         getCardImage(uriArray,cardFacesArray){
@@ -74,6 +74,9 @@ export default {
               foils_owned: 0,
               base_set_total: this.base_set_total,
               extra_set_total: this.extra_set_total,
+              full_set_every_single: 0,  // 'full set' parameters save the completion percentage for each definition of full set
+              full_set_base_only: 0,
+              full_set_one_each: 0,
               released_at: card_data.released_at
             }
             this.collection_stock[card_data.set] = new_set
@@ -99,13 +102,16 @@ export default {
               }
             }
           } else {
+            // create a new card object for that collector number
             const new_card = {
               [card_data.collector_number] : {
                 count: 1,
                 foil: false
               }
             }
+            // append it to a new subset of cards in the set, rooted as the name of the card
             this.collection_stock[card_data.set].cards[card_data.name] = new_card
+            // add to the appropriate total rarity count
             switch(card_data.rarity){
               case 'common':
                 this.collection_stock[card_data.set].commons++
@@ -122,12 +128,17 @@ export default {
               default:
                 break
             }
+            // set whether it's an extra card or base set card, for the total count
             if(this.is_extra){
               this.collection_stock[card_data.set].extra_owned++
             } else {
               this.collection_stock[card_data.set].base_set_owned++
             }
           }
+          // recalculate the full set percentage counters for this set
+          this.collection_stock[card_data.set].full_set_every_single = ((this.collection_stock[card_data.set].base_set_owned + this.collection_stock[card_data.set].extra_owned) / (this.collection_stock[card_data.set].base_set_total + this.collection_stock[card_data.set].extra_set_total))*100
+          this.collection_stock[card_data.set].full_set_base_only = (this.collection_stock[card_data.set].base_set_owned / this.collection_stock[card_data.set].base_set_total)*100
+          this.collection_stock[card_data.set].full_set_one_each = ((this.collection_stock[card_data.set].commons + this.collection_stock[card_data.set].uncommons + this.collection_stock[card_data.set].rares + this.collection_stock[card_data.set].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics))*100
           console.log("current collection stock",this.collection_stock)
         },
         remove_card_from_stock(card_data){

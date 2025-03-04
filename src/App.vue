@@ -250,7 +250,7 @@
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
             <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search.toLowerCase()) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
-              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="(index+pageSliceStart) >= current_set_base_cards_qty" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty"></CardSlot>
+              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="(index+pageSliceStart) >= current_set_base_cards_qty" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
@@ -1196,6 +1196,9 @@ async function add_card_to_stock(card) {
       extra_owned: 0,
       base_set_total: 0,  // both this and below are zeroed due to not enough info at this stage, but we will overwrite it later as needed on CardSlot.vue
       extra_set_total: 0,
+      full_set_every_single: 0,  // 'full set' parameters save the completion percentage for each definition of full set
+      full_set_base_only: 0,
+      full_set_one_each: 0,
       released_at: response_data[0].released_at
     }
     collection_stock.o[card.set] = new_set
