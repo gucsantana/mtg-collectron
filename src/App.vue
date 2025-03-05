@@ -1,9 +1,12 @@
 <template>
   <v-app>
-    <v-overlay :model-value="loading" class="align-center justify-center">
+    <v-overlay persistent :model-value="loading" class="align-center justify-center">
       <v-progress-circular color="primary" indeterminate size="64"/>
     </v-overlay>
-    <v-overlay persistent :model-value="card_finder_window_active" class="align-center justify-center">
+    <v-overlay persistent :model-value="loading_bar" class="align-center justify-center">
+      <v-progress-linear v-model="loading_bar_fill" height="20" style="width:400px;" color="primary" rounded/>
+    </v-overlay>
+    <v-overlay :model-value="card_finder_window_active" @afterLeave="card_finder_window_active = false" class="align-center justify-center">
       <v-card class="card_finder_window">
         <v-card-item>
           <v-row class="import_window_header align-center">
@@ -34,7 +37,7 @@
         </v-card-actions>
       </v-card>
     </v-overlay>
-    <v-overlay persistent :model-value="decklist_finder_window_active" class="align-center justify-center">
+    <v-overlay :model-value="decklist_finder_window_active" @afterLeave="decklist_finder_window_active = false" class="align-center justify-center">
       <v-card class="import_window">
         <v-card-item>
           <v-row class="import_window_header align-center">
@@ -65,7 +68,7 @@
         </v-row>
       </v-card>
     </v-overlay>
-    <v-overlay persistent :model-value="decklist_finder_results_window_active" class="align-center justify-center">
+    <v-overlay :model-value="decklist_finder_results_window_active" @afterLeave="decklist_finder_results_window_active = false" class="align-center justify-center">
       <v-card class="decklist_finder_results_window">
         <v-card-item> <h2 style="text-align: center;">Search Results</h2> </v-card-item>
         <v-divider/>
@@ -94,7 +97,7 @@
       </v-card>
     </v-overlay>    
     <v-img v-if="hover_card_src != ''" :src="hover_card_src" class="hover_card_image rounded-lg" :style="{top:hoverCardTop,left:hoverCardLeft}"/>
-    <v-overlay persistent :model-value="import_window_active" class="align-center justify-center">
+    <v-overlay :model-value="import_window_active" @afterLeave="import_window_active = false" class="align-center justify-center">
       <v-card class="import_window">
         <v-card-item>
           <v-row class="import_window_header align-center">
@@ -105,9 +108,9 @@
                 <template v-slot:activator="{ props }">
                   <v-icon :="props" icon="mdi-help-box" size="x-large" color="primary"/>
                 </template>
-                <p>'Moxfield' uses the Moxfield syntax, one card per line</p>
+                <p>'Moxfield Syntax' uses the Moxfield syntax, one card per line</p>
                 <p class="mb-0">e.g. "1 Loran's Escape (BRO) *F*"</p>
-                <p class="mb-0">'Native' uses the JSON syntax exported by the 'Export Collection' button</p>
+                <p class="mb-0">'Native JSON' uses the JSON syntax exported by the 'Export Collection' button</p>
                 <p class="mb-0">It will REWRITE the entire collection, not add to it</p>
               </v-tooltip>
             </v-col>
@@ -115,8 +118,8 @@
         </v-card-item>
         <v-divider/>
         <v-radio-group inline v-model="import_syntax" density="compact" hide-details style="display:inline-block;">
-          <v-radio color="primary" label="Moxfield" value="moxfield"/>
-          <v-radio color="primary" label="Native" value="native"/>
+          <v-radio color="primary" label="Moxfield Syntax" value="moxfield"/>
+          <v-radio color="primary" label="Native JSON" value="native"/>
         </v-radio-group>
         <v-textarea v-model="import_text" autofocus class="import_text_field" variant="outlined"/>
         <v-row>
@@ -126,7 +129,7 @@
         </v-row>
       </v-card>
     </v-overlay>
-    <v-overlay :model-value="import_results_active" class="align-center justify-center">
+    <v-overlay :model-value="import_results_active" @afterLeave="import_results_active = false" class="align-center justify-center">
       <v-card class="import_results_window">
         <v-card-item>
           <h2 v-show="import_success == true">Import Success</h2>
@@ -143,7 +146,32 @@
         <p v-show="import_errors">{{ import_errors }}</p>
       </v-card>
     </v-overlay>
-    <v-overlay persistent :model-value="export_window_active" class="align-center justify-center">
+    <v-overlay :model-value="housekeeping_window_active" @afterLeave="housekeeping_window_active = false" class="align-center justify-center">
+      <v-card class="housekeeping_window">
+        <v-card-item>
+          <v-row class="housekeeping_window_header align-center">
+            <v-col cols="6"><h2>Housekeeping Tasks</h2></v-col>
+            <v-spacer/>
+          </v-row>
+        </v-card-item>
+        <v-divider/>
+        <v-card-item class="housekeeping_window_footer">
+          <p>Recalculate card counts and percentages for all sets, and backfill information that may be missing due to new developments.</p>
+          <p>NOTE: this will likely take a while, and longer the larger your collection is. May want to export it first as backup.</p>
+          <v-btn @click="tidy_up_collection" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">
+            Tidy Up Collection</v-btn>
+          <v-divider/>
+          <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
+          <v-btn @click="clear_all_data()" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">
+            Clear ALL card data</v-btn>
+        </v-card-item>
+        <v-row class="house mt-auto">
+          <v-spacer/>
+          <v-col cols="3"><v-btn @click="housekeeping_window_active=false">Close</v-btn></v-col>
+        </v-row>
+      </v-card>
+    </v-overlay>
+    <v-overlay :model-value="export_window_active" @afterLeave="export_window_active = false" class="align-center justify-center">
       <v-card class="export_window">
         <v-card-item>
           <v-row class="import_window_header align-center">
@@ -169,7 +197,7 @@
         </v-row>
       </v-card>
     </v-overlay>
-    <v-overlay id="about_window" :model-value="about_window_active" class="align-center justify-center" @click:outside="about_window_active = false">
+    <v-overlay id="about_window" :model-value="about_window_active" @afterLeave="about_window_active = false" class="align-center justify-center">
       <v-card class="about_window">
         <v-card-item>
           <h2>About the Collectron</h2>
@@ -189,6 +217,7 @@
     </v-overlay>
     <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
     <v-snackbar v-model="no_more_of_skipped_card" :timeout="3500">No more printings of this card in your collection!</v-snackbar>
+    <v-snackbar v-model="finished_housekeeping" :timeout="2500">Finished cleaning up your collection!</v-snackbar>
     <v-app-bar color="primary">
       <v-btn @click="drawer = !drawer">
         <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer"/>
@@ -268,10 +297,10 @@
           <p>Foil Cards: {{ current_set_owned_foils }}/{{ current_set_base_cards_qty+current_set_extra_cards_qty }}</p>
         </v-card>
         <v-progress-linear height="15" v-model="getProgressForSet" :color="getProgressForSet < 100 ? 'primary' : 'amber-lighten-2' ">
-            <template v-slot:default="{ value }">
-              <strong>{{ Math.round(value * 10) / 10 }}%</strong>
-            </template>
-          </v-progress-linear>
+          <template v-slot:default="{ value }">
+            <strong>{{ Math.round(value * 10) / 10 }}%</strong>
+          </template>
+        </v-progress-linear>
       </v-card>
     </v-main>
     <v-main class="intro_message_main" v-if="!current_set || !current_set_base_cards">
@@ -288,7 +317,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.2.1 - last update 03/03/25</p>
+        <p style="padding:4px; font-size: 11px;">version 1.2.2 - last update 05/03/25</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -350,8 +379,7 @@
             <v-btn @click="decklist_finder_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Decklist Finder</v-btn>
             <v-btn @click="import_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Import Cards</v-btn>
             <v-btn @click="exportCollection" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Export Collection</v-btn>
-            <p v-show="clicks_to_clear >= 1">WARNING: this will delete ALL saved data. You must click the button {{ 10 - clicks_to_clear }} more times to complete the action.</p>
-            <v-btn @click="clear_all_data()" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Clear ALL card data</v-btn>
+            <v-btn @click="housekeeping_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Housekeeping Tasks</v-btn>
           </v-list-item>
           <v-divider/>
           <v-list-item><p class="column_header">Information</p></v-list-item>
@@ -468,16 +496,19 @@ function toggleDarkMode (bool) {
 
 // ------------------------------------------------------------ //
 
-var drawer = ref(true)    // signals the set navigation drawer is open
-var settings = ref(false) // signals the settings menu is open
-var loading = ref(false)  // signals the loading circle is visible
+var drawer = ref(true)          // signals the set navigation drawer is open
+var settings = ref(false)       // signals the settings menu is open
+var loading = ref(false)        // signals the loading circle is visible
+var loading_bar = ref(false)    // signals the loading progress bar is visible
+var loading_bar_fill = ref(0)  // fill value of the progress bar
 var card_finder_window_active = ref(false)              // signals the card search dialog is visible
 var decklist_finder_window_active = ref(false)          // signals the decklist finder dialog is visible
 var decklist_finder_results_window_active = ref(false)  // signals the decklist finder results dialog is visible
-var import_window_active = ref(false)   // signals the import dialog is visible
-var import_results_active = ref(false)  // signals the import dialog results are visible
-var export_window_active = ref(false)   // signals the import dialog is visible
-var about_window_active = ref(false)    // signals the import dialog is visible
+var import_window_active = ref(false)       // signals the import dialog is visible
+var import_results_active = ref(false)      // signals the import dialog results are visible
+var export_window_active = ref(false)       // signals the export dialog is visible
+var housekeeping_window_active = ref(false) // signals the housekeeping window dialog is visible
+var about_window_active = ref(false)        // signals the about window is visible
 
 var card_finder_text = ref('')
 var card_finder_results = ref([])
@@ -496,8 +527,10 @@ var import_success = ref(true)
 var import_errors = ref([])
 var import_card_total = ref(0)
 var export_text = ''
+
 var toast = ref(false)
 var no_more_of_skipped_card = ref(false)
+var finished_housekeeping = ref(false)
 
 var page_options = reactive({
   show_option_selected: 1,
@@ -527,6 +560,7 @@ var current_set_commons = ref(0)
 var current_set_uncommons = ref(0)
 var current_set_rares = ref(0)
 var current_set_mythics = ref(0)
+var current_set_printed_size_exists = ref(false)  // when the set has a printed_size attribute, calculating base/extra split is trivial!
 var current_set_base_cards_qty = ref(0)
 var current_set_extra_cards_qty = ref(0)
 
@@ -1192,8 +1226,14 @@ async function add_card_to_stock(card) {
       uncommons: 0,
       rares: 0,
       mythics: 0,
+      total_commons: 0,
+      total_uncommons: 0,
+      total_rares: 0,
+      total_mythics: 0,
+      printed_size: 0,  // for sets that have it, this tracks the base set size, which is SUPER helpful for my base/extra calcs
       base_set_owned: 0,
       extra_owned: 0,
+      foils_owned: 0,
       base_set_total: 0,  // both this and below are zeroed due to not enough info at this stage, but we will overwrite it later as needed on CardSlot.vue
       extra_set_total: 0,
       full_set_every_single: 0,  // 'full set' parameters save the completion percentage for each definition of full set
@@ -1257,6 +1297,68 @@ async function add_card_to_stock(card) {
     } else {
       collection_stock.o[card.set].extra_owned++
     }
+  }
+  // recalculate the full set percentage counters for this set
+  collection_stock.o[card.set].full_set_every_single = ((collection_stock.o[card.set].base_set_owned + collection_stock.o[card.set].extra_owned) / (collection_stock.o[card.set].base_set_total + collection_stock.o[card.set].extra_set_total))*100
+  collection_stock.o[card.set].full_set_base_only = (collection_stock.o[card.set].base_set_owned / collection_stock.o[card.set].base_set_total)*100
+  collection_stock.o[card.set].full_set_one_each = ((collection_stock.o[card.set].commons + collection_stock.o[card.set].uncommons + collection_stock.o[card.set].rares + collection_stock.o[card.set].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics))*100
+}
+
+// goes through all of the sets in the user's collection, recalculates values and percentages, and backfills missing values
+async function tidy_up_collection()
+{
+  try {
+    loading_bar.value = true
+    loading_bar_fill.value = 0
+    let sets_done = 0
+    const total_sets_owned = Object.keys(collection_stock.o).length
+    // for each set the user currently owns at least one card of, we will query for it and use that info to backfill
+    for(var set in collection_stock.o){
+      sets_done++
+      console.log("Tidying collection, set "+sets_done+" of "+total_sets_owned+": "+ set)
+      // get basic set information into set_data
+      let fetch_url = 'https://api.scryfall.com/sets/'+set
+      let response = await fetch(fetch_url);
+      let set_data = await response.json();
+      await sleep(50);
+
+      // fill release date and printed size, if it exists
+      collection_stock.o[set].released_at = set_data.released_at
+      if(set_data.printed_size){
+        collection_stock.o[set].printed_size = set_data.printed_size
+        collection_stock.o[set].base_set_total = set_data.printed_size
+      }
+      // we go through all of our owned cards in this set and count base, extra, and foils owned
+      let total_base = 0, total_extra = 0, total_foils = 0
+      for(var card in collection_stock.o[set].cards){
+        // console.log("card",card)
+        for(var print in collection_stock.o[set].cards[card]){
+          // console.log("print",collection_stock.o[set].cards[card][print])
+          if(print <= collection_stock.o[set].base_set_total){
+            total_base++
+          } else {
+            total_extra++
+          }
+          if(collection_stock.o[set].cards[card][print].foil){
+            total_foils++
+          }
+        }
+      }
+
+      // set the owned card values based on what was calculated
+      collection_stock.o[set].base_set_owned = total_base
+      collection_stock.o[set].extra_owned = total_extra
+      collection_stock.o[set].foils_owned = total_foils
+
+      loading_bar_fill.value = (sets_done / total_sets_owned) * 100
+    }
+    console.log("collection",collection_stock.o)
+    // ---
+  } catch(err) {
+    console.log(err)
+  } finally {
+    loading_bar.value = false
+    finished_housekeeping.value = true
   }
 }
 
@@ -1578,6 +1680,9 @@ function sleep(ms) {
   height: 100%;
   text-align: center;
 }
+.card_finder_text_field {
+  padding: 10px 20px;
+}
 .card_finder_results_list {
   height: 100%;
   max-height: 400px;
@@ -1612,28 +1717,7 @@ function sleep(ms) {
   width: 100%;
   max-width: 500px;
   height: 330px;
-  text-align: center;
-}
-.import_results_window {
-  width: 100%;
-  min-width: 250px;
-  max-width: 500px;
-  height: 100%;
-  min-height: 250px;
-  max-height: 600px;
-  text-align: center;
   padding: 0 20px;
-}
-.export_window {
-  width: 100%;
-  max-width: 500px;
-  height: 300px;
-  text-align: center;
-}
-.about_window {
-  width: 95%;
-  max-width: 600px;
-  height: 100%;
   text-align: center;
 }
 .import_window_header {
@@ -1647,8 +1731,42 @@ function sleep(ms) {
   display: inline-block;
   margin-top: 10px;
 }
-.card_finder_text_field {
-  padding: 10px 20px;
+.import_results_window {
+  width: 100%;
+  min-width: 250px;
+  max-width: 500px;
+  height: 100%;
+  min-height: 250px;
+  max-height: 600px;
+  text-align: center;
+  padding: 0 20px;
+}
+.housekeeping_window {
+  width: 500px;
+  height: 410px;
+  text-align: center;
+}
+.housekeeping_window_header {
+  width: 100%;
+  height: 70px;
+}
+.housekeeping_window_body {
+  padding: 0 20px;
+}
+.housekeeping_window_footer {
+  padding: 0 20px;
+}
+.export_window {
+  width: 100%;
+  max-width: 500px;
+  height: 300px;
+  text-align: center;
+}
+.about_window {
+  width: 95%;
+  max-width: 600px;
+  height: 100%;
+  text-align: center;
 }
 .page_footer {
   width: 100% !important;

@@ -20,6 +20,8 @@ Storage is local, no plans for adding accounts or databases.
 
 # Upcoming Features and Improvements
 
+Scrolling to top on page change (why is it so hard? lol)
+
 Tightening up the code for edge cases
 
 More filters for Decklist Finder, allow user to pass Moxfield url
