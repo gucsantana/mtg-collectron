@@ -279,7 +279,7 @@
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
             <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search.toLowerCase()) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
-              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="(index+pageSliceStart) >= current_set_base_cards_qty" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
+              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="item.promo_types" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
@@ -317,7 +317,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.2.2 - last update 05/03/25</p>
+        <p style="padding:4px; font-size: 11px;">version 1.3.0 - last update 06/03/25</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -560,7 +560,6 @@ var current_set_commons = ref(0)
 var current_set_uncommons = ref(0)
 var current_set_rares = ref(0)
 var current_set_mythics = ref(0)
-var current_set_printed_size_exists = ref(false)  // when the set has a printed_size attribute, calculating base/extra split is trivial!
 var current_set_base_cards_qty = ref(0)
 var current_set_extra_cards_qty = ref(0)
 
@@ -609,8 +608,6 @@ onMounted(() => {
   
   const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
   if(local_stock) { collection_stock.o = local_stock }
-
-  backfill_set_release_date()
 
   // delete collection_stock.o['snc']
 })
@@ -667,61 +664,63 @@ async function select_set(set)
   current_set.value = set
   current_set_code.value = set.code
 
-  // the following blocks are safeguards and ideally are never called in production use
-  if(collection_stock.o[set.code] && !collection_stock.o[set.code].foils_owned) {
-    collection_stock.o[set.code].foils_owned = tally_foils(set.code)
-  }
-  if(collection_stock.o[set.code] && !collection_stock.o[set.code].released_at) {
-    collection_stock.o[set.code].released_at = set.released_at
-  }
-  
-  // for any sets with traditional boosters and structure, we get their base cards and extra cards separately
-  if(['core','draft_innovation','masters','expansion','starter'].includes(set.set_type)) {
-    try {
-      current_set_base_cards.value = await get_set_base_cards(set.code)
-      current_set_base_cards_qty = current_set_base_cards.value.length
-    }
-    catch {
-      current_set_base_cards.value = []
-    }
-      
-    current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
-    current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
-    current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
-    current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
-    current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
-    current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
-    current_set_owned_foils.value = collection_stock.o[set.code] ? collection_stock.o[set.code].foils_owned : 0
+  // clean up previous set variables
+  current_set_base_cards_qty.value = 0
+  current_set_extra_cards_qty.value = 0
+  current_set_commons.value = 0
+  current_set_uncommons.value = 0
+  current_set_rares.value = 0
+  current_set_mythics.value = 0
 
-    const extra_set_cards = await get_set_extra_cards(set.code)
-    current_set_extra_cards_qty.value = extra_set_cards.length
-    current_set_base_cards.value = current_set_base_cards.value.concat( extra_set_cards )
-  } else {
-    current_set_base_cards.value = await get_set_all_cards(set.code)
-    current_set_base_cards_qty = current_set_base_cards.value.length
-    current_set_extra_cards_qty.value = 0
-    
+  // grab a list of all cards 
+  current_set_base_cards.value = await get_set_all_cards(set.code)
+  var cards_checked = [] // list of cards already checked for rarity
+  // we will go card by card to get the number that we consider 'base' and 'extra'
+  for(var card in current_set_base_cards.value){
+    // seems like every card that I consider 'extra' has SOMETHING in promo_types (like boosterfun or bundle), so this neatly filters those out!
+    if(current_set_base_cards.value[card].promo_types){
+      current_set_extra_cards_qty.value++
+    } else {
+      current_set_base_cards_qty.value++
+    }
+
+    // tally the rarities in the set; we only count each cardname once
+    if(!cards_checked.includes(current_set_base_cards.value[card].name))
+    {
+      cards_checked.push(current_set_base_cards.value[card].name)
+      switch(current_set_base_cards.value[card].rarity)
+      {
+        case 'common':
+          current_set_commons.value++
+          break
+        case 'uncommon':
+          current_set_uncommons.value++
+          break
+        case 'rare':
+          current_set_rares.value++
+          break
+        case 'mythic':
+          current_set_mythics.value++
+          break
+        default:
+          break
+      }
+    }
+
     // for "token" sets, since we can have multiple identically named tokens that are actually different tokens/creatures
     // we will append the card number to the token name to differentiate
     if(set.set_type == 'token') {
-      for(var card in current_set_base_cards.value)
-        current_set_base_cards.value[card].name += " " + current_set_base_cards.value[card].collector_number
+      current_set_base_cards.value[card].name += " " + current_set_base_cards.value[card].collector_number
     }
-
-    current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
-    current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
-    current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
-    current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
-    current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
-    current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
-    current_set_owned_foils.value = collection_stock.o[set.code] ? collection_stock.o[set.code].foils_owned : 0
   }
 
-  // sets added via import card may not have this info, so we'll add it in as needed
-  if(set.code in collection_stock.o){
-    collection_stock.o[set.code].base_set_total = current_set_base_cards_qty
-    collection_stock.o[set.code].extra_set_total = current_set_extra_cards_qty ? current_set_extra_cards_qty : 0
-  }
+  current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
+  current_set_owned_commons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].commons : 0
+  current_set_owned_uncommons.value = collection_stock.o[set.code] ? collection_stock.o[set.code].uncommons : 0
+  current_set_owned_rares.value = collection_stock.o[set.code] ? collection_stock.o[set.code].rares : 0
+  current_set_owned_mythics.value = collection_stock.o[set.code] ? collection_stock.o[set.code].mythics : 0
+  current_set_owned_extra_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].extra_owned : 0
+  current_set_owned_foils.value = collection_stock.o[set.code] ? collection_stock.o[set.code].foils_owned : 0
 
   // console.log("current set data:",current_set_base_cards.value)
 
@@ -753,60 +752,11 @@ function get_preferences_from_storage() {
   }
 }
 
-// get all base card information for the selected set
-async function get_set_base_cards(set_code) {
-  var total_data = []
-  var has_more = false
-  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset&unique=cards&as=grid&order=name"
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset+-is%3Aboosterfun+is%3Abooster+-otag:melded&unique=cards"
-  
-  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and aren't booster fun (showcase, etc)
-  // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
-  // we follow down said batches until no has_more and concat the results back
-  do {
-    const response = await fetch(fetch_url);
-    const response_data = await response.json();
-    total_data = total_data.concat(response_data['data'])
-    has_more = response_data['has_more']
-    fetch_url = response_data['next_page']
-  } while (has_more != false)
-
-  const set_rarities = get_rarities(total_data)
-
-  current_set_commons.value = set_rarities.common
-  current_set_uncommons.value = set_rarities.uncommon
-  current_set_rares.value = set_rarities.rare
-  current_set_mythics.value = set_rarities.mythic
-
-  return total_data
-}
-
-// get all card information for booster fun cards in the selected set
-async function get_set_extra_cards(set_code) {
-  var total_data = []
-  var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?order=set&q=set%3A"+set_code+"+%28is%3Apromo+or+is%3Abooster_fun+or+is%3Ajumpstart%29+game%3Apaper+unique%3Aprints&unique=cards"
-  
-  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper and are either booster fun (showcase, etc) or promos (buy a box, bundle, etc)
-  // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
-  // we follow down said batches until no has_more and concat the results back
-  do {
-    const response = await fetch(fetch_url);
-    if(response.status === 404){return []}  // extras search can return 404 (no cards), so we just drop the query right there
-    const response_data = await response.json();
-    total_data = total_data.concat(response_data['data'])
-    has_more = response_data['has_more']
-    fetch_url = response_data['next_page']
-  } while (has_more != false)
-
-  return total_data
-}
-
 // get all card information for the selected set
 async function get_set_all_cards(set_code) {
   var total_data = []
   var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+unique%3Aprints+order%3Aset"
+  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+-otag:melded+unique%3Aprints+order%3Aset"
   
   // we will first fetch a scryfall query URL for all unique prints of cards that are on paper
   // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
@@ -818,13 +768,6 @@ async function get_set_all_cards(set_code) {
     has_more = response_data['has_more']
     fetch_url = response_data['next_page']
   } while (has_more != false)
-
-  const set_rarities = get_rarities(total_data)
-
-  current_set_commons.value = set_rarities.common
-  current_set_uncommons.value = set_rarities.uncommon
-  current_set_rares.value = set_rarities.rare
-  current_set_mythics.value = set_rarities.mythic
 
   return total_data
 }
@@ -1136,7 +1079,7 @@ async function import_from_moxfield() {
   for(let i = 0; i < split_cards.length; i++) {
     try {
       // for each card, we set up a return object to later use to push the card
-      var card = {'name': '', 'amount': 0, 'set': '', 'collector_number': 0, 'foil': false}
+      var card = {'name': '', 'amount': 0, 'set': '', 'collector_number': 0, 'foil': false, 'extra': false}
 
       // first we split the card by ' (' (note the space), the first half is the quantity and card name, the second half is the set name, collector number and modifiers
       const card_elements = split_cards[i].split(' (')
@@ -1164,7 +1107,6 @@ async function import_from_moxfield() {
       if(third_part.length >= 2 && ['*F*','*E*'].includes(third_part[1]))
       {
         card.foil = true
-        // console.log('card.foil = true')
       }
 
       await add_card_to_stock(card)
@@ -1230,7 +1172,6 @@ async function add_card_to_stock(card) {
       total_uncommons: 0,
       total_rares: 0,
       total_mythics: 0,
-      printed_size: 0,  // for sets that have it, this tracks the base set size, which is SUPER helpful for my base/extra calcs
       base_set_owned: 0,
       extra_owned: 0,
       foils_owned: 0,
@@ -1244,6 +1185,7 @@ async function add_card_to_stock(card) {
     collection_stock.o[card.set] = new_set
   }
   
+  // TODO: get the promo_types from response_data to decide extra
   // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
   if(card.name in collection_stock.o[card.set].cards){
     if(card.collector_number in collection_stock.o[card.set].cards[card.name])
@@ -1257,11 +1199,12 @@ async function add_card_to_stock(card) {
     {
       collection_stock.o[card.set].cards[card.name][card.collector_number] = {
         count: parseInt(card.amount),
-        foil: card.foil
+        foil: card.foil,
+        extra: card.extra
       }
       
-      // if the card matches the first print listed, it's very likely the base set version, unless it's a basic land, token, or card from those weird sets with multiple prints
-      if(card.collector_number == response_data[0].collector_number || response_data[0].type_line.toLowerCase().includes('basic') || response_data[0].type_line.toLowerCase().includes('token') || card.set in ['fem','hml','all']) {
+      // if the card has any promo_types listed, like boosterfun and bundle, it's what we call an extra
+      if(!card.promo_types) {
         collection_stock.o[card.set].base_set_owned++
       } else {
         collection_stock.o[card.set].extra_owned++
@@ -1271,7 +1214,8 @@ async function add_card_to_stock(card) {
     const new_card = {
       [card.collector_number] : {
         count: parseInt(card.amount),
-        foil: card.foil
+        foil: card.foil,
+        extra: card.extra
       }
     }
     collection_stock.o[card.set].cards[card.name] = new_card
@@ -1291,17 +1235,17 @@ async function add_card_to_stock(card) {
       default:
         break
     }
-    // console.log("is extra?",card.collector_number != response_data[0].collector_number)
-    if(card.collector_number == response_data[0].collector_number || response_data[0].type_line.toLowerCase().includes('basic') || response_data[0].type_line.toLowerCase().includes('token') || card.set in ['fem','hml','all']) {
+    
+    // TODO: not correct yet
+    if(!card.extra) {
       collection_stock.o[card.set].base_set_owned++
     } else {
       collection_stock.o[card.set].extra_owned++
     }
   }
+
   // recalculate the full set percentage counters for this set
-  collection_stock.o[card.set].full_set_every_single = ((collection_stock.o[card.set].base_set_owned + collection_stock.o[card.set].extra_owned) / (collection_stock.o[card.set].base_set_total + collection_stock.o[card.set].extra_set_total))*100
-  collection_stock.o[card.set].full_set_base_only = (collection_stock.o[card.set].base_set_owned / collection_stock.o[card.set].base_set_total)*100
-  collection_stock.o[card.set].full_set_one_each = ((collection_stock.o[card.set].commons + collection_stock.o[card.set].uncommons + collection_stock.o[card.set].rares + collection_stock.o[card.set].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics))*100
+  calculate_completion_for_set(card.set)
 }
 
 // goes through all of the sets in the user's collection, recalculates values and percentages, and backfills missing values
@@ -1322,12 +1266,9 @@ async function tidy_up_collection()
       let set_data = await response.json();
       await sleep(50);
 
-      // fill release date and printed size, if it exists
+      // fill release date
       collection_stock.o[set].released_at = set_data.released_at
-      if(set_data.printed_size){
-        collection_stock.o[set].printed_size = set_data.printed_size
-        collection_stock.o[set].base_set_total = set_data.printed_size
-      }
+
       // we go through all of our owned cards in this set and count base, extra, and foils owned
       let total_base = 0, total_extra = 0, total_foils = 0
       for(var card in collection_stock.o[set].cards){
@@ -1362,45 +1303,11 @@ async function tidy_up_collection()
   }
 }
 
-// for backfilling during dev, will be obsolete for new users
-async function backfill_set_release_date()
-{
-  try {
-    for(var set in collection_stock.o){
-      // if the set in question doesn't have a value set for released_at, we will query the sets api and get said value
-      if(!collection_stock.o[set].released_at){
-        loading.value = true
-        console.log("Set "+set+" missing released_at.")
-        // scryfall fetch for the set, to get the release date
-        var fetch_url = 'https://api.scryfall.com/sets/'+set
-        const response = await fetch(fetch_url);
-        const response_contents = await response.json();
-        await sleep(100);
-        collection_stock.o[set].released_at = response_contents.released_at
-      }
-    }
-  } catch(err) {
-    console.log(err)
-  } finally {
-    loading.value = false
-  }
-}
-
-// this counts the foils for a set and adds the variable; for backfilling, should be eventually obsolete
-function tally_foils(set_code) {
-  console.log('Running tally_foils to set missing parameter')
-  const data = JSON.parse(JSON.stringify(collection_stock.o[set_code].cards))
-  var foiltotal = 0
-  const cardlist = Object.entries(data)
-  for(let i = 0; i < cardlist.length; i++){
-    const elem = Object.entries(cardlist[i][1])
-    for(let j = 0; j < elem.length; j++){
-      if(elem[j][1]['foil']) {
-        foiltotal++
-      }
-    }
-  }
-  return foiltotal
+// recalculate the full set percentage counters for the passed set
+function calculate_completion_for_set(set){
+  collection_stock.o[set].full_set_every_single = ((collection_stock.o[set].base_set_owned + collection_stock.o[set].extra_owned) / (collection_stock.o[set].base_set_total + collection_stock.o[set].extra_set_total))*100
+  collection_stock.o[set].full_set_base_only = (collection_stock.o[set].base_set_owned / collection_stock.o[set].base_set_total)*100
+  collection_stock.o[set].full_set_one_each = set == current_set_code ? ((collection_stock.o[set].commons + collection_stock.o[set].uncommons + collection_stock.o[set].rares + collection_stock.o[set].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics))*100 : 0
 }
 
 // removes the collection stock entirely, deleting all data
@@ -1417,6 +1324,8 @@ function clear_all_data() {
     location.reload()
   }
 }
+
+// -------------------- COMPUTED BLOCK --------------------------- //
 
 const getProgressForSet = computed(() => {
   if(collection_stock.o[current_set_code.value])

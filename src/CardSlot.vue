@@ -73,7 +73,6 @@ export default {
               total_uncommons: this.current_set_uncommons,
               total_rares: this.current_set_rares,
               total_mythics: this.current_set_mythics,
-              printed_size: 0,  // for sets that have it, this tracks the base set size, which is SUPER helpful for my base/extra calcs
               base_set_owned: 0,
               extra_owned: 0,
               foils_owned: 0,
@@ -97,7 +96,8 @@ export default {
             {
               this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number] = {
                 count: 1,
-                foil: false
+                foil: false,
+                extra: this.is_extra
               }
               
               if(this.is_extra){
@@ -111,7 +111,8 @@ export default {
             const new_card = {
               [card_data.collector_number] : {
                 count: 1,
-                foil: false
+                foil: false,
+                extra: this.is_extra
               }
             }
             // append it to a new subset of cards in the set, rooted as the name of the card
@@ -141,9 +142,7 @@ export default {
             }
           }
           // recalculate the full set percentage counters for this set
-          this.collection_stock[card_data.set].full_set_every_single = ((this.collection_stock[card_data.set].base_set_owned + this.collection_stock[card_data.set].extra_owned) / (this.collection_stock[card_data.set].base_set_total + this.collection_stock[card_data.set].extra_set_total))*100
-          this.collection_stock[card_data.set].full_set_base_only = (this.collection_stock[card_data.set].base_set_owned / this.collection_stock[card_data.set].base_set_total)*100
-          this.collection_stock[card_data.set].full_set_one_each = ((this.collection_stock[card_data.set].commons + this.collection_stock[card_data.set].uncommons + this.collection_stock[card_data.set].rares + this.collection_stock[card_data.set].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics))*100
+          this.calculate_completion_for_set(card_data)
           console.log("current collection stock",this.collection_stock)
         },
         remove_card_from_stock(card_data){
@@ -187,9 +186,7 @@ export default {
             this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number].count--
           }
           // recalculate the full set percentage counters for this set
-          this.collection_stock[card_data.set].full_set_every_single = ((this.collection_stock[card_data.set].base_set_owned + this.collection_stock[card_data.set].extra_owned) / (this.collection_stock[card_data.set].base_set_total + this.collection_stock[card_data.set].extra_set_total))*100
-          this.collection_stock[card_data.set].full_set_base_only = (this.collection_stock[card_data.set].base_set_owned / this.collection_stock[card_data.set].base_set_total)*100
-          this.collection_stock[card_data.set].full_set_one_each = ((this.collection_stock[card_data.set].commons + this.collection_stock[card_data.set].uncommons + this.collection_stock[card_data.set].rares + this.collection_stock[card_data.set].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics))*100
+          this.calculate_completion_for_set(card_data)
           console.log("current collection stock",this.collection_stock)
         },
         mark_card_as_foil(card_data){
@@ -199,6 +196,11 @@ export default {
         mark_card_as_nonfoil(card_data){
           this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number].foil = false
           this.collection_stock[card_data.set].foils_owned--
+        },
+        calculate_completion_for_set(card_data){
+          this.collection_stock[card_data.set].full_set_every_single = ((this.collection_stock[card_data.set].base_set_owned + this.collection_stock[card_data.set].extra_owned) / (this.collection_stock[card_data.set].base_set_total + this.collection_stock[card_data.set].extra_set_total))*100
+          this.collection_stock[card_data.set].full_set_base_only = (this.collection_stock[card_data.set].base_set_owned / this.collection_stock[card_data.set].base_set_total)*100
+          this.collection_stock[card_data.set].full_set_one_each = ((this.collection_stock[card_data.set].commons + this.collection_stock[card_data.set].uncommons + this.collection_stock[card_data.set].rares + this.collection_stock[card_data.set].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics))*100
         },
         set_tag(card_data,tag){
           this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number]['tag_'+tag] = !this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number]['tag_'+tag]
