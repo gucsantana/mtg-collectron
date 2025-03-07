@@ -26,15 +26,11 @@ More filters for Decklist Finder, allow user to pass Moxfield url
 
 'Stats' screen with information and trivia about the collection
 
-Precalculated percentages so we can use them outside of the set context
-
 # Known Issues
 
 I don't -fully- trust the collection percentages yet, it's very much reverse-engineered and with a lot of guessing and fiddly counters.
 
 Some cards on Decklist Finder seem to return lower counts than you actually have of them. Weird.
-
-Tidy Up Collection produces weird results for older sets with multiple prints of the same card, like Alliances and CHK (because of Brothers Yamazaki)
 
 # Pages Deployment
 

@@ -156,8 +156,7 @@
         </v-card-item>
         <v-divider/>
         <v-card-item class="housekeeping_window_footer">
-          <p>Recalculate card counts and percentages for all sets, and backfill information that may be missing due to new developments.</p>
-          <p>NOTE: this will likely take a while, and longer the larger your collection is. May want to export it first as backup.</p>
+          <p>Recalculate card counts and percentages for all sets. This takes a while, use only if you notice some values are wrong.</p>
           <v-btn @click="tidy_up_collection" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">
             Tidy Up Collection</v-btn>
           <v-divider/>
@@ -317,7 +316,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.3.0 - last update 06/03/25</p>
+        <p style="padding:4px; font-size: 11px;">version 1.3.1 - last update 07/03/25</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -674,6 +673,7 @@ async function select_set(set)
 
   // grab a list of all cards 
   current_set_base_cards.value = await get_set_all_cards(set.code)
+
   var cards_checked = [] // list of cards already checked for rarity
   // we will go card by card to get the number that we consider 'base' and 'extra'
   for(var card in current_set_base_cards.value){
@@ -712,6 +712,14 @@ async function select_set(set)
     if(set.set_type == 'token') {
       current_set_base_cards.value[card].name += " " + current_set_base_cards.value[card].collector_number
     }
+  }
+
+  // if the set is already in our collection
+  if(collection_stock.o[set.code]){
+    collection_stock.o[set.code].total_commons = current_set_commons.value
+    collection_stock.o[set.code].total_uncommons = current_set_uncommons.value
+    collection_stock.o[set.code].total_rares = current_set_rares.value
+    collection_stock.o[set.code].total_mythics = current_set_mythics.value
   }
 
   current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
@@ -1154,38 +1162,81 @@ async function copyCollectionToClipboard() {
 // a simplified version of the add_card_to_stock function in CardSlot.vue
 async function add_card_to_stock(card) {
   // scryfall fetch for the card, to get the rarity and is_extra info
-  var fetch_url = 'https://api.scryfall.com/cards/search?q=%21"'+card.name+'"+set%3A'+card.set+'+%28game%3Apaper%29&unique=prints&order=set'
+  var fetch_url = 'https://api.scryfall.com/cards/search?q=%21"'+card.name+'"+set%3A'+card.set+'+cn%3A'+card.collector_number+'+%28game%3Apaper%29&unique=prints&order=set'
   const response = await fetch(fetch_url);
   const response_contents = await response.json();
-  const response_data = response_contents['data']
+  const response_data = response_contents['data'][0]
   await sleep(100);
+
+  const is_base = !response_data.promo_types  // whether the retrieved card is considered base or extra
 
   // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
   if(!(card.set in collection_stock.o)) {
+    // let's get information to fill the new blank set
+    // get all set's cards from scryfall (yes, ouch)
+    let set_card_data = await get_set_all_cards(card.set)
+
+    // we go through all of our owned cards in this set and count base, extra, and foils owned
+    let total_base = 0, total_extra = 0, total_commons = 0, total_uncommons = 0, 
+      total_rares = 0, total_mythics = 0
+    let cards_checked = []
+
+    // for each card in the current set we're querying...
+    set_card_data.forEach((set_card) => {
+      // if the card has promo types, it's extra, else base (for counting set totals)
+      if(!set_card.promo_types){
+        total_base++
+      } else {
+        total_extra++
+      }
+
+      // tally the rarities in the set; we only count each cardname once
+      if(!cards_checked.includes(set_card.name))
+      {
+        cards_checked.push(set_card.name)
+        switch(set_card.rarity)
+        {
+          case 'common':
+            total_commons++
+            break
+          case 'uncommon':
+            total_uncommons++
+            break
+          case 'rare':
+            total_rares++
+            break
+          case 'mythic':
+            total_mythics++
+            break
+          default:
+            break
+        }
+      }
+    })
+    
     var new_set = {
       cards:{},
       commons: 0,
       uncommons: 0,
       rares: 0,
       mythics: 0,
-      total_commons: 0,
-      total_uncommons: 0,
-      total_rares: 0,
-      total_mythics: 0,
+      total_commons: total_commons,
+      total_uncommons: total_commons,
+      total_rares: total_rares,
+      total_mythics: total_mythics,
       base_set_owned: 0,
       extra_owned: 0,
       foils_owned: 0,
-      base_set_total: 0,  // both this and below are zeroed due to not enough info at this stage, but we will overwrite it later as needed on CardSlot.vue
-      extra_set_total: 0,
+      base_set_total: total_base,
+      extra_set_total: total_extra,
       full_set_every_single: 0,  // 'full set' parameters save the completion percentage for each definition of full set
       full_set_base_only: 0,
       full_set_one_each: 0,
-      released_at: response_data[0].released_at
+      released_at: response_data.released_at
     }
     collection_stock.o[card.set] = new_set
   }
   
-  // TODO: get the promo_types from response_data to decide extra
   // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
   if(card.name in collection_stock.o[card.set].cards){
     if(card.collector_number in collection_stock.o[card.set].cards[card.name])
@@ -1200,11 +1251,11 @@ async function add_card_to_stock(card) {
       collection_stock.o[card.set].cards[card.name][card.collector_number] = {
         count: parseInt(card.amount),
         foil: card.foil,
-        extra: card.extra
+        extra: !is_base
       }
       
       // if the card has any promo_types listed, like boosterfun and bundle, it's what we call an extra
-      if(!card.promo_types) {
+      if(is_base) {
         collection_stock.o[card.set].base_set_owned++
       } else {
         collection_stock.o[card.set].extra_owned++
@@ -1215,11 +1266,11 @@ async function add_card_to_stock(card) {
       [card.collector_number] : {
         count: parseInt(card.amount),
         foil: card.foil,
-        extra: card.extra
+        extra: !is_base
       }
     }
     collection_stock.o[card.set].cards[card.name] = new_card
-    switch(response_data[0].rarity){
+    switch(response_data.rarity){
       case 'common':
         collection_stock.o[card.set].commons++
         break
@@ -1236,8 +1287,7 @@ async function add_card_to_stock(card) {
         break
     }
     
-    // TODO: not correct yet
-    if(!card.extra) {
+    if(is_base) {
       collection_stock.o[card.set].base_set_owned++
     } else {
       collection_stock.o[card.set].extra_owned++
@@ -1259,39 +1309,109 @@ async function tidy_up_collection()
     // for each set the user currently owns at least one card of, we will query for it and use that info to backfill
     for(var set in collection_stock.o){
       sets_done++
+      loading_bar_fill.value = (sets_done / total_sets_owned) * 100
+      if(collection_stock.o[set].done_processing)
+        continue  // allows us to start from halfway through in case the tidying up process is interrupted
+
       console.log("Tidying collection, set "+sets_done+" of "+total_sets_owned+": "+ set)
-      // get basic set information into set_data
-      let fetch_url = 'https://api.scryfall.com/sets/'+set
-      let response = await fetch(fetch_url);
-      let set_data = await response.json();
-      await sleep(50);
+
+      // get all set's cards from scryfall (yes, ouch)
+      let set_card_data = await get_set_all_cards(set)
 
       // fill release date
-      collection_stock.o[set].released_at = set_data.released_at
+      collection_stock.o[set].released_at = set_card_data[0].released_at
 
       // we go through all of our owned cards in this set and count base, extra, and foils owned
-      let total_base = 0, total_extra = 0, total_foils = 0
-      for(var card in collection_stock.o[set].cards){
-        // console.log("card",card)
-        for(var print in collection_stock.o[set].cards[card]){
-          // console.log("print",collection_stock.o[set].cards[card][print])
-          if(print <= collection_stock.o[set].base_set_total){
-            total_base++
-          } else {
-            total_extra++
-          }
-          if(collection_stock.o[set].cards[card][print].foil){
-            total_foils++
+      let current_commons = 0, current_uncommons = 0, current_rares = 0, current_mythics = 0,
+        current_foils = 0, current_base = 0, current_extra = 0
+      let total_base = 0, total_extra = 0, total_commons = 0, total_uncommons = 0, 
+        total_rares = 0, total_mythics = 0
+      let cards_checked = []
+
+      // for each card in the current set we're querying...
+      set_card_data.forEach((card) => {
+        let in_col = false
+
+        // if the card has promo types, it's extra, else base (for counting set totals)
+        if(!card.promo_types){
+          total_base++
+        } else {
+          total_extra++
+        }
+
+        // if the card name exists in our collection stock...
+        if(collection_stock.o[set].cards[card.name]) {
+          // tag it in_col, i.e. we have at least one of this card, for rarity purposes
+          in_col = true
+          // console.log(collection_stock.o[set].cards[card.name][card.collector_number])
+
+          // if the print number of the specific card we are looking at exists in our collection under its name, we own it
+          if(collection_stock.o[set].cards[card.name][card.collector_number]){
+            // set base/extra depending on promo_types
+            if(!card.promo_types){
+              current_base++
+            } else {
+              current_extra++
+            }
+            // set if it's foil
+            if(collection_stock.o[set].cards[card.name][card.collector_number].foil){
+              current_foils++
+            }
           }
         }
-      }
+        // tally the rarities in the set; we only count each cardname once
+        if(!cards_checked.includes(card.name))
+        {
+          cards_checked.push(card.name)
+          switch(card.rarity)
+          {
+            case 'common':
+              total_commons++
+              if(in_col) {current_commons++}
+              break
+            case 'uncommon':
+              total_uncommons++
+              if(in_col) {current_uncommons++}
+              break
+            case 'rare':
+              total_rares++
+              if(in_col) {current_rares++}
+              break
+            case 'mythic':
+              total_mythics++
+              if(in_col) {current_mythics++}
+              break
+            default:
+              break
+          }
+        }
+      })
 
-      // set the owned card values based on what was calculated
-      collection_stock.o[set].base_set_owned = total_base
-      collection_stock.o[set].extra_owned = total_extra
-      collection_stock.o[set].foils_owned = total_foils
+      // finally, set all the values based on what was calculated
+      collection_stock.o[set].commons = current_commons
+      collection_stock.o[set].uncommons = current_uncommons
+      collection_stock.o[set].rares = current_rares
+      collection_stock.o[set].mythics = current_mythics
+      collection_stock.o[set].total_commons = total_commons
+      collection_stock.o[set].total_uncommons = total_uncommons
+      collection_stock.o[set].total_rares = total_rares
+      collection_stock.o[set].total_mythics = total_mythics
+      collection_stock.o[set].base_set_owned = current_base
+      collection_stock.o[set].extra_owned = current_extra
+      collection_stock.o[set].foils_owned = current_foils
+      collection_stock.o[set].base_set_total = total_base
+      collection_stock.o[set].extra_set_total = total_extra
+
+      calculate_completion_for_set(set)
+
+      collection_stock.o[set].done_processing = true
 
       loading_bar_fill.value = (sets_done / total_sets_owned) * 100
+    }
+
+    // at the end, clean up the "done processing flags"
+    for(var set in collection_stock.o){
+      delete collection_stock.o[set].done_processing
     }
     console.log("collection",collection_stock.o)
     // ---
@@ -1305,9 +1425,11 @@ async function tidy_up_collection()
 
 // recalculate the full set percentage counters for the passed set
 function calculate_completion_for_set(set){
-  collection_stock.o[set].full_set_every_single = ((collection_stock.o[set].base_set_owned + collection_stock.o[set].extra_owned) / (collection_stock.o[set].base_set_total + collection_stock.o[set].extra_set_total))*100
-  collection_stock.o[set].full_set_base_only = (collection_stock.o[set].base_set_owned / collection_stock.o[set].base_set_total)*100
-  collection_stock.o[set].full_set_one_each = set == current_set_code ? ((collection_stock.o[set].commons + collection_stock.o[set].uncommons + collection_stock.o[set].rares + collection_stock.o[set].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics))*100 : 0
+  collection_stock.o[set].full_set_every_single = ((collection_stock.o[set].base_set_owned + collection_stock.o[set].extra_owned) / (collection_stock.o[set].base_set_total + collection_stock.o[set].extra_set_total)) * 100
+  collection_stock.o[set].full_set_base_only = (collection_stock.o[set].base_set_owned / collection_stock.o[set].base_set_total) * 100
+  const dividend = collection_stock.o[set].commons + collection_stock.o[set].uncommons + collection_stock.o[set].rares + collection_stock.o[set].mythics
+  const divisor = (collection_stock.o[set].total_commons ? collection_stock.o[set].total_commons : 0) + (collection_stock.o[set].total_uncommons ? collection_stock.o[set].total_uncommons : 0) + (collection_stock.o[set].total_rares ? collection_stock.o[set].total_rares : 0) + (collection_stock.o[set].total_mythics ? collection_stock.o[set].total_mythics : 0)
+  collection_stock.o[set].full_set_one_each = divisor > 0 ? (dividend / divisor) * 100 : 0
 }
 
 // removes the collection stock entirely, deleting all data
@@ -1330,21 +1452,13 @@ function clear_all_data() {
 const getProgressForSet = computed(() => {
   if(collection_stock.o[current_set_code.value])
   {
-    // console.log("collection_stock.o[current_set_code.value].base_set_owned",collection_stock.o[current_set_code.value].base_set_owned)
-    // console.log("collection_stock.o[current_set_code.value].base_set_total",collection_stock.o[current_set_code.value].base_set_total)
-    // console.log("collection_stock.o[current_set_code.value].extra_owned",collection_stock.o[current_set_code.value].extra_owned)
-    // console.log("collection_stock.o[current_set_code.value].extra_set_total",collection_stock.o[current_set_code.value].extra_set_total)
     switch(page_options.full_set_option_selected.value) {
       case 1: // every single card, variants included
-        // console.log("getProgressForSet, switch 1, value",((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total))*100)
-        return ((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total))*100
+        return collection_stock.o[current_set_code.value].full_set_every_single ? collection_stock.o[current_set_code.value].full_set_every_single : ((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total))*100
       case 2: // base set only
-        // console.log("getProgressForSet, switch 2, value", (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100)
-        return (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100
+        return collection_stock.o[current_set_code.value].full_set_base_only ? collection_stock.o[current_set_code.value].full_set_base_only : (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total)*100
       case 3: // at least one version of every card
-        // console.log("getProgressForSet, switch 3, value",((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / (current_set_commons.value + current_set_uncommons.value +current_set_rares.value + current_set_mythics.value))*100)
-        console.log("collection_stock.o[current_set_code.value]",collection_stock.o[current_set_code.value])
-        return ((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / (current_set_commons.value + current_set_uncommons.value +current_set_rares.value + current_set_mythics.value))*100
+        return collection_stock.o[current_set_code.value].full_set_one_each ? collection_stock.o[current_set_code.value].full_set_one_each : ((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / (current_set_commons.value + current_set_uncommons.value +current_set_rares.value + current_set_mythics.value))*100
       default:
         console.log("Something very wrong happened with page_options.full_set_option_selected on render")
         return 0
@@ -1371,36 +1485,6 @@ const hoverCardLeft = computed(() => {
 const hoverCardTop = computed(() => {
   return (mouse_coords.value.y + 20) + 'px'
 })
-
-// returns object with the distinct rarities of passed set
-function get_rarities(set) {
-  var cards_checked = []
-  var rarities = {'common':0, 'uncommon':0, 'rare': 0, 'mythic':0 }
-  for(let i = 0; i < set.length; i++) {
-    if(!cards_checked.includes(set[i].name))
-    {
-      cards_checked.push(set[i].name)
-      switch(set[i].rarity)
-      {
-        case 'common':
-          rarities.common++
-          break
-        case 'uncommon':
-          rarities.uncommon++
-          break
-        case 'rare':
-          rarities.rare++
-          break
-        case 'mythic':
-          rarities.mythic++
-          break
-        default:
-          break
-      }
-    }
-  }
-  return rarities
-}
 
 function on_scroll_stats_box () {
   stats_box_visible.value = window.scrollY > 280
