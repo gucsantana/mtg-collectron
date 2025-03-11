@@ -357,10 +357,13 @@
         <v-list-item><p class="column_header">Search for Set</p></v-list-item>
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
-        <v-list-item v-for="set in set_list"> <div @click="select_set(set)" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)" class="set_list_element" :class="{'set_list_element_selected_light': set.code == current_set_code && !page_options.dark_mode, 'set_list_element_selected_dark': set.code == current_set_code && page_options.dark_mode, 'tertiary_hover_light': !page_options.dark_mode, 'tertiary_hover_dark': page_options.dark_mode }" >
-          <v-img :src="set.icon_svg_uri" class="set_logo" :class="{ set_logo_white : page_options.dark_mode }" width="18px" height="18px"/>
-          <p class="set_list_name">{{ set.name }}</p>
-        </div> </v-list-item>
+        <v-list-item v-for="set in set_list"> 
+          <v-card @click="select_set(set)" class="set_list_element" :class="{'set_list_element_selected_light': set.code == current_set_code && !page_options.dark_mode, 'set_list_element_selected_dark': set.code == current_set_code && page_options.dark_mode, 'tertiary_hover_light': !page_options.dark_mode, 'tertiary_hover_dark': page_options.dark_mode}" variant="flat" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)" >
+            <v-img :src="set.icon_svg_uri" class="set_logo" :class="{ set_logo_white : page_options.dark_mode }" width="18px" height="18px"/>
+            <p class="set_list_name">{{ set.name }}</p>
+          </v-card> 
+          <v-progress-linear height="5" :model-value="getProgressForSidebarSet(set.code)" :color="getProgressForSidebarSet(set.code) < 100 ? 'primary' : 'amber-lighten-2' " v-if="getProgressForSidebarSet(set.code) > 0" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)"/>
+        </v-list-item>
       </v-navigation-drawer>
     </v-card>
     <v-card>
@@ -368,8 +371,9 @@
         <v-list dense>
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
-            <v-switch v-model="page_options.dark_mode" label="Toggle Dark Mode" hide-details="true" style="margin-left:10px;" color="primary"/>
-            <v-switch v-model="page_options.show_prices" label="Show Card Prices" hide-details="true" style="margin-left:10px;" color="primary"/>
+            <v-switch v-model="page_options.dark_mode" label="Toggle Dark Mode" density="compact" hide-details="true" style="margin-left:10px;" color="primary"/>
+            <v-switch v-model="page_options.show_prices" label="Show Card Prices" density="compact" hide-details="true" style="margin-left:10px;" color="primary"/>
+            <v-switch v-model="page_options.show_sidebar_percent" label="Show % Bar on Setlist" density="compact" hide-details="true" style="margin-left:10px;" color="primary"/>
             <v-select v-model="page_options.full_set_option_selected" label="Full Set Definition" :items="full_set_options" return-object>
               <v-tooltip activator="parent" location="bottom">Defines the objective considered for the progress bars and 'full set' message displays for each set</v-tooltip>
             </v-select>
@@ -540,6 +544,7 @@ var page_options = reactive({
   card_per_page_option_selected: 1,
   dark_mode: false,
   show_prices: true,
+  show_sidebar_percent: true,
 })
 
 var set_list = ref([])
@@ -750,6 +755,7 @@ function get_preferences_from_storage() {
     page_options.card_per_page_option_selected = stored_options.card_per_page_option_selected
     page_options.dark_mode = stored_options.dark_mode
     page_options.show_prices = stored_options.show_prices
+    page_options.show_sidebar_percent = stored_options.show_sidebar_percent
   } else {
     const user_options = {
       full_set_option_selected: {value: 1, title: 'Every single card, variants included'},
@@ -759,6 +765,7 @@ function get_preferences_from_storage() {
     page_options.card_per_page_option_selected = user_options.card_per_page_option_selected
     page_options.dark_mode = false
     page_options.show_prices = true
+    page_options.show_sidebar_percent = true
 
     localStorage.setItem('stored_options',JSON.stringify(page_options))
   }
@@ -1498,6 +1505,24 @@ const hoverCardTop = computed(() => {
 
 function on_scroll_stats_box () {
   stats_box_visible.value = window.scrollY > 280
+}
+
+// get progress for set by passing its code
+function getProgressForSidebarSet(set_code) {
+  if(collection_stock.o[set_code])
+  {
+    switch(page_options.full_set_option_selected.value) {
+      case 1: // every single card, variants included
+        return collection_stock.o[set_code].full_set_every_single
+      case 2: // base set only
+        return collection_stock.o[set_code].full_set_base_only
+      case 3: // at least one version of every card
+        return collection_stock.o[set_code].full_set_one_each
+      default:
+        console.log("Something very wrong happened with page_options.full_set_option_selected on render")
+        return 0
+    }
+  } else {return 0}
 }
 
 // orders two cards by release date, and if the date is the same, order by set name and collector number
