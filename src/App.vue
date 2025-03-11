@@ -232,13 +232,14 @@
       <v-sheet class="card_list_body rounded-lg">
         <v-card id="set_page_title_card" :height="isMobile ? 140 : 100" flat>
           <div>
+            <v-img :src="current_set.icon_svg_uri" class="set_logo" :class="{ set_logo_white : page_options.dark_mode }" width="30px" height="30px"/>
             <p class="set_page_title">{{ current_set.name }} ({{ current_set.code.toUpperCase() }})</p>
           </div>
           <div style="display:inline-block; margin-right: 30px;">
             <p class="set_page_subtitle">Release Date:</p><p class="set_page_subtext">{{ current_set['released_at'] }}</p>
           </div>
           <div style="display:inline-block">
-            <p class="set_page_subtitle">Set Type:</p><p class="set_page_subtext">{{ current_set['set_type'] }}</p>
+            <p class="set_page_subtitle">Set Type:</p><p class="set_page_subtext">{{ current_set['set_type'].replace('_',' ') }}</p>
           </div>
         </v-card>
         <v-row>
@@ -316,42 +317,43 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.3.1 - last update 07/03/25</p>
+        <p style="padding:4px; font-size: 11px;">version 1.3.2 - last update 11/03/25</p>
       </v-sheet>
     </v-main>
     <v-card>
       <v-navigation-drawer app temporary v-model="drawer" elevation="2" :width="isMobile ? '100%' : 300">
-        <v-list dense>
+        <v-list>
           <v-list-item id="column_set_visib_title"><p class="column_header">Set Visibility</p></v-list-item>
-          <v-list-item style="display: inline-block; width:100%;">
+          <v-list-item>
             <input type="checkbox" value="core" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <label for="check_core" style="display: inline-block;">Core Sets</label>
           </v-list-item>
-          <v-list-item style="display: inline-block; width:100%;">
+          <v-list-item>
             <input type="checkbox" value="expansion" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Expansions</p>
             </v-list-item>
-          <v-list-item style="display: inline-block; width:100%;">
+          <v-list-item>
             <input type="checkbox" value="masters" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Masters Sets</p>
           </v-list-item>
-          <v-list-item style="display: inline-block; width:100%;">
+          <v-list-item>
             <input type="checkbox" value="commander" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Commander Sets</p>
           </v-list-item>
-          <v-list-item style="display: inline-block; width:100%;">
+          <v-list-item>
             <input type="checkbox" value="draft_innovation" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Draft Innovation Sets</p>
           </v-list-item>
-          <v-list-item style="display: inline-block; width:100%;">
+          <v-list-item>
             <input type="checkbox" value="masterpiece" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Masterpieces</p>
           </v-list-item>
-          <v-list-item style="display: inline-block; width:100%;">
+          <v-list-item>
             <input type="checkbox" value="all" v-model="set_types_shown" :class="page_options.dark_mode ? 'set_check_dark' : 'set_check'">
               <p style="display: inline-block;">Other Sets</p>
           </v-list-item>
         </v-list>
+        <v-divider/>
         <v-list-item><p class="column_header">Search for Set</p></v-list-item>
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
@@ -548,7 +550,6 @@ var card_search = ref('')
 var collection_stock = reactive({o:{}})  // the user's total card stock, a json object that includes every single card they own (oof?)
 // the .o initial object is required to maintain reactivity, because if we overwrite the parent object, we lose reactive()
 
-var rerenderCards = ref(0)
 var stats_box_visible = ref(false)
 
 var clicks_to_clear = ref(0)
@@ -624,7 +625,6 @@ watch(collection_stock, new_obj => {
   current_set_owned_base_cards.value = new_obj.o[cur_set_code]?.base_set_owned
   current_set_owned_extra_cards.value = new_obj.o[cur_set_code]?.extra_owned
   current_set_owned_foils.value = new_obj.o[cur_set_code]?.foils_owned
-  rerenderCards.value++
 
   localStorage.setItem('collection_stock',JSON.stringify(new_obj.o))
 })
@@ -749,6 +749,7 @@ function get_preferences_from_storage() {
     page_options.full_set_option_selected = stored_options.full_set_option_selected
     page_options.card_per_page_option_selected = stored_options.card_per_page_option_selected
     page_options.dark_mode = stored_options.dark_mode
+    page_options.show_prices = stored_options.show_prices
   } else {
     const user_options = {
       full_set_option_selected: {value: 1, title: 'Every single card, variants included'},
@@ -757,6 +758,7 @@ function get_preferences_from_storage() {
     page_options.full_set_option_selected = user_options.full_set_option_selected
     page_options.card_per_page_option_selected = user_options.card_per_page_option_selected
     page_options.dark_mode = false
+    page_options.show_prices = true
 
     localStorage.setItem('stored_options',JSON.stringify(page_options))
   }
@@ -1341,6 +1343,12 @@ async function tidy_up_collection()
           total_extra++
         }
 
+        // for "token" sets, since we can have multiple identically named tokens that are actually different tokens/creatures
+        // we will append the card number to the token name to differentiate
+        if(card.set_type == 'token') {
+          card.name += " " + card.collector_number
+        }
+
         // if the card name exists in our collection stock...
         if(collection_stock.o[set].cards[card.name]) {
           // tag it in_col, i.e. we have at least one of this card, for rarity purposes
@@ -1539,7 +1547,7 @@ function sleep(ms) {
 .v-list-item {
   padding: 0 16px !important;
   margin: 0 !important;
-  min-height: 0 !important;  
+  min-height: 0 !important;
 }
 .title_logo {
   width: 80%;
@@ -1549,9 +1557,11 @@ function sleep(ms) {
   margin-right: auto;
 }
 .set_page_title {
+  display: inline-block;
   font-weight: bold;
   font-size: 20pt;
   font-family: Georgia, 'Times New Roman', Times, serif;
+  margin-left: 10px;
 }
 .set_page_subtitle {
   font-weight: bold;

@@ -22,7 +22,7 @@
               <v-col cols="4" class="sub_add_card_btn" @click="add_card_to_stock(card)"><v-icon icon="mdi-plus-thick" size="large" color="teal-lighten-5"/></v-col>
             </v-row>
           </v-card>
-          <v-chip v-show="isHovering" v-if="card.prices['usd']" class="card_price_element" color="white" variant="flat" size="x-small"> ${{ card.prices['usd'] }} </v-chip>
+          <v-chip v-show="isHovering && show_price" v-if="card.prices['usd']" class="card_price_element" color="white" variant="flat" size="x-small"> ${{ card.prices['usd'] }} </v-chip>
           <v-card v-show="isHovering" v-if="isCardOwned" class="tag_card_controls">
             <v-row no-gutters align="center">
               <v-col cols="3" class="sub_tag_btn tag_square" @click="set_tag(card,'square')" v-ripple><v-icon :icon="isCardTaggedSquare ? 'mdi-square' : 'mdi-square-outline'" size="large" color="teal"/></v-col>
@@ -291,11 +291,12 @@ export default {
 .card_price_element {
   display:inline-block;
   position:absolute !important; 
-  top: 50px;
+  top: 45px;
   right: 10px;
   height: 20px;
   padding: 0;
   font-family: 'Aoboshi One', "Lucida Console", "Courier New", monospace;
+  cursor: default;
 }
 .btn_foil_modify {
   display:inline-block;
