@@ -7,11 +7,11 @@
           <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="!isCardOwned" density="comfortable" >
             <v-icon icon="mdi-plus-thick" size="x-large" color="teal-accent-3"/>
           </v-btn>
-          <v-btn @click="mark_card_as_foil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && !isCardFoil" color="purple-lighten-3" density="comfortable">
+          <v-btn @click="mark_card_as_foil(card)" class="btn_foil_modify" v-show="isHovering && !isCardOnlyNonfoil" v-if="isCardOwned && !isCardFoil" :disabled="isCardOnlyFoil" color="purple-lighten-3" density="comfortable">
             <v-icon icon="mdi-star-outline" size="x-large" color="white"/>
             <v-tooltip activator="parent" location="bottom">Set as Foil</v-tooltip>
           </v-btn>
-          <v-btn @click="mark_card_as_nonfoil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && isCardFoil" color="purple-lighten-3" density="comfortable">
+          <v-btn @click="mark_card_as_nonfoil(card)" class="btn_foil_modify" v-show="isHovering" v-if="isCardOwned && isCardFoil" :disabled="isCardOnlyFoil" color="purple-lighten-3" density="comfortable">
             <v-icon icon="mdi-star" size="x-large" color="white"/>
             <v-tooltip activator="parent" location="bottom">Remove Foil</v-tooltip>
           </v-btn>
@@ -22,7 +22,7 @@
               <v-col cols="4" class="sub_add_card_btn" @click="add_card_to_stock(card)"><v-icon icon="mdi-plus-thick" size="large" color="teal-lighten-5"/></v-col>
             </v-row>
           </v-card>
-          <v-chip v-show="isHovering && show_price" v-if="card.prices['usd']" class="card_price_element" color="white" variant="flat" size="x-small"> ${{ card.prices['usd'] }} </v-chip>
+          <v-chip v-show="isHovering && show_price" v-if="card.prices['usd'] || card.prices['usd_foil'] || card.prices['usd_etched']" class="card_price_element" color="white" variant="flat" size="x-small"> ${{ card.prices['usd'] ? card.prices['usd'] : (card.prices['usd_foil'] ? card.prices['usd_foil'] : card.prices['usd_etched']) }} </v-chip>
           <v-card v-show="isHovering" v-if="isCardOwned" class="tag_card_controls">
             <v-row no-gutters align="center">
               <v-col cols="3" class="sub_tag_btn tag_square" @click="set_tag(card,'square')" v-ripple><v-icon :icon="isCardTaggedSquare ? 'mdi-square' : 'mdi-square-outline'" size="large" color="teal"/></v-col>
@@ -95,11 +95,14 @@ export default {
             }
             else
             {
+              // create a new card object; if the card is only available in foil, foil is already true
               this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number] = {
                 count: 1,
-                foil: false,
+                foil: this.card.foil && !this.card.nonfoil,
                 extra: this.is_extra
               }
+              // add to the foil tally if it's a foil only card
+              if((this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil) this.collection_stock[card_data.set].foils_owned++
               
               if(this.is_extra){
                 this.collection_stock[card_data.set].extra_owned++
@@ -108,16 +111,18 @@ export default {
               }
             }
           } else {
-            // create a new card object for that collector number
+            // create a new card object; if the card is only available in foil, foil is already true
             const new_card = {
               [card_data.collector_number] : {
                 count: 1,
-                foil: false,
+                foil: (this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil,
                 extra: this.is_extra
               }
             }
             // append it to a new subset of cards in the set, rooted as the name of the card
             this.collection_stock[card_data.set].cards[card_data.name] = new_card
+            // add to the foil tally if it's a foil only card
+            if((this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil) this.collection_stock[card_data.set].foils_owned++
             // add to the appropriate total rarity count
             switch(card_data.rarity){
               case 'common':
@@ -242,7 +247,15 @@ export default {
         // show option 1 is 'all cards', 2 is 'only owned', and 3 is 'only unowned', so an owned card will show up as long as the option is not 3
         return true
         // return (this.isCardOwned && this.show_option != 3) || (!this.isCardOwned && this.show_option != 2)
-      }
+      },
+      isCardOnlyNonfoil: function() {
+        // identifies whether this card is only available in nonfoil
+        return this.card.nonfoil && !this.card.foil && !this.card.finishes.includes("etched")
+      },
+      isCardOnlyFoil: function() {
+        // identifies whether this card is only available in nonfoil
+        return (this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil
+      },
     }
 }
 </script>

@@ -317,7 +317,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.3.2 - last update 11/03/25</p>
+        <p style="padding:4px; font-size: 11px;">version 1.4.0 - last update 11/03/25</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -362,7 +362,7 @@
             <v-img :src="set.icon_svg_uri" class="set_logo" :class="{ set_logo_white : page_options.dark_mode }" width="18px" height="18px"/>
             <p class="set_list_name">{{ set.name }}</p>
           </v-card> 
-          <v-progress-linear height="5" :model-value="getProgressForSidebarSet(set.code)" :color="getProgressForSidebarSet(set.code) < 100 ? 'primary' : 'amber-lighten-2' " v-if="getProgressForSidebarSet(set.code) > 0" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)"/>
+          <v-progress-linear rounded height="3" class="set_list_element_bar" :model-value="getProgressForSidebarSet(set.code)" :color="getProgressForSidebarSet(set.code) < 100 ? 'primary' : 'amber-lighten-2' " v-if="getProgressForSidebarSet(set.code) > 0 && page_options.show_sidebar_percent" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)"/>
         </v-list-item>
       </v-navigation-drawer>
     </v-card>
@@ -1613,6 +1613,11 @@ function sleep(ms) {
 .set_list_element_selected_dark {
   background-color:#9EC5F7;
   font-weight: bold;
+}
+.set_list_element_bar {
+  position: relative;
+  margin-top: -3px;
+  width: 96%;
 }
 .set_logo, .set_check {
   display: inline-block;
