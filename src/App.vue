@@ -278,7 +278,7 @@
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
             <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search.toLowerCase()) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
-              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_option="page_options.show_option_selected.value" :is_extra="item.promo_types" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
+              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_price="page_options.show_prices" :is_extra="item.promo_types" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
@@ -367,6 +367,7 @@
           <v-list-item><p class="column_header">User Preferences</p></v-list-item>
           <v-list-item style="display: inline-block; width:100%;">
             <v-switch v-model="page_options.dark_mode" label="Toggle Dark Mode" hide-details="true" style="margin-left:10px;" color="primary"/>
+            <v-switch v-model="page_options.show_prices" label="Show Card Prices" hide-details="true" style="margin-left:10px;" color="primary"/>
             <v-select v-model="page_options.full_set_option_selected" label="Full Set Definition" :items="full_set_options" return-object>
               <v-tooltip activator="parent" location="bottom">Defines the objective considered for the progress bars and 'full set' message displays for each set</v-tooltip>
             </v-select>
@@ -536,6 +537,7 @@ var page_options = reactive({
   full_set_option_selected: 1,
   card_per_page_option_selected: 1,
   dark_mode: false,
+  show_prices: true,
 })
 
 var set_list = ref([])

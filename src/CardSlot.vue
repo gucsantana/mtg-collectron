@@ -22,6 +22,7 @@
               <v-col cols="4" class="sub_add_card_btn" @click="add_card_to_stock(card)"><v-icon icon="mdi-plus-thick" size="large" color="teal-lighten-5"/></v-col>
             </v-row>
           </v-card>
+          <v-chip v-show="isHovering" v-if="card.prices['usd']" class="card_price_element" color="white" variant="flat" size="x-small"> ${{ card.prices['usd'] }} </v-chip>
           <v-card v-show="isHovering" v-if="isCardOwned" class="tag_card_controls">
             <v-row no-gutters align="center">
               <v-col cols="3" class="sub_tag_btn tag_square" @click="set_tag(card,'square')" v-ripple><v-icon :icon="isCardTaggedSquare ? 'mdi-square' : 'mdi-square-outline'" size="large" color="teal"/></v-col>
@@ -46,7 +47,7 @@
 
 <script>
 export default {
-    props: ['card','collection_stock','current_set_code', 'show_option', 'is_extra', 'base_set_total', 'extra_set_total', 'current_set_commons', 'current_set_uncommons', 'current_set_rares', 'current_set_mythics'],
+    props: ['card','collection_stock','current_set_code', 'show_price', 'is_extra', 'base_set_total', 'extra_set_total', 'current_set_commons', 'current_set_uncommons', 'current_set_rares', 'current_set_mythics'],
     methods: {
         // passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri
         getCardImage(uriArray,cardFacesArray){
@@ -239,7 +240,8 @@ export default {
       },
       isCardVisible: function() {
         // show option 1 is 'all cards', 2 is 'only owned', and 3 is 'only unowned', so an owned card will show up as long as the option is not 3
-        return (this.isCardOwned && this.show_option != 3) || (!this.isCardOwned && this.show_option != 2)
+        return true
+        // return (this.isCardOwned && this.show_option != 3) || (!this.isCardOwned && this.show_option != 2)
       }
     }
 }
@@ -285,6 +287,15 @@ export default {
   width: 80px;
   height: 30px;
   padding: 0;
+}
+.card_price_element {
+  display:inline-block;
+  position:absolute !important; 
+  top: 50px;
+  right: 10px;
+  height: 20px;
+  padding: 0;
+  font-family: 'Aoboshi One', "Lucida Console", "Courier New", monospace;
 }
 .btn_foil_modify {
   display:inline-block;
