@@ -174,8 +174,8 @@
       <v-card class="export_window">
         <v-card-item>
           <v-row class="import_window_header align-center">
-            <v-col cols="6"><h2>Export Cards</h2></v-col>
-            <v-spacer/>
+            <v-col cols="6"><h2>Export Collection</h2></v-col>
+            <!-- <v-spacer/>
             <v-col cols="1">
               <v-tooltip text="/n" location="bottom">
                 <template v-slot:activator="{ props }">
@@ -184,16 +184,17 @@
                 <p>Exports the collection stock as a JSON file readable by this system</p>
                 <p class="mb-0">Save it somewhere if you need a backup to be safe</p>
               </v-tooltip>
-            </v-col>
+            </v-col> -->
           </v-row>
         </v-card-item>
         <v-divider/>
-        <v-textarea v-model="export_text" class="import_text_field" variant="outlined" :readonly="true"/>
-        <v-row>
+        <p>Exports the collection stock as a JSON file readable by this system</p>
+        <p class="mb-0">Save it somewhere if you need a backup to be safe</p>
+        <v-card-actions style="margin-top:20px;">
           <v-spacer/>
-          <v-col cols="5"><v-btn @click="copyCollectionToClipboard">Copy to Clipboard</v-btn></v-col>
-          <v-col cols="3"><v-btn @click="export_window_active=false">Close</v-btn></v-col>
-        </v-row>
+          <v-col cols="3"><v-btn @click="saveCollectionFile" variant="outlined">Save File</v-btn></v-col>
+          <v-col cols="2"><v-btn @click="export_window_active=false" variant="outlined">Close</v-btn></v-col>
+        </v-card-actions>
       </v-card>
     </v-overlay>
     <v-overlay id="about_window" :model-value="about_window_active" @afterLeave="about_window_active = false" class="align-center justify-center">
@@ -317,7 +318,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.4.0 - last update 11/03/25</p>
+        <p style="padding:4px; font-size: 11px;">version 1.4.1 - last update 15/04/25</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -384,7 +385,7 @@
             <v-btn @click="card_finder_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Card Finder</v-btn>
             <v-btn @click="decklist_finder_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Decklist Finder</v-btn>
             <v-btn @click="import_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Import Cards</v-btn>
-            <v-btn @click="exportCollection" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Export Collection</v-btn>
+            <v-btn @click="exportCollectionMenu" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Export Collection</v-btn>
             <v-btn @click="housekeeping_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">Housekeeping Tasks</v-btn>
           </v-list-item>
           <v-divider/>
@@ -399,11 +400,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, reactive, computed } from 'vue'
+import { onMounted, ref, watch, reactive, computed, unref } from 'vue'
 import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
+import FileSaver from 'file-saver'
 import sets_json from './scryfall_data/sets.json'
-import { unref } from 'vue';
 
 // -------------------- THEME BLOCK --------------------------- //
 
@@ -1160,14 +1161,13 @@ async function import_from_native(){
   import_errors.value = error_list
 }
 
-function exportCollection () {
+function exportCollectionMenu () {
   export_text = JSON.stringify(collection_stock.o)
   export_window_active.value = true
 }
 
-async function copyCollectionToClipboard() {
-  await navigator.clipboard.writeText(export_text);
-  toast.value = true
+async function saveCollectionFile() {
+  FileSaver.saveAs(new Blob([export_text],{type:'text/plain;charset=utf-8'}),'mtg_collectron_backup.json')
 }
 
 // a simplified version of the add_card_to_stock function in CardSlot.vue
@@ -1793,8 +1793,10 @@ function sleep(ms) {
 }
 .export_window {
   width: 100%;
+  min-width: 350px;
   max-width: 500px;
-  height: 300px;
+  height: 200px;
+  padding: 0 20px;
   text-align: center;
 }
 .about_window {
