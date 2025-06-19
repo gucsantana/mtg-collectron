@@ -99,7 +99,8 @@ export default {
               this.collection_stock[card_data.set].cards[card_data.name][card_data.collector_number] = {
                 count: 1,
                 foil: this.card.foil && !this.card.nonfoil,
-                extra: this.is_extra
+                extra: this.is_extra,
+                image: this.getCardImage(this.card['image_uris'],this.card['card_faces'])?.replace("https://cards.scryfall.io/normal/front/","")
               }
               // add to the foil tally if it's a foil only card
               if((this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil) this.collection_stock[card_data.set].foils_owned++
@@ -116,7 +117,8 @@ export default {
               [card_data.collector_number] : {
                 count: 1,
                 foil: (this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil,
-                extra: this.is_extra
+                extra: this.is_extra,
+                image: this.getCardImage(this.card['image_uris'],this.card['card_faces'])?.replace("https://cards.scryfall.io/normal/front/","")
               }
             }
             // append it to a new subset of cards in the set, rooted as the name of the card

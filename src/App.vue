@@ -318,7 +318,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.4.2 - last update 19/06/25</p>
+        <p style="padding:4px; font-size: 11px;">version 1.4.3 - last update 19/06/25</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -968,10 +968,17 @@ async function perform_decklist_finder_search() {
   }
   
   decklist_finder_results_processed.value = cardList.sort(compareByReleaseAndNumber)
-  // for each card in the processed list, we query its exact version from scryfall, to grab the card image
+  // for each card in the processed list, we grab its image link and append the proper url data
+  // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
   for(var cd in decklist_finder_results_processed.value) {
-    const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
-    decklist_finder_results_processed.value[cd].image = sf_data.image_uris.normal
+    console.log("decklist_finder_results_processed.value[cd]",decklist_finder_results_processed.value[cd])
+    if(decklist_finder_results_processed.value[cd].image){
+      decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + decklist_finder_results_processed.value[cd].image
+    } else {
+      const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
+      decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris,sf_data.card_faces)
+    }
+    console.log("decklist_finder_results_processed.value[cd]",decklist_finder_results_processed.value[cd])
   }
   decklist_finder_results_window_active.value = true
 
@@ -1263,7 +1270,8 @@ async function add_card_to_stock(card) {
       collection_stock.o[card.set].cards[card.name][card.collector_number] = {
         count: parseInt(card.amount),
         foil: card.foil,
-        extra: !is_base
+        extra: !is_base,
+        image: getCardImage(response_data['image_uris'],response_data['card_faces'])
       }
       
       // if the card has any promo_types listed, like boosterfun and bundle, it's what we call an extra
@@ -1278,7 +1286,8 @@ async function add_card_to_stock(card) {
       [card.collector_number] : {
         count: parseInt(card.amount),
         foil: card.foil,
-        extra: !is_base
+        extra: !is_base,
+        image: getCardImage(response_data['image_uris'],response_data['card_faces'])
       }
     }
     collection_stock.o[card.set].cards[card.name] = new_card
@@ -1308,6 +1317,19 @@ async function add_card_to_stock(card) {
 
   // recalculate the full set percentage counters for this set
   calculate_completion_for_set(card.set)
+}
+
+// passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri, and trimmed accordingly
+function getCardImage(uriArray,cardFacesArray){
+  if(uriArray)
+  {
+      return uriArray['normal'].replace("https://cards.scryfall.io/normal/front/","")
+  }
+  else if(cardFacesArray)
+  {
+      return cardFacesArray[0]['image_uris']['normal'].replace("https://cards.scryfall.io/normal/front/","")
+  }
+  else return
 }
 
 // goes through all of the sets in the user's collection, recalculates values and percentages, and backfills missing values
@@ -1365,6 +1387,8 @@ async function tidy_up_collection()
 
           // if the print number of the specific card we are looking at exists in our collection under its name, we own it
           if(collection_stock.o[set].cards[card.name][card.collector_number]){
+            // save the image path
+            collection_stock.o[set].cards[card.name][card.collector_number].image = getCardImage(card['image_uris'],card['card_faces'])
             // set base/extra depending on promo_types
             if(!is_card_extra(card.promo_types)){
               current_base++
