@@ -280,7 +280,7 @@
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
             <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search.toLowerCase()) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
-              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_price="page_options.show_prices" :is_extra="item.promo_types" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
+              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_price="page_options.show_prices" :is_extra="is_card_extra(item.promo_types)" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
@@ -318,7 +318,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.4.1 - last update 15/04/25</p>
+        <p style="padding:4px; font-size: 11px;">version 1.4.3 - last update 19/06/25</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -359,7 +359,7 @@
         <v-list-item><v-text-field v-model="set_search" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact"/></v-list-item>
         <v-list-item><p class="column_header">List of Sets</p></v-list-item>
         <v-list-item v-for="set in set_list"> 
-          <v-card @click="select_set(set)" class="set_list_element" :class="{'set_list_element_selected_light': set.code == current_set_code && !page_options.dark_mode, 'set_list_element_selected_dark': set.code == current_set_code && page_options.dark_mode, 'tertiary_hover_light': !page_options.dark_mode, 'tertiary_hover_dark': page_options.dark_mode}" variant="flat" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at)" >
+          <v-card @click="select_set(set)" class="set_list_element" :class="{'set_list_element_selected_light': set.code == current_set_code && !page_options.dark_mode, 'set_list_element_selected_dark': set.code == current_set_code && page_options.dark_mode, 'tertiary_hover_light': !page_options.dark_mode, 'tertiary_hover_dark': page_options.dark_mode}" variant="flat" v-show="set['digital'] == false && (set_types_shown.includes(set['set_type']) || (set_types_shown.includes('all') && !['core','expansion','commander','masters','draft_innovation','masterpiece'].includes(set['set_type']))) && (set_search == '' || set['name'].toLowerCase().includes(set_search.toLowerCase()) || set.code == set_search.toLowerCase()) && ((new Date(new Date().setDate(new Date().getDate()+7))).toISOString().substring(0,10) >= set.released_at) && set.card_count > 0" >
             <v-img :src="set.icon_svg_uri" class="set_logo" :class="{ set_logo_white : page_options.dark_mode }" width="18px" height="18px"/>
             <p class="set_list_name">{{ set.name }}</p>
           </v-card> 
@@ -686,10 +686,17 @@ async function select_set(set)
   // we will go card by card to get the number that we consider 'base' and 'extra'
   for(var card in current_set_base_cards.value){
     // seems like every card that I consider 'extra' has SOMETHING in promo_types (like boosterfun or bundle), so this neatly filters those out!
-    if(current_set_base_cards.value[card].promo_types){
+    // exception: FIN set has the original game (e.g. 'ffix') as the promo type for every card... goddamnit.
+    if(is_card_extra(current_set_base_cards.value[card].promo_types)){
       current_set_extra_cards_qty.value++
     } else {
       current_set_base_cards_qty.value++
+    }
+
+    // for "token" sets, since we can have multiple identically named tokens that are actually different tokens/creatures
+    // we will append the card number to the token name to differentiate
+    if(set.set_type == 'token') {
+      current_set_base_cards.value[card].name += " " + current_set_base_cards.value[card].collector_number
     }
 
     // tally the rarities in the set; we only count each cardname once
@@ -713,12 +720,6 @@ async function select_set(set)
         default:
           break
       }
-    }
-
-    // for "token" sets, since we can have multiple identically named tokens that are actually different tokens/creatures
-    // we will append the card number to the token name to differentiate
-    if(set.set_type == 'token') {
-      current_set_base_cards.value[card].name += " " + current_set_base_cards.value[card].collector_number
     }
   }
 
@@ -967,10 +968,17 @@ async function perform_decklist_finder_search() {
   }
   
   decklist_finder_results_processed.value = cardList.sort(compareByReleaseAndNumber)
-  // for each card in the processed list, we query its exact version from scryfall, to grab the card image
+  // for each card in the processed list, we grab its image link and append the proper url data
+  // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
   for(var cd in decklist_finder_results_processed.value) {
-    const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
-    decklist_finder_results_processed.value[cd].image = sf_data.image_uris.normal
+    console.log("decklist_finder_results_processed.value[cd]",decklist_finder_results_processed.value[cd])
+    if(decklist_finder_results_processed.value[cd].image){
+      decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + decklist_finder_results_processed.value[cd].image
+    } else {
+      const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
+      decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris,sf_data.card_faces)
+    }
+    console.log("decklist_finder_results_processed.value[cd]",decklist_finder_results_processed.value[cd])
   }
   decklist_finder_results_window_active.value = true
 
@@ -1179,7 +1187,7 @@ async function add_card_to_stock(card) {
   const response_data = response_contents['data'][0]
   await sleep(100);
 
-  const is_base = !response_data.promo_types  // whether the retrieved card is considered base or extra
+  const is_base = !is_card_extra(response_data.promo_types)  // whether the retrieved card is considered base or extra
 
   // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
   if(!(card.set in collection_stock.o)) {
@@ -1195,7 +1203,7 @@ async function add_card_to_stock(card) {
     // for each card in the current set we're querying...
     set_card_data.forEach((set_card) => {
       // if the card has promo types, it's extra, else base (for counting set totals)
-      if(!set_card.promo_types){
+      if(!is_card_extra(set_card.promo_types)){
         total_base++
       } else {
         total_extra++
@@ -1262,7 +1270,8 @@ async function add_card_to_stock(card) {
       collection_stock.o[card.set].cards[card.name][card.collector_number] = {
         count: parseInt(card.amount),
         foil: card.foil,
-        extra: !is_base
+        extra: !is_base,
+        image: getCardImage(response_data['image_uris'],response_data['card_faces'])
       }
       
       // if the card has any promo_types listed, like boosterfun and bundle, it's what we call an extra
@@ -1277,7 +1286,8 @@ async function add_card_to_stock(card) {
       [card.collector_number] : {
         count: parseInt(card.amount),
         foil: card.foil,
-        extra: !is_base
+        extra: !is_base,
+        image: getCardImage(response_data['image_uris'],response_data['card_faces'])
       }
     }
     collection_stock.o[card.set].cards[card.name] = new_card
@@ -1307,6 +1317,19 @@ async function add_card_to_stock(card) {
 
   // recalculate the full set percentage counters for this set
   calculate_completion_for_set(card.set)
+}
+
+// passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri, and trimmed accordingly
+function getCardImage(uriArray,cardFacesArray){
+  if(uriArray)
+  {
+      return uriArray['normal'].replace("https://cards.scryfall.io/normal/front/","")
+  }
+  else if(cardFacesArray)
+  {
+      return cardFacesArray[0]['image_uris']['normal'].replace("https://cards.scryfall.io/normal/front/","")
+  }
+  else return
 }
 
 // goes through all of the sets in the user's collection, recalculates values and percentages, and backfills missing values
@@ -1344,7 +1367,7 @@ async function tidy_up_collection()
         let in_col = false
 
         // if the card has promo types, it's extra, else base (for counting set totals)
-        if(!card.promo_types){
+        if(!is_card_extra(card.promo_types)){
           total_base++
         } else {
           total_extra++
@@ -1364,8 +1387,10 @@ async function tidy_up_collection()
 
           // if the print number of the specific card we are looking at exists in our collection under its name, we own it
           if(collection_stock.o[set].cards[card.name][card.collector_number]){
+            // save the image path
+            collection_stock.o[set].cards[card.name][card.collector_number].image = getCardImage(card['image_uris'],card['card_faces'])
             // set base/extra depending on promo_types
-            if(!card.promo_types){
+            if(!is_card_extra(card.promo_types)){
               current_base++
             } else {
               current_extra++
@@ -1447,6 +1472,20 @@ function calculate_completion_for_set(set){
   const dividend = collection_stock.o[set].commons + collection_stock.o[set].uncommons + collection_stock.o[set].rares + collection_stock.o[set].mythics
   const divisor = (collection_stock.o[set].total_commons ? collection_stock.o[set].total_commons : 0) + (collection_stock.o[set].total_uncommons ? collection_stock.o[set].total_uncommons : 0) + (collection_stock.o[set].total_rares ? collection_stock.o[set].total_rares : 0) + (collection_stock.o[set].total_mythics ? collection_stock.o[set].total_mythics : 0)
   collection_stock.o[set].full_set_one_each = divisor > 0 ? (dividend / divisor) * 100 : 0
+}
+
+// checks whether a card is considered a base or extra, by analyzing its promo_types block
+function is_card_extra(promo_types){
+  // if a card has no promo types, or only promo types from the ignored_types category, it's considered base
+  const ignored_types = ['ffi','ffii','ffiii','ffiv','ffv','ffvi','ffvii','ffviii','ffix','ffx','ffxi','ffxii','ffxiii','ffxiv','ffxv','ffxvi']
+  if(!promo_types)  return false
+  else {
+    for(var type in promo_types){
+      if(!ignored_types.includes(promo_types[type]))
+        return true
+    }
+    return false
+  }
 }
 
 // removes the collection stock entirely, deleting all data
