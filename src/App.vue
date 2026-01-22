@@ -318,7 +318,7 @@
         <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
         <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them in any way, but I'm otherwise very grateful for their accessibility.</p>
         <br>
-        <p style="padding:4px; font-size: 11px;">version 1.4.4 - last update 17/01/26</p>
+        <p style="padding:4px; font-size: 11px;">version 1.4.5 - last update 22/01/26</p>
       </v-sheet>
     </v-main>
     <v-card>
@@ -1477,7 +1477,7 @@ function calculate_completion_for_set(set){
 // checks whether a card is considered a base or extra, by analyzing its promo_types block
 function is_card_extra(promo_types){
   // if a card has no promo types, or only promo types from the ignored_types category, it's considered base
-  const ignored_types = ['ffi','ffii','ffiii','ffiv','ffv','ffvi','ffvii','ffviii','ffix','ffx','ffxi','ffxii','ffxiii','ffxiv','ffxv','ffxvi']
+  const ignored_types = ['universesbeyond','ffi','ffii','ffiii','ffiv','ffv','ffvi','ffvii','ffviii','ffix','ffx','ffxi','ffxii','ffxiii','ffxiv','ffxv','ffxvi']
   if(!promo_types)  return false
   else {
     for(var type in promo_types){
