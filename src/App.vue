@@ -774,6 +774,10 @@ function get_preferences_from_storage() {
 
 // get all card information for the selected set
 async function get_set_all_cards(set_code) {
+  // pretty simple since the bulk data update: just dynamic import it!
+  const { default: set_data } = await import(`./scryfall_data/${set_code}_data.json` );
+  return set_data
+
   var total_data = []
   var has_more = false
   var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+-otag:melded+unique%3Aprints+order%3Aset"
