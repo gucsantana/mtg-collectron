@@ -22,6 +22,7 @@ print(f'Bulk data downloaded. Total time so far: {time.time() - start_time} seco
 
 print('Processing card objects...')
 
+# for each card object, we save it to the corresponding set object in our current stock
 counter = 0
 for card_obj in fj:
     counter += 1
@@ -32,5 +33,21 @@ for card_obj in fj:
 print(f'Total {counter} cards processed. Saving set files...')
 for set in stock.keys():
     with open(f'{set}_data.json','w') as s:
-        s.write(json.dumps(stock[set]))
-print(f'All set files saved, execution complete. Total time: {time.time() - start_time} seconds')
+        # sort cards by collector number before saving into their respective files
+        try:
+            s.write(json.dumps(sorted(stock[set], key=lambda x: int(''.join(c for c in x['collector_number'] if c.isdigit() ) if (''.join(c for c in x['collector_number'] if c.isdigit() )) != '' else '0' ) ) ) )
+        except Exception as e:
+            print(f"Set {set} could not be sorted due to collector number fuckery, saving in original (random) order. :/")
+            s.write(json.dumps(stock[set]) )
+print(f'All set files saved. Total time so far: {time.time() - start_time} seconds')
+
+print('Querying for sets data...')
+# obtaining the sets metadata from scryfall...
+req = requests.get('https://api.scryfall.com/sets')
+if req.status_code == 200:
+    with open('sets.json','w') as fs:
+        fs.write(req.text)
+        print(f'Set information saved, execution complete. Total time: {time.time() - start_time} seconds')
+else:
+    print(f'API call returned status code {req.status_code}, aborting operation.')
+    exit()

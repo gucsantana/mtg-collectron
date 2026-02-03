@@ -405,7 +405,6 @@ import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import FileSaver from 'file-saver'
 import sets_json from './scryfall_data/sets.json'
-import bulk_json from './scryfall_data/bulk_data.json'
 
 // -------------------- THEME BLOCK --------------------------- //
 
@@ -603,8 +602,6 @@ const full_set_options = [
 onMounted(() => {
   // // localStorage.removeItem('collection_stock')
   set_list.value = sets_json['data']
-
-  console.log(bulk_json)
 
   // start the set navigation closed on mobile
   if(unref(display.mobile)){
