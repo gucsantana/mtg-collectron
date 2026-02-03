@@ -616,6 +616,8 @@ onMounted(() => {
   const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
   if(local_stock) { collection_stock.o = local_stock }
 
+  console.log("Collection stock: ",collection_stock.o)
+
   // delete collection_stock.o['snc']
 })
 
@@ -778,22 +780,22 @@ async function get_set_all_cards(set_code) {
   const { default: set_data } = await import(`./scryfall_data/${set_code}_data.json` );
   return set_data
 
-  var total_data = []
-  var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+-otag:melded+unique%3Aprints+order%3Aset"
+  // var total_data = []
+  // var has_more = false
+  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+-otag:melded+unique%3Aprints+order%3Aset"
   
-  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper
-  // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
-  // we follow down said batches until no has_more and concat the results back
-  do {
-    const response = await fetch(fetch_url);
-    const response_data = await response.json();
-    total_data = total_data.concat(response_data['data'])
-    has_more = response_data['has_more']
-    fetch_url = response_data['next_page']
-  } while (has_more != false)
+  // // we will first fetch a scryfall query URL for all unique prints of cards that are on paper
+  // // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
+  // // we follow down said batches until no has_more and concat the results back
+  // do {
+  //   const response = await fetch(fetch_url);
+  //   const response_data = await response.json();
+  //   total_data = total_data.concat(response_data['data'])
+  //   has_more = response_data['has_more']
+  //   fetch_url = response_data['next_page']
+  // } while (has_more != false)
 
-  return total_data
+  // return total_data
 }
 
 // returns a list of every card in the collection that matches the typed string
@@ -823,7 +825,6 @@ function findCardsInCollection(){
 // returns a list of every printing of a specific card name in your collection, with optional parameters
 function findSpecificCardInCollection(cardName,setName,number){
   try {
-    cardName = cardName
     var cardList = []
     if(setName) {
       if(setName in collection_stock.o && cardName in collection_stock.o[setName].cards) {
@@ -835,6 +836,7 @@ function findSpecificCardInCollection(cardName,setName,number){
           const tagCross = collection_stock.o[setName].cards[cardName][cardVer].tag_cross ? '✖' : ''
           const cardAmount = collection_stock.o[setName].cards[cardName][cardVer].count
           const formattedCardName = cardAmount + 'x ' + cardName + ' (' + setName.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
+          const cardImage = collection_stock.o[setName].cards[cardName][cardVer].image
           if(!number || cardVer == number){
             cardList.push(
               {cardName:cardName, 
@@ -842,7 +844,8 @@ function findSpecificCardInCollection(cardName,setName,number){
                 formattedCardName:formattedCardName, 
                 collectorNumber:cardVer,
                 releaseDate:collection_stock.o[setName].released_at, 
-                amount:cardAmount})
+                amount:cardAmount,
+                image:cardImage})
           }
         }
       }
@@ -852,21 +855,23 @@ function findSpecificCardInCollection(cardName,setName,number){
         for(var card in collection_stock.o[set].cards) {
           if(card == cardName)
           {
-            for(var cardVer in collection_stock.o[set].cards[card])
+            for(var cardVer in collection_stock.o[set].cards[cardName])
             {
-              const tagSquare = collection_stock.o[set].cards[card][cardVer].tag_square ? '■' : ''
-              const tagTriangle = collection_stock.o[set].cards[card][cardVer].tag_triangle ? '▲' : ''
-              const tagCircle = collection_stock.o[set].cards[card][cardVer].tag_circle ? '⚫︎' : ''
-              const tagCross = collection_stock.o[set].cards[card][cardVer].tag_cross ? '✖' : ''
-              const cardAmount = collection_stock.o[set].cards[card][cardVer].count
+              const tagSquare = collection_stock.o[set].cards[cardName][cardVer].tag_square ? '■' : ''
+              const tagTriangle = collection_stock.o[set].cards[cardName][cardVer].tag_triangle ? '▲' : ''
+              const tagCircle = collection_stock.o[set].cards[cardName][cardVer].tag_circle ? '⚫︎' : ''
+              const tagCross = collection_stock.o[set].cards[cardName][cardVer].tag_cross ? '✖' : ''
+              const cardAmount = collection_stock.o[set].cards[cardName][cardVer].count
               const formattedCardName = card + ' (' + set.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
+              const cardImage = collection_stock.o[set].cards[cardName][cardVer].image  
               cardList.push(
                 {cardName:card, 
                   cardSet:set, 
                   formattedCardName:formattedCardName, 
                   collectorNumber:cardVer,
                   releaseDate:collection_stock.o[set].released_at, 
-                  amount:cardAmount})
+                  amount:cardAmount,
+                  image:cardImage})
             }
           }
         }
@@ -974,14 +979,12 @@ async function perform_decklist_finder_search() {
   // for each card in the processed list, we grab its image link and append the proper url data
   // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
   for(var cd in decklist_finder_results_processed.value) {
-    console.log("decklist_finder_results_processed.value[cd]",decklist_finder_results_processed.value[cd])
     if(decklist_finder_results_processed.value[cd].image){
       decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + decklist_finder_results_processed.value[cd].image
     } else {
-      const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
+      const sf_data = await query_json_for_card_data(decklist_finder_results_processed.value[cd])
       decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris,sf_data.card_faces)
     }
-    console.log("decklist_finder_results_processed.value[cd]",decklist_finder_results_processed.value[cd])
   }
   decklist_finder_results_window_active.value = true
 
@@ -1010,14 +1013,18 @@ function get_enough_cards_from_decklist_filter_results(cards,amount){
 }
 
 // query scryfall for data on a requested card, initially used for decklist finder
-async function query_scryfall_for_card_data(card){
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+" + encodeURIComponent(card.cardName) + "+set%3A" + card.cardSet + "+cd%3A" + card.collectorNumber
+async function query_json_for_card_data(card){
+  // pretty simple since the bulk data update: just dynamic import it!
+  const { default : set_data } = await import(`./scryfall_data/${card.cardSet.toLowerCase()}_data.json` );
+  return set_data.find(x => x.name == card.cardName && x.collector_number == card.collectorNumber)
+
+  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+" + encodeURIComponent(card.cardName) + "+set%3A" + card.cardSet + "+cd%3A" + card.collectorNumber
   
-  // we will query scryfall for data on a specific card, and return that data
-  const response = await fetch(fetch_url)
-  const response_data = await response.json()
-  await sleep(100) // complying with scryfall good neighbor policy query limits
-  return response_data['data'][0]
+  // // we will query scryfall for data on a specific card, and return that data
+  // const response = await fetch(fetch_url)
+  // const response_data = await response.json()
+  // await sleep(100) // complying with scryfall good neighbor policy query limits
+  // return response_data['data'][0]
 }
 
 // remove the passed card from the list of filtered cards displayed for a decklist finder search
@@ -1073,7 +1080,8 @@ async function skip_decklist_card(card){
     // fill in the image for any cards that are new to the display (should only be one)
     for(var cd in decklist_finder_results_processed.value){
       if(!decklist_finder_results_processed.value[cd].image){
-        const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
+        console.log("Missing image on ",decklist_finder_results_processed.value[cd])
+        const sf_data = await query_json_for_card_data(decklist_finder_results_processed.value[cd])
         decklist_finder_results_processed.value[cd].image = sf_data.image_uris.normal
       }
     }
