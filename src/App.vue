@@ -845,7 +845,7 @@ function findSpecificCardInCollection(cardName,setName,number){
                 collectorNumber:cardVer,
                 releaseDate:collection_stock.o[setName].released_at, 
                 amount:cardAmount,
-                image:cardImage})
+                image:"https://cards.scryfall.io/normal/front/" + cardImage})
           }
         }
       }
@@ -871,7 +871,7 @@ function findSpecificCardInCollection(cardName,setName,number){
                   collectorNumber:cardVer,
                   releaseDate:collection_stock.o[set].released_at, 
                   amount:cardAmount,
-                  image:cardImage})
+                  image:"https://cards.scryfall.io/normal/front/" + cardImage})
             }
           }
         }
@@ -979,9 +979,7 @@ async function perform_decklist_finder_search() {
   // for each card in the processed list, we grab its image link and append the proper url data
   // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
   for(var cd in decklist_finder_results_processed.value) {
-    if(decklist_finder_results_processed.value[cd].image){
-      decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + decklist_finder_results_processed.value[cd].image
-    } else {
+    if(!decklist_finder_results_processed.value[cd].image){
       const sf_data = await query_json_for_card_data(decklist_finder_results_processed.value[cd])
       decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris,sf_data.card_faces)
     }
@@ -1077,12 +1075,12 @@ async function skip_decklist_card(card){
 
     // sort all of the matched cards by release order and pop it back in place
     decklist_finder_results_processed.value = newCardList.sort(compareByReleaseAndNumber)
-    // fill in the image for any cards that are new to the display (should only be one)
-    for(var cd in decklist_finder_results_processed.value){
+    // for each card in the processed list, we grab its image link and append the proper url data
+    // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
+    for(var cd in decklist_finder_results_processed.value) {
       if(!decklist_finder_results_processed.value[cd].image){
-        console.log("Missing image on ",decklist_finder_results_processed.value[cd])
         const sf_data = await query_json_for_card_data(decklist_finder_results_processed.value[cd])
-        decklist_finder_results_processed.value[cd].image = sf_data.image_uris.normal
+        decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris,sf_data.card_faces)
       }
     }
   } catch(err) {
