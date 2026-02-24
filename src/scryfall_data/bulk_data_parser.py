@@ -25,6 +25,8 @@ print('Processing card objects...')
 # for each card object, we save it to the corresponding set object in our current stock
 counter = 0
 for card_obj in fj:
+    if 'paper' not in card_obj['games']: # we don't care for cards that don't exist in paper, like arena and alchemy versions
+        continue
     counter += 1
     if card_obj['set'] not in stock:
         stock[card_obj['set']] = []

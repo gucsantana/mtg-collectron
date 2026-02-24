@@ -778,6 +778,7 @@ function get_preferences_from_storage() {
 async function get_set_all_cards(set_code) {
   // pretty simple since the bulk data update: just dynamic import it!
   const { default: set_data } = await import(`./scryfall_data/${set_code}_data.json` );
+  console.log("set data",set_data)
   return set_data
 
   // var total_data = []
@@ -857,6 +858,7 @@ function findSpecificCardInCollection(cardName,setName,number){
           {
             for(var cardVer in collection_stock.o[set].cards[cardName])
             {
+              console.log("card version", collection_stock.o[set].cards[cardName][cardVer])
               const tagSquare = collection_stock.o[set].cards[cardName][cardVer].tag_square ? '■' : ''
               const tagTriangle = collection_stock.o[set].cards[cardName][cardVer].tag_triangle ? '▲' : ''
               const tagCircle = collection_stock.o[set].cards[cardName][cardVer].tag_circle ? '⚫︎' : ''
