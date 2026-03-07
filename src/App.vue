@@ -110,7 +110,7 @@
                 </template>
                 <p>'Moxfield Syntax' uses the Moxfield syntax, one card per line</p>
                 <p class="mb-0">e.g. "1 Loran's Escape (BRO) *F*"</p>
-                <p class="mb-0">'Native JSON' uses the JSON syntax exported by the 'Export Collection' button</p>
+                <p class="mb-0">'Exported File' uses the whole backup file exported by the 'Export Collection' button</p>
                 <p class="mb-0">It will REWRITE the entire collection, not add to it</p>
               </v-tooltip>
             </v-col>
@@ -119,9 +119,10 @@
         <v-divider/>
         <v-radio-group inline v-model="import_syntax" density="compact" hide-details style="display:inline-block;">
           <v-radio color="primary" label="Moxfield Syntax" value="moxfield"/>
-          <v-radio color="primary" label="Native JSON" value="native"/>
+          <v-radio color="primary" label="Exported File" value="native"/>
         </v-radio-group>
-        <v-textarea v-model="import_text" autofocus class="import_text_field" variant="outlined"/>
+        <v-textarea v-model="import_text" v-if="import_syntax == 'moxfield'" autofocus class="import_text_field" variant="outlined"/>
+        <v-file-input accept="application/json" @change="loadImportFileToMemory" clearable hide-input v-if="import_syntax == 'native'" class="import_file_field"></v-file-input>
         <v-row>
           <v-spacer/>
           <v-col cols="3"><v-btn @click="import_cards">Import</v-btn></v-col>
@@ -139,10 +140,10 @@
         <br/>
         <p v-show="import_card_total > 0">Imported {{ import_card_total }} unique cards.</p>
         <p v-show="import_errors == '' && import_syntax == 'native'">Imported and replaced collection succesfully.</p>
-        <p v-show="import_errors && import_syntax == 'native'" style="padding:4px;">Failed to import the data. Make sure you copy and paste all of the characters. In case of importing an unrelated JSON object, I will not stop you from shooting your own foot, the site will very likely stop working properly until you clear all data again.</p>
+        <p v-show="import_errors && import_syntax == 'native'" style="padding:4px;">Failed to import the data. Make sure you're using a file created by the 'Export Collection' button. In case of importing an unrelated JSON object, I will not stop you from shooting your own foot, the site will very likely stop working properly until you clear all data again.</p>
         <br/>
-        <p v-show="import_errors.length > 0">The following lines could not be imported:</p>
-        <br v-show="import_errors.length > 0"/>
+        <p v-show="import_errors.length > 0 && import_syntax == 'moxfield'">The following lines could not be imported:</p>
+        <br v-show="import_errors.length > 0 && import_syntax == 'moxfield'"/>
         <p v-show="import_errors">{{ import_errors }}</p>
       </v-card>
     </v-overlay>
@@ -529,6 +530,7 @@ var hover_card_src = ref("")
 
 var import_syntax = ref('moxfield')
 var import_text = ''
+var import_file_data = null
 var import_success = ref(true)
 var import_errors = ref([])
 var import_card_total = ref(0)
@@ -1162,14 +1164,23 @@ async function import_from_moxfield() {
   import_errors.value = error_list.join(', ')
 }
 
-// imports cards using the native json format
+// when a file is imported to the import menu, this reads and parses its content
+async function loadImportFileToMemory(file){
+  file.target.files[0].text()
+    .then(JSON.parse)
+    .then((value) => import_file_data = value);
+}
+
+// imports cards by reading a backup file in our native JSON format
 async function import_from_native(){
   var error_list = ''
-  try {
-    const imported_data = JSON.parse(import_text)
-    import_text = ''
 
-    collection_stock.o = imported_data
+  if(!import_file_data){
+    error_list = "Data could not be read from the passed file."
+  }
+
+  try {
+    collection_stock.o = import_file_data
   }
   catch (e){
     error_list = e
@@ -1815,6 +1826,14 @@ function sleep(ms) {
   height: 150px;
   display: inline-block;
   margin-top: 10px;
+}
+.import_file_field {
+  width: 400px;
+  max-width: 90%;
+  height: 50px;
+  /* display: inline-block; */
+  margin-top: 10px;
+  margin-bottom: 130px;
 }
 .import_results_window {
   width: 100%;
