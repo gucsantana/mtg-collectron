@@ -286,7 +286,7 @@
           </v-row>
         </v-sheet>
       </v-sheet>
-      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" :total-visible="isMobile ? 4 : 8"/>
+      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" :total-visible="isMobile ? 4 : 8" />
       <v-card class="set_stats_box" :elevation="10" v-scroll="on_scroll_stats_box" v-show="stats_box_visible">
         <v-card class="set_stats_inner_box" flat>
           <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p>
@@ -655,6 +655,10 @@ watch(card_finder_text, v => {
   } else {
     card_finder_results.value = []
   }
+})
+watch(current_page, v => {
+  // scroll back to top on changing data pages
+  window.scrollTo({ top: 0, behavior: "smooth" })
 })
 
 // sets the mouse coords value, for anything we'd like to track the exact mouse position to display
