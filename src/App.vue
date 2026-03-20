@@ -834,25 +834,34 @@ function findSpecificCardInCollection(cardName,setName,number){
   try {
     var cardList = []
     if(setName) {
-      if(setName in collection_stock.o && cardName in collection_stock.o[setName].cards) {
-        for(var cardVer in collection_stock.o[setName].cards[cardName])
-        {
-          const tagSquare = collection_stock.o[setName].cards[cardName][cardVer].tag_square ? '■' : ''
-          const tagTriangle = collection_stock.o[setName].cards[cardName][cardVer].tag_triangle ? '▲' : ''
-          const tagCircle = collection_stock.o[setName].cards[cardName][cardVer].tag_circle ? '⚫︎' : ''
-          const tagCross = collection_stock.o[setName].cards[cardName][cardVer].tag_cross ? '✖' : ''
-          const cardAmount = collection_stock.o[setName].cards[cardName][cardVer].count
-          const formattedCardName = cardAmount + 'x ' + cardName + ' (' + setName.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
-          const cardImage = collection_stock.o[setName].cards[cardName][cardVer].image
-          if(!number || cardVer == number){
-            cardList.push(
-              {cardName:cardName, 
-                cardSet:setName, 
-                formattedCardName:formattedCardName, 
-                collectorNumber:cardVer,
-                releaseDate:collection_stock.o[setName].released_at, 
-                amount:cardAmount,
-                image:"https://cards.scryfall.io/normal/front/" + cardImage})
+      console.log("set name is ",setName)
+      if(setName in collection_stock.o) {
+        console.log("set name is in stock")
+        for(var card in collection_stock.o[setName].cards) {
+          // a note on naming: some sites use double // for dividers between multi-faced cards (scryfall), some use single / (Moxfield export)
+          // and the plain text export from Moxfield only sends the first name; the logic below accounts for all of that
+          if(card.toLowerCase().replace("//","/") == cardName.toLowerCase().replace("//","/") || card.split('/')[0].trim().toLowerCase() == cardName.toLowerCase())
+          {
+            for(var cardVer in collection_stock.o[setName].cards[card])
+            {
+              const tagSquare = collection_stock.o[setName].cards[card][cardVer].tag_square ? '■' : ''
+              const tagTriangle = collection_stock.o[setName].cards[card][cardVer].tag_triangle ? '▲' : ''
+              const tagCircle = collection_stock.o[setName].cards[card][cardVer].tag_circle ? '⚫︎' : ''
+              const tagCross = collection_stock.o[setName].cards[card][cardVer].tag_cross ? '✖' : ''
+              const cardAmount = collection_stock.o[setName].cards[card][cardVer].count
+              const formattedCardName = cardAmount + 'x ' + card + ' (' + setName.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
+              const cardImage = collection_stock.o[setName].cards[card][cardVer].image
+              if(!number || cardVer == number){
+                cardList.push(
+                  {cardName:card, 
+                    cardSet:setName, 
+                    formattedCardName:formattedCardName, 
+                    collectorNumber:cardVer,
+                    releaseDate:collection_stock.o[setName].released_at, 
+                    amount:cardAmount,
+                    image:"https://cards.scryfall.io/normal/front/" + cardImage})
+              }
+            }
           }
         }
       }
@@ -860,18 +869,17 @@ function findSpecificCardInCollection(cardName,setName,number){
       // combs each set for cardnames that match your search; sounds like it SHOULD be hellishly slow, but it isn't? TODO keep an eye on this one for performance
       for(var set in collection_stock.o){
         for(var card in collection_stock.o[set].cards) {
-          if(card == cardName)
+          if(card.toLowerCase().replace("//","/") == cardName.toLowerCase().replace("//","/") || card.split('/')[0].trim().toLowerCase() == cardName.toLowerCase())
           {
-            for(var cardVer in collection_stock.o[set].cards[cardName])
+            for(var cardVer in collection_stock.o[set].cards[card])
             {
-              console.log("card version", collection_stock.o[set].cards[cardName][cardVer])
-              const tagSquare = collection_stock.o[set].cards[cardName][cardVer].tag_square ? '■' : ''
-              const tagTriangle = collection_stock.o[set].cards[cardName][cardVer].tag_triangle ? '▲' : ''
-              const tagCircle = collection_stock.o[set].cards[cardName][cardVer].tag_circle ? '⚫︎' : ''
-              const tagCross = collection_stock.o[set].cards[cardName][cardVer].tag_cross ? '✖' : ''
-              const cardAmount = collection_stock.o[set].cards[cardName][cardVer].count
+              const tagSquare = collection_stock.o[set].cards[card][cardVer].tag_square ? '■' : ''
+              const tagTriangle = collection_stock.o[set].cards[card][cardVer].tag_triangle ? '▲' : ''
+              const tagCircle = collection_stock.o[set].cards[card][cardVer].tag_circle ? '⚫︎' : ''
+              const tagCross = collection_stock.o[set].cards[card][cardVer].tag_cross ? '✖' : ''
+              const cardAmount = collection_stock.o[set].cards[card][cardVer].count
               const formattedCardName = card + ' (' + set.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
-              const cardImage = collection_stock.o[set].cards[cardName][cardVer].image  
+              const cardImage = collection_stock.o[set].cards[card][cardVer].image  
               cardList.push(
                 {cardName:card, 
                   cardSet:set, 
