@@ -110,7 +110,7 @@
                 </template>
                 <p>'Moxfield Syntax' uses the Moxfield syntax, one card per line</p>
                 <p class="mb-0">e.g. "1 Loran's Escape (BRO) *F*"</p>
-                <p class="mb-0">'Native JSON' uses the JSON syntax exported by the 'Export Collection' button</p>
+                <p class="mb-0">'Exported File' uses the whole backup file exported by the 'Export Collection' button</p>
                 <p class="mb-0">It will REWRITE the entire collection, not add to it</p>
               </v-tooltip>
             </v-col>
@@ -119,9 +119,10 @@
         <v-divider/>
         <v-radio-group inline v-model="import_syntax" density="compact" hide-details style="display:inline-block;">
           <v-radio color="primary" label="Moxfield Syntax" value="moxfield"/>
-          <v-radio color="primary" label="Native JSON" value="native"/>
+          <v-radio color="primary" label="Exported File" value="native"/>
         </v-radio-group>
-        <v-textarea v-model="import_text" autofocus class="import_text_field" variant="outlined"/>
+        <v-textarea v-model="import_text" v-if="import_syntax == 'moxfield'" autofocus class="import_text_field" variant="outlined"/>
+        <v-file-input accept="application/json" @change="loadImportFileToMemory" clearable hide-input v-if="import_syntax == 'native'" class="import_file_field"></v-file-input>
         <v-row>
           <v-spacer/>
           <v-col cols="3"><v-btn @click="import_cards">Import</v-btn></v-col>
@@ -139,10 +140,10 @@
         <br/>
         <p v-show="import_card_total > 0">Imported {{ import_card_total }} unique cards.</p>
         <p v-show="import_errors == '' && import_syntax == 'native'">Imported and replaced collection succesfully.</p>
-        <p v-show="import_errors && import_syntax == 'native'" style="padding:4px;">Failed to import the data. Make sure you copy and paste all of the characters. In case of importing an unrelated JSON object, I will not stop you from shooting your own foot, the site will very likely stop working properly until you clear all data again.</p>
+        <p v-show="import_errors && import_syntax == 'native'" style="padding:4px;">Failed to import the data. Make sure you're using a file created by the 'Export Collection' button. In case of importing an unrelated JSON object, I will not stop you from shooting your own foot, the site will very likely stop working properly until you clear all data again.</p>
         <br/>
-        <p v-show="import_errors.length > 0">The following lines could not be imported:</p>
-        <br v-show="import_errors.length > 0"/>
+        <p v-show="import_errors.length > 0 && import_syntax == 'moxfield'">The following lines could not be imported:</p>
+        <br v-show="import_errors.length > 0 && import_syntax == 'moxfield'"/>
         <p v-show="import_errors">{{ import_errors }}</p>
       </v-card>
     </v-overlay>
@@ -285,7 +286,7 @@
           </v-row>
         </v-sheet>
       </v-sheet>
-      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" :total-visible="isMobile ? 4 : 8"/>
+      <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount" :total-visible="isMobile ? 4 : 8" />
       <v-card class="set_stats_box" :elevation="10" v-scroll="on_scroll_stats_box" v-show="stats_box_visible">
         <v-card class="set_stats_inner_box" flat>
           <p>Base Set: {{ current_set_owned_base_cards }}/{{ current_set_base_cards_qty }}</p>
@@ -497,7 +498,6 @@ theme.themes.value.dark = darkTheme
 function toggleDarkMode (bool) {
   theme.global.name.value = bool ? 'dark' : 'light'
   // console.log(theme)
-  // theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
 }
 
 
@@ -530,6 +530,7 @@ var hover_card_src = ref("")
 
 var import_syntax = ref('moxfield')
 var import_text = ''
+var import_file_data = null
 var import_success = ref(true)
 var import_errors = ref([])
 var import_card_total = ref(0)
@@ -617,6 +618,8 @@ onMounted(() => {
   const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
   if(local_stock) { collection_stock.o = local_stock }
 
+  console.log("Collection stock: ",collection_stock.o)
+
   // delete collection_stock.o['snc']
 })
 
@@ -652,6 +655,10 @@ watch(card_finder_text, v => {
   } else {
     card_finder_results.value = []
   }
+})
+watch(current_page, v => {
+  // scroll back to top on changing data pages
+  window.scrollTo({ top: 0, behavior: "smooth" })
 })
 
 // sets the mouse coords value, for anything we'd like to track the exact mouse position to display
@@ -775,22 +782,27 @@ function get_preferences_from_storage() {
 
 // get all card information for the selected set
 async function get_set_all_cards(set_code) {
-  var total_data = []
-  var has_more = false
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+-otag:melded+unique%3Aprints+order%3Aset"
-  
-  // we will first fetch a scryfall query URL for all unique prints of cards that are on paper
-  // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
-  // we follow down said batches until no has_more and concat the results back
-  do {
-    const response = await fetch(fetch_url);
-    const response_data = await response.json();
-    total_data = total_data.concat(response_data['data'])
-    has_more = response_data['has_more']
-    fetch_url = response_data['next_page']
-  } while (has_more != false)
+  // pretty simple since the bulk data update: just dynamic import it!
+  const { default: set_data } = await import(`./scryfall_data/${set_code}_data.json` );
+  console.log("set data",set_data)
+  return set_data
 
-  return total_data
+  // var total_data = []
+  // var has_more = false
+  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+-otag:melded+unique%3Aprints+order%3Aset"
+  
+  // // we will first fetch a scryfall query URL for all unique prints of cards that are on paper
+  // // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
+  // // we follow down said batches until no has_more and concat the results back
+  // do {
+  //   const response = await fetch(fetch_url);
+  //   const response_data = await response.json();
+  //   total_data = total_data.concat(response_data['data'])
+  //   has_more = response_data['has_more']
+  //   fetch_url = response_data['next_page']
+  // } while (has_more != false)
+
+  // return total_data
 }
 
 // returns a list of every card in the collection that matches the typed string
@@ -820,26 +832,36 @@ function findCardsInCollection(){
 // returns a list of every printing of a specific card name in your collection, with optional parameters
 function findSpecificCardInCollection(cardName,setName,number){
   try {
-    cardName = cardName
     var cardList = []
     if(setName) {
-      if(setName in collection_stock.o && cardName in collection_stock.o[setName].cards) {
-        for(var cardVer in collection_stock.o[setName].cards[cardName])
-        {
-          const tagSquare = collection_stock.o[setName].cards[cardName][cardVer].tag_square ? '■' : ''
-          const tagTriangle = collection_stock.o[setName].cards[cardName][cardVer].tag_triangle ? '▲' : ''
-          const tagCircle = collection_stock.o[setName].cards[cardName][cardVer].tag_circle ? '⚫︎' : ''
-          const tagCross = collection_stock.o[setName].cards[cardName][cardVer].tag_cross ? '✖' : ''
-          const cardAmount = collection_stock.o[setName].cards[cardName][cardVer].count
-          const formattedCardName = cardAmount + 'x ' + cardName + ' (' + setName.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
-          if(!number || cardVer == number){
-            cardList.push(
-              {cardName:cardName, 
-                cardSet:setName, 
-                formattedCardName:formattedCardName, 
-                collectorNumber:cardVer,
-                releaseDate:collection_stock.o[setName].released_at, 
-                amount:cardAmount})
+      console.log("set name is ",setName)
+      if(setName in collection_stock.o) {
+        console.log("set name is in stock")
+        for(var card in collection_stock.o[setName].cards) {
+          // a note on naming: some sites use double // for dividers between multi-faced cards (scryfall), some use single / (Moxfield export)
+          // and the plain text export from Moxfield only sends the first name; the logic below accounts for all of that
+          if(card.toLowerCase().replace("//","/") == cardName.toLowerCase().replace("//","/") || card.split('/')[0].trim().toLowerCase() == cardName.toLowerCase())
+          {
+            for(var cardVer in collection_stock.o[setName].cards[card])
+            {
+              const tagSquare = collection_stock.o[setName].cards[card][cardVer].tag_square ? '■' : ''
+              const tagTriangle = collection_stock.o[setName].cards[card][cardVer].tag_triangle ? '▲' : ''
+              const tagCircle = collection_stock.o[setName].cards[card][cardVer].tag_circle ? '⚫︎' : ''
+              const tagCross = collection_stock.o[setName].cards[card][cardVer].tag_cross ? '✖' : ''
+              const cardAmount = collection_stock.o[setName].cards[card][cardVer].count
+              const formattedCardName = cardAmount + 'x ' + card + ' (' + setName.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
+              const cardImage = collection_stock.o[setName].cards[card][cardVer].image
+              if(!number || cardVer == number){
+                cardList.push(
+                  {cardName:card, 
+                    cardSet:setName, 
+                    formattedCardName:formattedCardName, 
+                    collectorNumber:cardVer,
+                    releaseDate:collection_stock.o[setName].released_at, 
+                    amount:cardAmount,
+                    image:"https://cards.scryfall.io/normal/front/" + cardImage})
+              }
+            }
           }
         }
       }
@@ -847,7 +869,7 @@ function findSpecificCardInCollection(cardName,setName,number){
       // combs each set for cardnames that match your search; sounds like it SHOULD be hellishly slow, but it isn't? TODO keep an eye on this one for performance
       for(var set in collection_stock.o){
         for(var card in collection_stock.o[set].cards) {
-          if(card == cardName)
+          if(card.toLowerCase().replace("//","/") == cardName.toLowerCase().replace("//","/") || card.split('/')[0].trim().toLowerCase() == cardName.toLowerCase())
           {
             for(var cardVer in collection_stock.o[set].cards[card])
             {
@@ -857,13 +879,15 @@ function findSpecificCardInCollection(cardName,setName,number){
               const tagCross = collection_stock.o[set].cards[card][cardVer].tag_cross ? '✖' : ''
               const cardAmount = collection_stock.o[set].cards[card][cardVer].count
               const formattedCardName = card + ' (' + set.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
+              const cardImage = collection_stock.o[set].cards[card][cardVer].image  
               cardList.push(
                 {cardName:card, 
                   cardSet:set, 
                   formattedCardName:formattedCardName, 
                   collectorNumber:cardVer,
                   releaseDate:collection_stock.o[set].released_at, 
-                  amount:cardAmount})
+                  amount:cardAmount,
+                  image:"https://cards.scryfall.io/normal/front/" + cardImage})
             }
           }
         }
@@ -971,14 +995,10 @@ async function perform_decklist_finder_search() {
   // for each card in the processed list, we grab its image link and append the proper url data
   // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
   for(var cd in decklist_finder_results_processed.value) {
-    console.log("decklist_finder_results_processed.value[cd]",decklist_finder_results_processed.value[cd])
-    if(decklist_finder_results_processed.value[cd].image){
-      decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + decklist_finder_results_processed.value[cd].image
-    } else {
-      const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
+    if(!decklist_finder_results_processed.value[cd].image){
+      const sf_data = await query_json_for_card_data(decklist_finder_results_processed.value[cd])
       decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris,sf_data.card_faces)
     }
-    console.log("decklist_finder_results_processed.value[cd]",decklist_finder_results_processed.value[cd])
   }
   decklist_finder_results_window_active.value = true
 
@@ -1007,14 +1027,18 @@ function get_enough_cards_from_decklist_filter_results(cards,amount){
 }
 
 // query scryfall for data on a requested card, initially used for decklist finder
-async function query_scryfall_for_card_data(card){
-  var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+" + encodeURIComponent(card.cardName) + "+set%3A" + card.cardSet + "+cd%3A" + card.collectorNumber
+async function query_json_for_card_data(card){
+  // pretty simple since the bulk data update: just dynamic import it!
+  const { default : set_data } = await import(`./scryfall_data/${card.cardSet.toLowerCase()}_data.json` );
+  return set_data.find(x => x.name == card.cardName && x.collector_number == card.collectorNumber)
+
+  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+" + encodeURIComponent(card.cardName) + "+set%3A" + card.cardSet + "+cd%3A" + card.collectorNumber
   
-  // we will query scryfall for data on a specific card, and return that data
-  const response = await fetch(fetch_url)
-  const response_data = await response.json()
-  await sleep(100) // complying with scryfall good neighbor policy query limits
-  return response_data['data'][0]
+  // // we will query scryfall for data on a specific card, and return that data
+  // const response = await fetch(fetch_url)
+  // const response_data = await response.json()
+  // await sleep(100) // complying with scryfall good neighbor policy query limits
+  // return response_data['data'][0]
 }
 
 // remove the passed card from the list of filtered cards displayed for a decklist finder search
@@ -1067,11 +1091,12 @@ async function skip_decklist_card(card){
 
     // sort all of the matched cards by release order and pop it back in place
     decklist_finder_results_processed.value = newCardList.sort(compareByReleaseAndNumber)
-    // fill in the image for any cards that are new to the display (should only be one)
-    for(var cd in decklist_finder_results_processed.value){
+    // for each card in the processed list, we grab its image link and append the proper url data
+    // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
+    for(var cd in decklist_finder_results_processed.value) {
       if(!decklist_finder_results_processed.value[cd].image){
-        const sf_data = await query_scryfall_for_card_data(decklist_finder_results_processed.value[cd])
-        decklist_finder_results_processed.value[cd].image = sf_data.image_uris.normal
+        const sf_data = await query_json_for_card_data(decklist_finder_results_processed.value[cd])
+        decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris,sf_data.card_faces)
       }
     }
   } catch(err) {
@@ -1151,14 +1176,23 @@ async function import_from_moxfield() {
   import_errors.value = error_list.join(', ')
 }
 
-// imports cards using the native json format
+// when a file is imported to the import menu, this reads and parses its content
+async function loadImportFileToMemory(file){
+  file.target.files[0].text()
+    .then(JSON.parse)
+    .then((value) => import_file_data = value);
+}
+
+// imports cards by reading a backup file in our native JSON format
 async function import_from_native(){
   var error_list = ''
-  try {
-    const imported_data = JSON.parse(import_text)
-    import_text = ''
 
-    collection_stock.o = imported_data
+  if(!import_file_data){
+    error_list = "Data could not be read from the passed file."
+  }
+
+  try {
+    collection_stock.o = import_file_data
   }
   catch (e){
     error_list = e
@@ -1804,6 +1838,14 @@ function sleep(ms) {
   height: 150px;
   display: inline-block;
   margin-top: 10px;
+}
+.import_file_field {
+  width: 400px;
+  max-width: 90%;
+  height: 50px;
+  /* display: inline-block; */
+  margin-top: 10px;
+  margin-bottom: 130px;
 }
 .import_results_window {
   width: 100%;

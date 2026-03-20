@@ -22,7 +22,10 @@
               <v-col cols="4" class="sub_add_card_btn" @click="add_card_to_stock(card)"><v-icon icon="mdi-plus-thick" size="large" color="teal-lighten-5"/></v-col>
             </v-row>
           </v-card>
-          <v-chip v-show="isHovering && show_price" v-if="card.prices['usd'] || card.prices['usd_foil'] || card.prices['usd_etched']" class="card_price_element" color="white" variant="flat" size="x-small"> ${{ card.prices['usd'] ? card.prices['usd'] : (card.prices['usd_foil'] ? card.prices['usd_foil'] : card.prices['usd_etched']) }} </v-chip>
+          <!-- chip below shows the default price of the card: nonfoil if it exists, else foil/etched if that's the only version -->
+          <v-chip v-show="isHovering && show_price" v-if="card.prices['usd'] || card.prices['usd_foil'] || card.prices['usd_etched']" variant="flat" class="card_price_element" :color="isCardOwned && (!isCardFoil || isCardOnlyFoil) ? '#FFF9C4' : 'white'" size="x-small"> <p style="color:#7E57C2; font-size:15px;">{{ !card.prices['usd'] ? '✪' : '' }}</p> ${{ card.prices['usd'] ? card.prices['usd'] : (card.prices['usd_foil'] ? card.prices['usd_foil'] : card.prices['usd_etched']) }} </v-chip>
+          <!-- chip below only shows if the nonfoil price exists AND a foil/etched also exists -->
+          <v-chip v-show="isHovering && show_price" v-if="card.prices['usd'] && (card.prices['usd_foil'] || card.prices['usd_etched'])" variant="flat" class="card_price_element_foil" :color="isCardOwned && isCardFoil && !isCardOnlyFoil ? '#FFF9C4' : 'white'" size="x-small"> <p style="color:#7E57C2; font-size:15px;">✪</p> ${{ card.prices['usd_foil'] ? card.prices['usd_foil'] : card.prices['usd_etched'] }} </v-chip>
           <v-card v-show="isHovering" v-if="isCardOwned" class="tag_card_controls">
             <v-row no-gutters align="center">
               <v-col cols="3" class="sub_tag_btn tag_square" @click="set_tag(card,'square')" v-ripple><v-icon :icon="isCardTaggedSquare ? 'mdi-square' : 'mdi-square-outline'" size="large" color="teal"/></v-col>
@@ -32,7 +35,7 @@
               <v-tooltip activator="parent" location="bottom">Tag cards for identification</v-tooltip>
             </v-row>
           </v-card>
-          <v-card v-show="!isHovering" v-if="isCardOwned" class="tag_card_icons" color="transparent" :style={}>
+          <v-card v-show="!isHovering" v-if="isCardOwned" class="tag_card_icons" variant="flat" color="transparent" :style={}>
             <v-row no-gutters align="center">
               <v-col cols="3" :class="{sub_tag_icon:true, tag_visible:isCardTaggedSquare, tag_invisible:!isCardTaggedSquare}"><v-icon icon="mdi-square" size="large" color="teal"/></v-col>
               <v-col cols="3" :class="{sub_tag_icon:true, tag_visible:isCardTaggedTriangle, tag_invisible:!isCardTaggedTriangle}"><v-icon icon="mdi-triangle" size="large" color="pink"/></v-col>
@@ -307,6 +310,16 @@ export default {
   display:inline-block;
   position:absolute !important; 
   top: 45px;
+  right: 10px;
+  height: 20px;
+  padding: 0;
+  font-family: 'Aoboshi One', "Lucida Console", "Courier New", monospace;
+  cursor: default;
+}
+.card_price_element_foil {
+  display:inline-block;
+  position:absolute !important; 
+  top: 68px;
   right: 10px;
   height: 20px;
   padding: 0;
