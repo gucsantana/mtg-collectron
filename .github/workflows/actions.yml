@@ -23,7 +23,7 @@ jobs:
           pip install requests
           
       - name: execute py script
-        run: python src/scryfall_data/bulk_data_parser.py
+        run: python scryfall_data/bulk_data_parser.py
           
       - name: commit files
         run: |

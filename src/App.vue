@@ -405,7 +405,7 @@ import { onMounted, ref, watch, reactive, computed, unref } from 'vue'
 import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import FileSaver from 'file-saver'
-import sets_json from './scryfall_data/sets.json'
+import sets_json from './sets.json'
 
 // -------------------- THEME BLOCK --------------------------- //
 
@@ -783,7 +783,7 @@ function get_preferences_from_storage() {
 // get all card information for the selected set
 async function get_set_all_cards(set_code) {
   // pretty simple since the bulk data update: just dynamic import it!
-  const { default: set_data } = await import(`./scryfall_data/${set_code}_data.json` );
+  const set_data = await fetch(`https://github.com/gucsantana/mtg-collectron/tree/main/src/scryfall_data/${set_code}_data.json`)
   console.log("set data",set_data)
   return set_data
 
@@ -1029,7 +1029,7 @@ function get_enough_cards_from_decklist_filter_results(cards,amount){
 // query scryfall for data on a requested card, initially used for decklist finder
 async function query_json_for_card_data(card){
   // pretty simple since the bulk data update: just dynamic import it!
-  const { default : set_data } = await import(`./scryfall_data/${card.cardSet.toLowerCase()}_data.json` );
+  const { default : set_data } = await fetch(`https://github.com/gucsantana/mtg-collectron/tree/main/src/scryfall_data/${card.cardSet.toLowerCase()}_data.json`)
   return set_data.find(x => x.name == card.cardName && x.collector_number == card.collectorNumber)
 
   // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+" + encodeURIComponent(card.cardName) + "+set%3A" + card.cardSet + "+cd%3A" + card.collectorNumber
