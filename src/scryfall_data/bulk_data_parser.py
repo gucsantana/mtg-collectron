@@ -27,6 +27,13 @@ counter = 0
 for card_obj in fj:
     if 'paper' not in card_obj['games']: # we don't care for cards that don't exist in paper, like arena and alchemy versions
         continue
+    if 'all_parts' in card_obj: # roundabout check to see if a card is a melded pair; we don't want those either
+        try:
+            # to note: we're checking if the card has an 'all_parts' block, and the part listed as meld_result has the same name as the 'card' we're looking at
+            if list(filter(lambda x: x['component'] == 'meld_result',card_obj['all_parts']))[0]['name'] == card_obj['name']:
+                continue
+        except Exception:
+            pass
     counter += 1
     if card_obj['set'] not in stock:
         stock[card_obj['set']] = []
