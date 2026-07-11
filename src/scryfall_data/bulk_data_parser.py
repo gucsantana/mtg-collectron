@@ -1,3 +1,4 @@
+import gzip
 import json
 import requests
 import time
@@ -6,7 +7,11 @@ stock = {}
 start_time = time.time()
 
 # obtaining the bulk files metadata from scryfall...
-req = requests.get('https://api.scryfall.com/bulk-data')
+hdr = {
+    'User-Agent': 'mtg-collectron',
+    'From': 'gucsantana@gmail.com'
+}
+req = requests.get('https://api.scryfall.com/bulk-data',headers=hdr)
 if req.status_code == 200:
     mdata = json.loads(req.content)['data']
     url = next(dt['download_uri'] for dt in mdata if dt['type'] == 'default_cards')
@@ -16,6 +21,8 @@ else:
     exit()
 
 print('Downloading the default_cards bulk data file from Scryfall...')
+# NOTE: we need to start very soon using the JSONL file instead, and it comes gzipped, use the below line to unpack it
+# with gzip.open('file.txt.gz', 'rb') as f_in:
 req = requests.get(url)
 fj = json.loads(req.content)
 print(f'Bulk data downloaded. Total time so far: {time.time() - start_time} seconds')
@@ -52,7 +59,7 @@ print(f'All set files saved. Total time so far: {time.time() - start_time} secon
 
 print('Querying for sets data...')
 # obtaining the sets metadata from scryfall...
-req = requests.get('https://api.scryfall.com/sets')
+req = requests.get('https://api.scryfall.com/sets',headers=hdr)
 if req.status_code == 200:
     with open('sets.json','w') as fs:
         fs.write(req.text)
