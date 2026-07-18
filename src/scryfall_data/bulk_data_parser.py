@@ -18,6 +18,7 @@ if req.status_code == 200:
     # with the url in hands, we then download the default_cards bulk data file, should take a moment
 else:
     print(f'API call returned status code {req.status_code}, aborting operation.')
+    print(req.content)
     exit()
 
 print('Downloading the default_cards bulk data file from Scryfall...')
@@ -66,4 +67,5 @@ if req.status_code == 200:
         print(f'Set information saved, execution complete. Total time: {time.time() - start_time} seconds')
 else:
     print(f'API call returned status code {req.status_code}, aborting operation.')
+    print(req.content)
     exit()
