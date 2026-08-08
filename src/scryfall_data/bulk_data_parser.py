@@ -14,7 +14,7 @@ hdr = {
 req = requests.get('https://api.scryfall.com/bulk-data',headers=hdr)
 if req.status_code == 200:
     mdata = json.loads(req.content)['data']
-    url = next(dt['download_uri'] for dt in mdata if dt['type'] == 'default_cards')
+    url = next(dt['jsonl_download_uri'] for dt in mdata if dt['type'] == 'default_cards')
     # with the url in hands, we then download the default_cards bulk data file, should take a moment
 else:
     print(f'API call returned status code {req.status_code}, aborting operation.')
@@ -22,17 +22,16 @@ else:
     exit()
 
 print('Downloading the default_cards bulk data file from Scryfall...')
-# NOTE: we need to start very soon using the JSONL file instead, and it comes gzipped, use the below line to unpack it
-# with gzip.open('file.txt.gz', 'rb') as f_in:
 req = requests.get(url)
-fj = json.loads(req.content)
+decom = gzip.decompress(req.content).decode('utf-8')
 print(f'Bulk data downloaded. Total time so far: {time.time() - start_time} seconds')
 
-print('Processing card objects...')
 
 # for each card object, we save it to the corresponding set object in our current stock
 counter = 0
-for card_obj in fj:
+print('Processing card objects...')
+for line in decom:
+    card_obj = json.loads(line.strip())
     if 'paper' not in card_obj['games']: # we don't care for cards that don't exist in paper, like arena and alchemy versions
         continue
     if 'all_parts' in card_obj: # roundabout check to see if a card is a melded pair; we don't want those either
