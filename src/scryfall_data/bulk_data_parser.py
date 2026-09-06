@@ -23,28 +23,31 @@ else:
 
 print('Downloading the default_cards bulk data file from Scryfall...')
 req = requests.get(url)
-decom = gzip.decompress(req.content).decode('utf-8')
+# bulk data is currently exported by scryfall as a gzipped JSONL file, so we first decompress and decode the bytes
+decom = gzip.decompress(req.content).decode("utf-8")
 print(f'Bulk data downloaded. Total time so far: {time.time() - start_time} seconds')
-
 
 # for each card object, we save it to the corresponding set object in our current stock
 counter = 0
 print('Processing card objects...')
-for line in decom:
-    card_obj = json.loads(line.strip())
-    if 'paper' not in card_obj['games']: # we don't care for cards that don't exist in paper, like arena and alchemy versions
-        continue
-    if 'all_parts' in card_obj: # roundabout check to see if a card is a melded pair; we don't want those either
-        try:
-            # to note: we're checking if the card has an 'all_parts' block, and the part listed as meld_result has the same name as the 'card' we're looking at
-            if list(filter(lambda x: x['component'] == 'meld_result',card_obj['all_parts']))[0]['name'] == card_obj['name']:
-                continue
-        except Exception:
-            pass
-    counter += 1
-    if card_obj['set'] not in stock:
-        stock[card_obj['set']] = []
-    stock[card_obj['set']].append(card_obj)
+# since JSONL is a newline-separated list of JSON objects, we need to split it in lines before loading
+for line in decom.splitlines():
+    if line.strip():
+        card_obj = json.loads(line.strip())
+        if 'paper' not in card_obj['games']: # we don't care for cards that don't exist in paper, like arena and alchemy versions
+            continue
+        if 'all_parts' in card_obj: # roundabout check to see if a card is a melded pair; we don't want those either
+            try:
+                # to note: we're checking if the card has an 'all_parts' block, and the part listed as meld_result has the same name as the 'card' we're looking at
+                if list(filter(lambda x: x['component'] == 'meld_result',card_obj['all_parts']))[0]['name'] == card_obj['name']:
+                    continue
+            except Exception:
+                pass
+        counter += 1
+
+        if card_obj['set'] not in stock:
+            stock[card_obj['set']] = []
+        stock[card_obj['set']].append(card_obj)
 
 print(f'Total {counter} cards processed. Saving set files...')
 for set in stock.keys():
