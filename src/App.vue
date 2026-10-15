@@ -405,7 +405,6 @@ import { onMounted, ref, watch, reactive, computed, unref } from 'vue'
 import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import FileSaver from 'file-saver'
-import sets_json from './scryfall_data/sets.json'
 
 // -------------------- THEME BLOCK --------------------------- //
 
@@ -605,9 +604,9 @@ const full_set_options = [
 
 // -------------------------------------------------------------------------------------------------- //
 
-onMounted(() => {
+onMounted(async () => {
+  loading.value = true
   // // localStorage.removeItem('collection_stock')
-  set_list.value = sets_json['data']
 
   // start the set navigation closed on mobile
   if(unref(display.mobile)){
@@ -622,9 +621,12 @@ onMounted(() => {
   const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
   if(local_stock) { collection_stock.o = local_stock }
 
+  set_list.value = await get_all_set_info()
+
   console.log("Collection stock: ",collection_stock.o)
 
   // delete collection_stock.o['snc']
+  loading.value = false
 })
 
 // watch keeps track of variable changes
@@ -784,29 +786,22 @@ function get_preferences_from_storage() {
   }
 }
 
+// get all set information from the db
+async function get_all_set_info() {
+  var fetch_url = "/mtg-collectron/sets"
+
+  // since the migration to a spring boot backend, we query our data directly from our db
+  const response = await fetch(fetch_url);
+  return await response.json();
+}
+
 // get all card information for the selected set
 async function get_set_all_cards(set_code) {
-  // pretty simple since the bulk data update: just dynamic import it!
-  const { default: set_data } = await import(`./scryfall_data/${set_code}_data.json` );
-  console.log("set data",set_data)
-  return set_data
-
-  // var total_data = []
-  // var has_more = false
-  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+set%3A"+set_code+"+-otag:melded+unique%3Aprints+order%3Aset"
+  var fetch_url = "/mtg-collectron/card/"+ (set_code.toLowerCase())
   
-  // // we will first fetch a scryfall query URL for all unique prints of cards that are on paper
-  // // since the scryfall query is limited to 175 results atm and has a 'has_more' field and a query link for the next batch, 
-  // // we follow down said batches until no has_more and concat the results back
-  // do {
-  //   const response = await fetch(fetch_url);
-  //   const response_data = await response.json();
-  //   total_data = total_data.concat(response_data['data'])
-  //   has_more = response_data['has_more']
-  //   fetch_url = response_data['next_page']
-  // } while (has_more != false)
-
-  // return total_data
+  // since the migration to a spring boot backend, we query our data directly from our db
+  const response = await fetch(fetch_url);
+  return await response.json();
 }
 
 // returns a list of every card in the collection that matches the typed string

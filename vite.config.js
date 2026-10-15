@@ -13,5 +13,17 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  server: {
+    proxy: {
+      '/mtg-collectron/sets': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/mtg-collectron/card': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      }
+    }
   }
 })

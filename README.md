@@ -18,6 +18,10 @@ Storage is local, no plans for adding accounts or databases.
 
 'Decklist Finder' reads a passed decklist and returns all cards in that list found in your storage, prioritizing oldest or newest prints, in the amount requested.
 
+# Local Development
+
+Run the Spring Boot backend at `http://localhost:8080`, then start the frontend with `npm run dev`. Vite proxies `/mtg-collectron` API requests to the backend so the browser does not make a cross-origin request. If your backend is configured for HTTPS instead, change the proxy target in `vite.config.js` to `https://localhost:8080`.
+
 # Upcoming Features and Improvements
 
 Scrolling to top on page change (why is it so hard? lol)
