@@ -1,5 +1,17 @@
 <template>
+  <Login
+    v-if="!authChecking && !isAuthenticated"
+    :initial-error="authError"
+    @authenticated="handleAuthenticated"
+  />
+  <v-app v-else-if="authChecking" class="align-center justify-center">
+    <v-progress-circular color="primary" indeterminate size="64"/>
+  </v-app>
+  <template v-else>
   <v-app>
+    <v-alert v-if="authError" type="error" closable class="auth_error" @click:close="authError = ''">
+      {{ authError }}
+    </v-alert>
     <v-overlay persistent :model-value="loading" class="align-center justify-center">
       <v-progress-circular color="primary" indeterminate size="64"/>
     </v-overlay>
@@ -394,10 +406,19 @@
           <v-list-item style="display: inline-block; width:100%;">
             <v-btn @click="about_window_active = true" class="side_drawer_button" :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable" variant="outlined">About the Collectron</v-btn>
           </v-list-item>
+          <v-divider/>
+          <v-list-item><p class="column_header">Account</p></v-list-item>
+          <v-list-item style="display: inline-block; width:100%;">
+            <p class="account_username">{{ authUser?.username || authUser?.email }}</p>
+            <v-btn @click="logOut" class="side_drawer_button" density="comfortable" variant="outlined" :loading="loggingOut">
+              Log Out
+            </v-btn>
+          </v-list-item>
         </v-list>
       </v-navigation-drawer>
     </v-card>
   </v-app>
+  </template>
 </template>
 
 <script setup>
@@ -405,6 +426,14 @@ import { onMounted, ref, watch, reactive, computed, unref } from 'vue'
 import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import FileSaver from 'file-saver'
+import Login from './Login.vue'
+
+const isAuthenticated = ref(false)
+const authChecking = ref(true)
+const authError = ref('')
+const authUser = ref(null)
+const loggingOut = ref(false)
+let appInitialized = false
 
 // -------------------- THEME BLOCK --------------------------- //
 
@@ -605,29 +634,84 @@ const full_set_options = [
 // -------------------------------------------------------------------------------------------------- //
 
 onMounted(async () => {
-  loading.value = true
-  // // localStorage.removeItem('collection_stock')
+  try {
+    const response = await fetch('/mtg-collectron/auth/session', { credentials: 'include' })
 
-  // start the set navigation closed on mobile
-  if(unref(display.mobile)){
-    drawer.value = false
+    // A 401 is the normal unauthenticated state; every other non-success status indicates a
+    // backend/configuration problem and is shown on the login screen instead of being ignored.
+    if (response.status === 401) return
+    if (!response.ok) throw new Error(`Unable to verify your session (HTTP ${response.status}).`)
+
+    const session = await response.json()
+    authUser.value = session.user ?? session
+    isAuthenticated.value = true
+    await initializeApp()
+  } catch (error) {
+    authError.value = error instanceof Error
+      ? error.message
+      : 'Unable to verify your session. Please try again.'
+  } finally {
+    authChecking.value = false
   }
-  
-  // get the list of set options from local storage
-  const set_options = JSON.parse(localStorage.getItem('set_options'))
-  if(set_options)  {  set_types_shown.value = set_options  }
-  get_preferences_from_storage()
-  
-  const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
-  if(local_stock) { collection_stock.o = local_stock }
-
-  set_list.value = await get_all_set_info()
-
-  console.log("Collection stock: ",collection_stock.o)
-
-  // delete collection_stock.o['snc']
-  loading.value = false
 })
+
+async function initializeApp() {
+  if (appInitialized) return
+  appInitialized = true
+  loading.value = true
+
+  try {
+    // Start with the set navigation closed on mobile.
+    if(unref(display.mobile)){
+      drawer.value = false
+    }
+
+    // Restore display preferences and the existing browser-local collection after the user
+    // has been authenticated. Authentication does not move collection data out of localStorage.
+    const set_options = JSON.parse(localStorage.getItem('set_options'))
+    if(set_options)  {  set_types_shown.value = set_options  }
+    get_preferences_from_storage()
+
+    const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
+    if(local_stock) { collection_stock.o = local_stock }
+
+    set_list.value = await get_all_set_info()
+    console.log("Collection stock: ",collection_stock.o)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleAuthenticated(user) {
+  authUser.value = user
+  authError.value = ''
+  isAuthenticated.value = true
+  await initializeApp()
+}
+
+async function logOut() {
+  loggingOut.value = true
+  authError.value = ''
+
+  try {
+    const response = await fetch('/mtg-collectron/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      throw new Error(`Unable to log out (HTTP ${response.status}).`)
+    }
+
+    isAuthenticated.value = false
+    authUser.value = null
+    appInitialized = false
+  } catch (error) {
+    authError.value = error instanceof Error ? error.message : 'Unable to log out. Please try again.'
+  } finally {
+    loggingOut.value = false
+  }
+}
 
 // watch keeps track of variable changes
 // whenever collection stock changes, we recalc the total rarities for the current set
@@ -1637,6 +1721,19 @@ function sleep(ms) {
 
 .page_title_bar {
   background-color: ffffff;
+}
+.auth_error {
+  position: fixed;
+  z-index: 10000;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+}
+.account_username {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 4px 0 8px;
 }
 .column_header {
   font-weight: bold; 

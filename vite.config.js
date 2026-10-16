@@ -23,6 +23,10 @@ export default defineConfig({
       '/mtg-collectron/card': {
         target: 'http://localhost:8080',
         changeOrigin: true
+      },
+      '/mtg-collectron/auth': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
       }
     }
   }

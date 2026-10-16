@@ -12,7 +12,7 @@ Up to four separate tags per card, also indicated in Card Finder. You can use th
 Card search to filter through cards in a set, set search to filter through the list of sets (matches either set name or set code).
 
 Allows users to import cards with the Moxfield export syntax, or export and import their entire collection as JSON-stringified text.
-Storage is local, no plans for adding accounts or databases.
+Users must sign in or create an account before entering the collection. Authentication is handled by the Spring Boot backend; the collection and preferences continue to be stored in the browser's local storage.
 
 'Card Finder' checks which versions of a card you have in your stock, if any.
 
@@ -20,7 +20,14 @@ Storage is local, no plans for adding accounts or databases.
 
 # Local Development
 
-Run the Spring Boot backend at `http://localhost:8080`, then start the frontend with `npm run dev`. Vite proxies `/mtg-collectron` API requests to the backend so the browser does not make a cross-origin request. If your backend is configured for HTTPS instead, change the proxy target in `vite.config.js` to `https://localhost:8080`.
+Run the Spring Boot backend at `http://localhost:8080`, then start the frontend with `npm run dev`. Vite proxies `/mtg-collectron` API requests to the backend so the browser does not make a cross-origin request. The authentication endpoints expected by the frontend are:
+
+- `GET /mtg-collectron/auth/session` returns the current public user as JSON, or HTTP 401 when no valid session exists.
+- `POST /mtg-collectron/auth/login` accepts `{ "email": "...", "password": "..." }`.
+- `POST /mtg-collectron/auth/register` accepts `{ "email": "...", "username": "...", "password": "..." }`.
+- `POST /mtg-collectron/auth/logout` invalidates the current session.
+
+Successful login and registration responses should return the public user profile (or `{ "user": { ... } }`) and set an HttpOnly session cookie. Do not return `password_hash`; the backend must validate fields, enforce the unique email and username constraints, hash passwords, and manage session cookies. In production, serve the API over HTTPS and make it same-origin with the frontend so cookie credentials remain protected. If your backend is configured for HTTPS in development, change the proxy target in `vite.config.js` to `https://localhost:8080`.
 
 # Upcoming Features and Improvements
 
