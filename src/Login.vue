@@ -12,7 +12,6 @@
 
         <v-form @submit.prevent="submitForm">
           <v-text-field
-            v-if="isRegistering"
             v-model="username"
             label="Username"
             autocomplete="username"
@@ -23,6 +22,7 @@
             variant="outlined"
           />
           <v-text-field
+            v-if="isRegistering"
             v-model="email"
             label="Email"
             type="email"
@@ -119,15 +119,15 @@ async function logIn() {
   errorMessage.value = ''
 
   try {
-    if (!email.value.trim() || !password.value) {
-      throw new Error('Enter your email and password.')
+    if (!username.value.trim() || !password.value) {
+      throw new Error('Enter your username and password.')
     }
 
     const response = await fetch('/mtg-collectron/auth/login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.value.trim(), password: password.value }),
+      body: JSON.stringify({ username: username.value.trim(), password: password.value }),
     })
     const result = await response.json()
 
