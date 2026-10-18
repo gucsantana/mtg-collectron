@@ -694,8 +694,21 @@ async function logOut() {
   authError.value = ''
 
   try {
+    // CSRF token is necessary to validade most auth methods
+    const csrfCall = await fetch('/mtg-collectron/auth/csrf', {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!csrfCall.ok) {
+      throw new Error(result.message || 'Error during CSRF token call.')
+    }
+    const csrfCallResponse = await csrfCall.json()
+
+    // call logout, passing the CSRF token as a header to authenticate the message
     const response = await fetch('/mtg-collectron/auth/logout', {
       method: 'POST',
+      headers: {'X-CSRF-Token': csrfCallResponse['token']},
       credentials: 'include',
     })
 
