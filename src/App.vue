@@ -293,7 +293,7 @@
         <v-sheet name="normal_cards_holder">
           <v-row no-gutters>
             <v-col v-for="(item,index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search.toLowerCase()) || card_search == '')).slice(pageSliceStart,pageSliceEnd)" cols="6" sm="6" md="4" lg="3" >
-              <CardSlot :card="item" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_price="page_options.show_prices" :is_extra="is_card_extra(item.promo_types)" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
+              <CardSlot :card="item" :user_id="userId" :csrf_token="csrf_token" :collection_stock="collection_stock.o" :current_set_code="current_set_code" :show_price="page_options.show_prices" :is_extra="is_card_extra(item.promo_types)" :base_set_total="current_set_base_cards_qty" :extra_set_total="current_set_extra_cards_qty" :current_set_commons="current_set_commons" :current_set_uncommons="current_set_uncommons" :current_set_rares="current_set_rares" :current_set_mythics="current_set_mythics"></CardSlot>
             </v-col>
           </v-row>
         </v-sheet>
@@ -432,6 +432,8 @@ const isAuthenticated = ref(false)
 const authChecking = ref(true)
 const authError = ref('')
 const authUser = ref(null)
+const userId = ref(null)
+const csrf_token = ref(null)
 const loggingOut = ref(false)
 let appInitialized = false
 
@@ -644,7 +646,22 @@ onMounted(async () => {
 
     const session = await response.json()
     authUser.value = session.user ?? session
+    userId.value = session.userId
+    // console.log("userId.value",userId.value)
     isAuthenticated.value = true
+
+    // CSRF token is necessary to validade most auth methods
+    const csrfCall = await fetch('/mtg-collectron/auth/csrf', {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!csrfCall.ok) {
+      throw new Error(result.message || 'Error during CSRF token call.')
+    }
+    const csrfCallResponse = await csrfCall.json()
+    csrf_token.value = csrfCallResponse.token
+
     await initializeApp()
   } catch (error) {
     authError.value = error instanceof Error
@@ -701,7 +718,7 @@ async function logOut() {
       headers: { 'Content-Type': 'application/json' },
     })
     if (!csrfCall.ok) {
-      throw new Error(result.message || 'Error during CSRF token call.')
+      throw new Error(csrfCall.message || 'Error during CSRF token call.')
     }
     const csrfCallResponse = await csrfCall.json()
 

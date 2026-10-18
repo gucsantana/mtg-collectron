@@ -4,65 +4,35 @@
       <v-card class="login_box" elevation="8">
         <img class="login_logo" src="@/assets/collectron-title-logo.png" alt="MTG Collectron">
         <h1 class="login_title">{{ isRegistering ? 'Create an Account' : 'Welcome Back!' }}</h1>
-        <br/>
+        <br />
 
         <v-alert v-if="visibleError" type="error" variant="tonal" class="login_alert">
           {{ visibleError }}
         </v-alert>
 
         <v-form @submit.prevent="submitForm">
-          <v-text-field
-            v-model="username"
-            label="Username"
-            autocomplete="username"
-            minLength="6"
-            maxlength="100"
-            :rules="usernameRules"
-            required
-            variant="outlined"
-          />
-          <v-text-field
-            v-if="isRegistering"
-            v-model="email"
-            label="Email"
-            type="email"
-            autocomplete="email"
-            maxlength="254"
-            required
-            variant="outlined"
-          />
-          <v-text-field
-            v-model="password"
-            label="Password"
-            type="password"
-            minLength="8"
-            maxlength="72"
-            :autocomplete="isRegistering ? 'new-password' : 'current-password'"
-            required
-            variant="outlined"
-          />
-          <v-text-field
-            v-if="isRegistering"
-            v-model="passwordConfirmation"
-            label="Confirm password"
-            type="password"
-            autocomplete="new-password"
-            required
-            variant="outlined"
-          />
+          <v-text-field v-model="username" label="Username" autocomplete="username" minLength="6" maxlength="100"
+            :rules="usernameRules" required variant="outlined" />
+          <v-text-field v-if="isRegistering" v-model="email" label="Email" type="email" autocomplete="email"
+            maxlength="254" required variant="outlined" />
+          <v-text-field v-model="password" label="Password" type="password" minLength="8" maxlength="72"
+            :autocomplete="isRegistering ? 'new-password' : 'current-password'" required variant="outlined" />
+          <v-text-field v-if="isRegistering" v-model="passwordConfirmation" label="Confirm password" type="password"
+            autocomplete="new-password" required variant="outlined" />
 
           <v-row>
-          <v-col cols="3">
-            <v-btn type="submit" color="primary" block :loading="submitting" :disabled="submitting">
-            {{ isRegistering ? 'Register' : 'Log In' }}
-            </v-btn>
-          </v-col>
-          <v-spacer/>
-          <v-col cols="8">
-            <v-btn id="change_login_mode" type="button" color="tertiary" block :disabled="submitting" @click="toggleMode">
-            {{ isRegistering ? 'Already signed up? Log in' : 'New here? Create account' }}
-            </v-btn>
-          </v-col>
+            <v-col cols="3">
+              <v-btn type="submit" color="primary" block :loading="submitting" :disabled="submitting">
+                {{ isRegistering ? 'Register' : 'Log In' }}
+              </v-btn>
+            </v-col>
+            <v-spacer />
+            <v-col cols="8">
+              <v-btn id="change_login_mode" type="button" color="tertiary" block :disabled="submitting"
+                @click="toggleMode">
+                {{ isRegistering ? 'Already signed up? Log in' : 'New here? Create account' }}
+              </v-btn>
+            </v-col>
           </v-row>
         </v-form>
 
@@ -136,7 +106,7 @@ async function logIn() {
     const response = await fetch('/mtg-collectron/auth/login', {
       method: 'POST',
       credentials: 'include',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'X-CSRF-Token': csrfCallResponse['token']
       },
@@ -220,6 +190,7 @@ async function createAccount() {
   padding: 24px;
   background: linear-gradient(145deg, #fff7f8, #f5f7fb);
 }
+
 .login_box {
   width: 100%;
   max-width: 440px;
@@ -227,27 +198,33 @@ async function createAccount() {
   border-radius: 16px;
   text-align: center;
 }
+
 .login_logo {
   width: 100%;
   max-width: 310px;
   margin: 0 auto 12px;
 }
+
 .login_title {
   font-family: Georgia, 'Times New Roman', Times, serif;
   font-size: 24px;
   font-weight: bold;
 }
+
 .login_subtitle {
   margin: 4px 0 24px;
   color: #666;
 }
+
 .login_alert {
   margin-bottom: 18px;
   text-align: left;
 }
+
 .mode_button {
   margin-top: 12px;
 }
+
 @media screen and (max-width: 480px) {
   .login_box {
     padding: 24px 18px;
