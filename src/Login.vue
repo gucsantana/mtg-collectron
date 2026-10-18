@@ -122,11 +122,24 @@ async function logIn() {
     if (!username.value.trim() || !password.value) {
       throw new Error('Enter your username and password.')
     }
+    // CSRF token is necessary to validade most auth methods
+    const csrfCall = await fetch('/mtg-collectron/auth/csrf', {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!csrfCall.ok) {
+      throw new Error(result.message || 'Error during CSRF token call.')
+    }
+    const csrfCallResponse = await csrfCall.json()
 
     const response = await fetch('/mtg-collectron/auth/login', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfCallResponse['token']
+      },
       body: JSON.stringify({ username: username.value.trim(), password: password.value }),
     })
     const result = await response.json()
