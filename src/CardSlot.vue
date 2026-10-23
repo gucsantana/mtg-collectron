@@ -98,46 +98,11 @@ export default {
       }
       else return
     },
+    // triggers when the user clicks the "+" button to add a card to stock
     async add_card_to_stock(card_data) {
       console.log("Card data clicked: ",card_data)
-      // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
-      const setCheck = await fetch('/mtg-collectron/user-set-info/' + this.user_id + "/" + this.current_set_code, {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      // server returns "NOT_FOUND" (404) if there's no data found
-      if (setCheck.status == 404) {
-        // TODO: maybe we can get rid of saving user set data entirely?
-        var new_set = {
-          card_owner_id: this.user_id,
-          set_code: this.current_set_code,
-          commons_count: 0,
-          uncommons_count: 0,
-          rares_count: 0,
-          mythics_count: 0,
-          base_set_owned: 0,
-          extra_set_owned: 0,
-          foils_owned: 0,
-          full_set_every_single: 0,  // 'full set' parameters save the completion percentage for each definition of full set
-          full_set_base_only: 0,
-          full_set_one_each: 0
-        }
-
-        // post the new set to the server with empty parameters
-        const postNewSet = await fetch('/mtg-collectron/user-set-info', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': this.csrf_token
-          },
-          body: JSON.stringify(new_set)
-        })
-        if(postNewSet.ok){ console.log("Successfully created set entry for "+this.current_set_code+" in the database.") }
-        else { console.log("Failed to create set info for set "+this.current_set_code+" on the database.") }
-      }
+      
+      await this.create_new_set_if_necessary()
 
       if (!(card_data.set_code in this.collection_stock)) {
         var new_set = {
@@ -161,14 +126,19 @@ export default {
           released_at: card_data.released_at
         }
         this.collection_stock[card_data.set_code] = new_set
-        console.log("Added set "+ card_data.set_code + " to collection stock.")
+      }
+
+      // this data block will eventually be passed to the backend to update the relevant stat points
+      var updated_set = {
+        card_owner_id: this.user_id,
+        set_code: this.current_set_code
       }
 
       // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
       if (card_data.name in this.collection_stock[card_data.set_code].cards) {
         if (card_data.collector_number in this.collection_stock[card_data.set_code].cards[card_data.name]) {
-          const count = this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].count
           this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].count++
+          const count = this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].count
           this.update_card(this.user_id, card_data.set_code, card_data.collector_number, count) 
         }
         else {
@@ -177,22 +147,27 @@ export default {
           // create a new card object; if the card is only available in foil, foil is already true
           this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number] = {
             count: 1,
-            foil: this.card.foil && !this.card.nonfoil,
+            foil: (this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil,
             extra: this.is_extra,
             image: this.getCardImage(this.card['image_uris'], this.card['card_faces'])?.replace("https://cards.scryfall.io/normal/front/", "")
           }
           // add to the foil tally if it's a foil only card
-          if ((this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil) this.collection_stock[card_data.set_code].foils_owned++
+          if ((this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil){
+            this.collection_stock[card_data.set_code].foils_owned++
+            updated_set.foils_owned = this.collection_stock[card_data.set_code].foils_owned
+          }
 
           if (this.is_extra) {
             this.collection_stock[card_data.set_code].extra_owned++
+            updated_set.extra_set_owned = this.collection_stock[card_data.set_code].extra_owned
           } else {
             this.collection_stock[card_data.set_code].base_set_owned++
+            updated_set.base_set_owned = this.collection_stock[card_data.set_code].base_set_owned
           }
         }
       } else {
         // persist new card in database, with standard values
-          await this.create_new_card(this.user_id, card_data.name, this.current_set_code, card_data.collector_number)
+        await this.create_new_card(this.user_id, card_data.name, this.current_set_code, card_data.collector_number)
         // create a new card object; if the card is only available in foil, foil is already true
         const new_card = {
           [card_data.collector_number]: {
@@ -205,20 +180,27 @@ export default {
         // append it to a new subset of cards in the set, rooted as the name of the card
         this.collection_stock[card_data.set_code].cards[card_data.name] = new_card
         // add to the foil tally if it's a foil only card
-        if ((this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil) this.collection_stock[card_data.set_code].foils_owned++
+        if ((this.card.foil || this.card.finishes.includes("etched")) && !this.card.nonfoil) {
+          this.collection_stock[card_data.set_code].foils_owned++
+          updated_set.foils_owned = this.collection_stock[card_data.set_code].foils_owned
+        }
         // add to the appropriate total rarity count
         switch (card_data.rarity) {
           case 'common':
             this.collection_stock[card_data.set_code].commons++
+            updated_set.commons_count = this.collection_stock[card_data.set_code].commons
             break
           case 'uncommon':
             this.collection_stock[card_data.set_code].uncommons++
+            updated_set.uncommons_count = this.collection_stock[card_data.set_code].uncommons
             break
           case 'rare':
             this.collection_stock[card_data.set_code].rares++
+            updated_set.rares_count = this.collection_stock[card_data.set_code].rares
             break
           case 'mythic':
             this.collection_stock[card_data.set_code].mythics++
+            updated_set.mythics_count = this.collection_stock[card_data.set_code].mythics
             break
           default:
             break
@@ -226,28 +208,46 @@ export default {
         // set whether it's an extra card or base set card, for the total count
         if (this.is_extra) {
           this.collection_stock[card_data.set_code].extra_owned++
+          updated_set.extra_set_owned = this.collection_stock[card_data.set_code].extra_owned
         } else {
           this.collection_stock[card_data.set_code].base_set_owned++
+          updated_set.base_set_owned = this.collection_stock[card_data.set_code].base_set_owned
         }
       }
       // recalculate the full set percentage counters for this set
-      this.calculate_completion_for_set(card_data)
+      const completion_data = this.calculate_completion_for_set(card_data)
+      updated_set.full_set_base_only = completion_data.full_set_base_only
+      updated_set.full_set_every_single = completion_data.full_set_every_single
+      updated_set.full_set_one_each = completion_data.full_set_one_each
+      // update the set data on the db with the passed values
+      this.update_set(updated_set)
       console.log("current collection stock", this.collection_stock)
     },
+    // --------------------------------------------------------------------------------------------------------------- //
+    // --------------------------------------------------------------------------------------------------------------- //
     remove_card_from_stock(card_data) {
+      // this data block will eventually be passed to the backend to update the relevant stat points
+      var updated_set = {
+        card_owner_id: this.user_id,
+        set_code: this.current_set_code
+      }
+
       // first, we check the existing card stock for copies; if more than 1, we just reduce the count by 1, else we remove the print entirely, and possibly the entire card name
       const total_of_this_print = this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].count
       if (total_of_this_print <= 1) {
         // remove it from the foil tracker
         if (this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].foil) {
           this.collection_stock[card_data.set_code].foils_owned--
+          updated_set.foils_owned = this.collection_stock[card_data.set_code].foils_owned
         }
         delete this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number]
         // remove it from the base set/extra tracker
         if (this.is_extra) {
           this.collection_stock[card_data.set_code].extra_owned--
+          updated_set.extra_set_owned = this.collection_stock[card_data.set_code].extra_owned
         } else {
           this.collection_stock[card_data.set_code].base_set_owned--
+          updated_set.base_set_owned = this.collection_stock[card_data.set_code].base_set_owned
         }
         // if there are no more prints of this card on this set, we remove it from the tracked rarity list
         if (JSON.stringify(this.collection_stock[card_data.set_code].cards[card_data.name]) === "{}")  // stringify an empty object returns "{}"... ugly but works
@@ -255,47 +255,81 @@ export default {
           switch (card_data.rarity) {
             case 'common':
               this.collection_stock[card_data.set_code].commons--
+              updated_set.commons_count = this.collection_stock[card_data.set_code].commons
               break
             case 'uncommon':
               this.collection_stock[card_data.set_code].uncommons--
+              updated_set.uncommons_count = this.collection_stock[card_data.set_code].uncommons
               break
             case 'rare':
               this.collection_stock[card_data.set_code].rares--
+              updated_set.rares_count = this.collection_stock[card_data.set_code].rares
               break
             case 'mythic':
               this.collection_stock[card_data.set_code].mythics--
+              updated_set.mythics_count = this.collection_stock[card_data.set_code].mythics
               break
             default:
               break
           }
           delete this.collection_stock[card_data.set_code].cards[card_data.name]
-          // remove the card from the database
-          this.delete_card(this.user_id, card_data.set_code, card_data.collector_number)
         }
-      } else {
-        const count = this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].count
+        // remove the card from the database
+        this.delete_card(this.user_id, card_data.set_code, card_data.collector_number)
+        // recalculate the full set percentage counters for this set
+        const completion_data = this.calculate_completion_for_set(card_data)
+        updated_set.full_set_base_only = completion_data.full_set_base_only
+        updated_set.full_set_every_single = completion_data.full_set_every_single
+        updated_set.full_set_one_each = completion_data.full_set_one_each
+        // update the set data on the db with the passed values
+        this.update_set(updated_set)
+      } else {  
+        // we have more than 1 on the count, so we just lower the number
         this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].count--
+        const count = this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].count
         // update the card on the database by removing one from the count
         this.update_card(this.user_id, card_data.set_code, card_data.collector_number, count) 
       }
-      // recalculate the full set percentage counters for this set
-      this.calculate_completion_for_set(card_data)
-      console.log("current collection stock", this.collection_stock)
     },
+    // --------------------------------------------------------------------------------------------------------------- //
+    // --------------------------------------------------------------------------------------------------------------- //
     mark_card_as_foil(card_data) {
-      this.update_card(this.user_id, card_data.set_code, card_data.collector_number,null, true)
       this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].foil = true
       this.collection_stock[card_data.set_code].foils_owned++
+      const foils_owned = this.collection_stock[card_data.set_code].foils_owned
+      const updated_set = {
+        card_owner_id: this.user_id,
+        set_code: this.current_set_code,
+        foils_owned: foils_owned
+      }
+      this.update_card(this.user_id, card_data.set_code, card_data.collector_number,null, true)
+      this.update_set(updated_set)
     },
     mark_card_as_nonfoil(card_data) {
-      this.update_card(this.user_id, card_data.set_code, card_data.collector_number,null, false)
       this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number].foil = false
       this.collection_stock[card_data.set_code].foils_owned--
+      const foils_owned = this.collection_stock[card_data.set_code].foils_owned
+      const updated_set = {
+        card_owner_id: this.user_id,
+        set_code: this.current_set_code,
+        foils_owned: foils_owned
+      }
+      this.update_card(this.user_id, card_data.set_code, card_data.collector_number,null, false)
+      this.update_set(updated_set)
     },
+    // uses current data to calculate how much of the set the user has obtained, for each kind of metric
     calculate_completion_for_set(card_data) {
-      this.collection_stock[card_data.set_code].full_set_every_single = ((this.collection_stock[card_data.set_code].base_set_owned + this.collection_stock[card_data.set_code].extra_owned) / (this.collection_stock[card_data.set_code].base_set_total + this.collection_stock[card_data.set_code].extra_set_total)) * 100
-      this.collection_stock[card_data.set_code].full_set_base_only = (this.collection_stock[card_data.set_code].base_set_owned / this.collection_stock[card_data.set_code].base_set_total) * 100
-      this.collection_stock[card_data.set_code].full_set_one_each = ((this.collection_stock[card_data.set_code].commons + this.collection_stock[card_data.set_code].uncommons + this.collection_stock[card_data.set_code].rares + this.collection_stock[card_data.set_code].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics)) * 100
+      const full_set_every_single = ((this.collection_stock[card_data.set_code].base_set_owned + this.collection_stock[card_data.set_code].extra_owned) / (this.collection_stock[card_data.set_code].base_set_total + this.collection_stock[card_data.set_code].extra_set_total)) * 100
+      const full_set_base_only = (this.collection_stock[card_data.set_code].base_set_owned / this.collection_stock[card_data.set_code].base_set_total) * 100
+      const full_set_one_each = ((this.collection_stock[card_data.set_code].commons + this.collection_stock[card_data.set_code].uncommons + this.collection_stock[card_data.set_code].rares + this.collection_stock[card_data.set_code].mythics) / (this.current_set_commons + this.current_set_uncommons + this.current_set_rares + this.current_set_mythics)) * 100
+      this.collection_stock[card_data.set_code].full_set_every_single = full_set_every_single
+      this.collection_stock[card_data.set_code].full_set_base_only = full_set_base_only
+      this.collection_stock[card_data.set_code].full_set_one_each = full_set_one_each
+      return {  // return the calculated values so they can be pushed to the set info on the database as well
+        full_set_every_single : full_set_every_single,
+        full_set_base_only : full_set_base_only,
+        full_set_one_each : full_set_one_each
+      }
     },
     set_tag(card_data, tag) {
       const tagVal = !this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number]['tag_' + tag]
@@ -319,6 +353,8 @@ export default {
       this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number]['tag_' + tag] = !this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number]['tag_' + tag]
       console.log("current tag for tag_" + tag, this.collection_stock[card_data.set_code].cards[card_data.name][card_data.collector_number]['tag_' + tag])
     },
+    // --------------------------------------------------------------------------------------------------------------- //
+    // --------------------------------------------------------------------------------------------------------------- //
     async create_new_card(user_id, card_name, set_code, collector_number) {
       // create new card object with all of the necessary data
       const new_card = {
@@ -397,8 +433,66 @@ export default {
       })
       if (deleteCardCall.ok) console.log("Deleted card "+ collector_number +" successfully"); else console.log("Deleting card "+ collector_number +" failed with error "+deleteCardCall.status);
       return deleteCardCall.ok
+    },
+    // checks if set data exists for user in database; creates it if needed
+    async create_new_set_if_necessary(){
+      // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
+      const setCheck = await fetch('/mtg-collectron/user-set-info/' + this.user_id + "/" + this.current_set_code, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      // server returns "NOT_FOUND" (404) if there's no data found
+      if (setCheck.status == 404) {
+        // TODO: maybe we can get rid of saving user set data entirely?
+        var new_set = {
+          card_owner_id: this.user_id,
+          set_code: this.current_set_code,
+          commons_count: 0,
+          uncommons_count: 0,
+          rares_count: 0,
+          mythics_count: 0,
+          base_set_owned: 0,
+          extra_set_owned: 0,
+          foils_owned: 0,
+          full_set_every_single: 0,  // 'full set' parameters save the completion percentage for each definition of full set
+          full_set_base_only: 0,
+          full_set_one_each: 0
+        }
+
+        // post the new set to the server with empty parameters
+        const postNewSet = await fetch('/mtg-collectron/user-set-info/', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': this.csrf_token
+          },
+          body: JSON.stringify(new_set)
+        })
+        if(postNewSet.ok){ console.log("Successfully created set entry for "+this.current_set_code+" in the database.") }
+        else { console.log("Failed to create set info for set "+this.current_set_code+" on the database.") }
+      }
+    },
+    // update_set is called whenever one or more fields are changed in a set that already exists
+    async update_set(updated_set) {
+      console.log("Updating the set: ", updated_set)
+      const updateSetCall = await fetch('/mtg-collectron/user-set-info/', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.csrf_token
+        },
+        body: JSON.stringify(updated_set)
+      })
+      if (updateSetCall.ok) console.log("Updated set "+ updated_set.set_code +" successfully"); else console.log("Updating set "+ updated_set.set_code +" failed with error "+updateSetCall.status);
+      return updateSetCall.ok
     }
   },
+  // --------------------------------------------------------------------------------------------------------------- //
+  // --------------------------------------------------------------------------------------------------------------- //
   computed: {
     isCardOwned: function () {
       return this.collection_stock[this.current_set_code] && this.card.name in this.collection_stock[this.current_set_code].cards

@@ -41,6 +41,8 @@ More filters for Decklist Finder, allow user to pass Moxfield url
 
 I don't -fully- trust the collection percentages yet, it's very much reverse-engineered and with a lot of guessing and fiddly counters.
 
+Base/extra set counts not accurate for recent sets.
+
 Some cards on Decklist Finder seem to return lower counts than you actually have of them. Weird.
 
 # Pages Deployment
