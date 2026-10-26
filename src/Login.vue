@@ -43,6 +43,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { authFetch } from './authFetch.js'
 
 defineOptions({ name: 'UserLogin' })
 
@@ -93,17 +94,17 @@ async function logIn() {
       throw new Error('Enter your username and password.')
     }
     // CSRF token is necessary to validade most auth methods
-    const csrfCall = await fetch('/mtg-collectron/auth/csrf', {
+    const csrfCall = await authFetch('/mtg-collectron/auth/csrf', {
       method: 'GET',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
     })
     if (!csrfCall.ok) {
-      throw new Error(result.message || 'Error during CSRF token call.')
+      throw new Error(`Unable to retrieve a CSRF token (HTTP ${csrfCall.status}).`)
     }
     const csrfCallResponse = await csrfCall.json()
 
-    const response = await fetch('/mtg-collectron/auth/login', {
+    const response = await authFetch('/mtg-collectron/auth/login', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -149,7 +150,7 @@ async function createAccount() {
     // Send only the fields needed to create an account. The raw password is sent over HTTPS so
     // the server can hash it; a password hash made in the browser would not replace secure
     // server-side hashing and must never be stored in localStorage or sent as the DB hash.
-    const response = await fetch('/mtg-collectron/auth/register', {
+    const response = await authFetch('/mtg-collectron/auth/register', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

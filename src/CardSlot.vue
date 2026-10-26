@@ -85,6 +85,8 @@
 </template>
 
 <script>
+import { authFetch } from './authFetch.js'
+
 export default {
   props: ['card', 'user_id', 'csrf_token', 'collection_stock', 'current_set_code', 'show_price', 'dark_mode', 'is_extra', 'base_set_total', 'extra_set_total', 'current_set_commons', 'current_set_uncommons', 'current_set_rares', 'current_set_mythics'],
   methods: {
@@ -372,7 +374,7 @@ export default {
       }
       console.log("Persisting the card: ",new_card)
       // post the new card to the server
-      const postNewCard = await fetch('/mtg-collectron/owncard/', {
+      const postNewCard = await authFetch('/mtg-collectron/owncard/', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -401,7 +403,7 @@ export default {
 
       console.log("Updating the card: ",updated_card) 
       // post the new card to the server
-      const updateCardCall = await fetch('/mtg-collectron/owncard/', {
+      const updateCardCall = await authFetch('/mtg-collectron/owncard/', {
         method: 'PATCH',
         credentials: 'include',
         headers: {
@@ -422,7 +424,7 @@ export default {
       }
 
       console.log("Deleting the card: ", card_to_delete)
-      const deleteCardCall = await fetch('/mtg-collectron/owncard/', {
+      const deleteCardCall = await authFetch('/mtg-collectron/owncard/', {
         method: 'DELETE',
         credentials: 'include',
         headers: {
@@ -437,7 +439,7 @@ export default {
     // checks if set data exists for user in database; creates it if needed
     async create_new_set_if_necessary(){
       // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
-      const setCheck = await fetch('/mtg-collectron/user-set-info/' + this.user_id + "/" + this.current_set_code, {
+      const setCheck = await authFetch('/mtg-collectron/user-set-info/' + this.user_id + "/" + this.current_set_code, {
         method: 'GET',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -462,7 +464,7 @@ export default {
         }
 
         // post the new set to the server with empty parameters
-        const postNewSet = await fetch('/mtg-collectron/user-set-info/', {
+        const postNewSet = await authFetch('/mtg-collectron/user-set-info/', {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -478,7 +480,7 @@ export default {
     // update_set is called whenever one or more fields are changed in a set that already exists
     async update_set(updated_set) {
       console.log("Updating the set: ", updated_set)
-      const updateSetCall = await fetch('/mtg-collectron/user-set-info/', {
+      const updateSetCall = await authFetch('/mtg-collectron/user-set-info/', {
         method: 'PATCH',
         credentials: 'include',
         headers: {

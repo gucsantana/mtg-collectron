@@ -578,11 +578,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, reactive, computed, unref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch, reactive, computed, unref } from 'vue'
 import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import FileSaver from 'file-saver'
 import Login from './Login.vue'
+import { AUTHENTICATION_REQUIRED_EVENT, authFetch } from './authFetch.js'
 
 const isAuthenticated = ref(false)
 const authChecking = ref(true)
@@ -791,9 +792,24 @@ const full_set_options = [
 
 // -------------------------------------------------------------------------------------------------- //
 
+function handleAuthenticationRequired() {
+  if (!isAuthenticated.value) return
+
+  authError.value = 'Your session has expired. Please log in again.'
+  isAuthenticated.value = false
+  authUser.value = null
+  userId.value = null
+  csrf_token.value = null
+  loading.value = false
+  loading_bar.value = false
+  appInitialized = false
+}
+
 onMounted(async () => {
+  window.addEventListener(AUTHENTICATION_REQUIRED_EVENT, handleAuthenticationRequired)
+
   try {
-    const response = await fetch('/mtg-collectron/auth/session', { credentials: 'include' })
+    const response = await authFetch('/mtg-collectron/auth/session', { credentials: 'include' })
 
     // A 401 is the normal unauthenticated state; every other non-success status indicates a
     // backend/configuration problem and is shown on the login screen instead of being ignored.
@@ -810,25 +826,31 @@ onMounted(async () => {
     isAuthenticated.value = true
 
     // CSRF token is necessary to validade most auth methods
-    const csrfCall = await fetch('/mtg-collectron/auth/csrf', {
+    const csrfCall = await authFetch('/mtg-collectron/auth/csrf', {
       method: 'GET',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
     })
     if (!csrfCall.ok) {
-      throw new Error(result.message || 'Error during CSRF token call.')
+      throw new Error(`Unable to retrieve a CSRF token (HTTP ${csrfCall.status}).`)
     }
     const csrfCallResponse = await csrfCall.json()
     csrf_token.value = csrfCallResponse.token
 
     await initializeApp()
   } catch (error) {
-    authError.value = error instanceof Error
-      ? error.message
-      : 'Unable to verify your session. Please try again.'
+    if (isAuthenticated.value || !authError.value) {
+      authError.value = error instanceof Error
+        ? error.message
+        : 'Unable to verify your session. Please try again.'
+    }
   } finally {
     authChecking.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener(AUTHENTICATION_REQUIRED_EVENT, handleAuthenticationRequired)
 })
 
 async function initializeApp() {
@@ -853,9 +875,11 @@ async function initializeApp() {
     console.log("Collection stock: ", collection_stock.o)
 
   } catch (error) {
-    authError.value = error instanceof Error
-      ? error.message
-      : 'Unable to load your collection. Please try again.'
+    if (isAuthenticated.value || !authError.value) {
+      authError.value = error instanceof Error
+        ? error.message
+        : 'Unable to load your collection. Please try again.'
+    }
   } finally {
     loading.value = false
   }
@@ -873,21 +897,34 @@ async function handleAuthenticated(user) {
   authError.value = ''
   isAuthenticated.value = true
 
-  // CSRF token is necessary to validade most auth methods
-  if (!csrf_token.value) {
-    const csrfCall = await fetch('/mtg-collectron/auth/csrf', {
-      method: 'GET',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    })
-    if (!csrfCall.ok) {
-      throw new Error(result.message || 'Error during CSRF token call.')
+  try {
+    // CSRF token is necessary to validade most auth methods
+    if (!csrf_token.value) {
+      const csrfCall = await authFetch('/mtg-collectron/auth/csrf', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!csrfCall.ok) {
+        throw new Error(`Unable to retrieve a CSRF token (HTTP ${csrfCall.status}).`)
+      }
+      const csrfCallResponse = await csrfCall.json()
+      csrf_token.value = csrfCallResponse.token
     }
-    const csrfCallResponse = await csrfCall.json()
-    csrf_token.value = csrfCallResponse.token
-  }
 
-  await initializeApp()
+    await initializeApp()
+  } catch (error) {
+    if (isAuthenticated.value) {
+      authError.value = error instanceof Error
+        ? error.message
+        : 'Unable to complete authentication. Please try again.'
+      isAuthenticated.value = false
+      authUser.value = null
+      userId.value = null
+      csrf_token.value = null
+      appInitialized = false
+    }
+  }
 }
 
 function getUserId(user) {
@@ -900,18 +937,18 @@ async function logOut() {
 
   try {
     // CSRF token is necessary to validade most auth methods
-    const csrfCall = await fetch('/mtg-collectron/auth/csrf', {
+    const csrfCall = await authFetch('/mtg-collectron/auth/csrf', {
       method: 'GET',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
     })
     if (!csrfCall.ok) {
-      throw new Error(csrfCall.message || 'Error during CSRF token call.')
+      throw new Error(`Unable to retrieve a CSRF token (HTTP ${csrfCall.status}).`)
     }
     const csrfCallResponse = await csrfCall.json()
 
     // call logout, passing the CSRF token as a header to authenticate the message
-    const response = await fetch('/mtg-collectron/auth/logout', {
+    const response = await authFetch('/mtg-collectron/auth/logout', {
       method: 'POST',
       headers: { 'X-CSRF-Token': csrfCallResponse['token'] },
       credentials: 'include',
@@ -972,7 +1009,7 @@ watch(current_page, v => {
 
 // on a page refresh, pulls all set data for the logged user from the server to populate the local cache
 async function refreshCollectionStockFromServer() {
-  const response = await fetch(`/mtg-collectron/user-set-info/${encodeURIComponent(userId.value)}`, {
+  const response = await authFetch(`/mtg-collectron/user-set-info/${encodeURIComponent(userId.value)}`, {
     method: 'GET',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -1023,7 +1060,7 @@ async function getAllOwnedCardsForUserInSet(setCode) {
     throw new Error(`Cannot load owned cards: set "${setCode}" is missing from the collection stock.`)
   }
 
-  const response = await fetch(
+  const response = await authFetch(
     `/mtg-collectron/owncard/${encodeURIComponent(userId.value)}/${encodeURIComponent(setCode)}`,
     {
       method: 'GET',
@@ -1211,7 +1248,7 @@ async function get_all_set_info() {
   var fetch_url = "/mtg-collectron/sets"
 
   // since the migration to a spring boot backend, we query our data directly from our db
-  const response = await fetch(fetch_url);
+  const response = await authFetch(fetch_url);
   return await response.json();
 }
 
@@ -1220,7 +1257,7 @@ async function get_set_all_cards(set_code) {
   var fetch_url = "/mtg-collectron/card/" + (set_code.toLowerCase())
 
   // since the migration to a spring boot backend, we query our data directly from our db
-  const response = await fetch(fetch_url);
+  const response = await authFetch(fetch_url);
   return await response.json();
 }
 
