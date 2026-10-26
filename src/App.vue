@@ -842,17 +842,20 @@ async function initializeApp() {
       drawer.value = false
     }
 
-    // Restore display preferences and the existing browser-local collection after the user
-    // has been authenticated. Authentication does not move collection data out of localStorage.
+    // Restore display preferences after the user has been authenticated.
     const set_options = JSON.parse(localStorage.getItem('set_options'))
     if (set_options) { set_types_shown.value = set_options }
     get_preferences_from_storage()
 
-    const local_stock = JSON.parse(localStorage.getItem('collection_stock'))
-    if (local_stock) { collection_stock.o = local_stock }
-
+    // get all set data from the server, and directly afterwards, get the users' set info data as well
     set_list.value = await get_all_set_info()
+    await refreshCollectionStockFromServer()
     console.log("Collection stock: ", collection_stock.o)
+
+  } catch (error) {
+    authError.value = error instanceof Error
+      ? error.message
+      : 'Unable to load your collection. Please try again.'
   } finally {
     loading.value = false
   }
@@ -967,16 +970,126 @@ watch(current_page, v => {
   window.scrollTo({ top: 0, behavior: "smooth" })
 })
 
+// on a page refresh, pulls all set data for the logged user from the server to populate the local cache
+async function refreshCollectionStockFromServer() {
+  const response = await fetch(`/mtg-collectron/user-set-info/${encodeURIComponent(userId.value)}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!response.ok) {
+    throw new Error(`Unable to refresh collection set info (HTTP ${response.status}).`)
+  }
+
+  const setRows = await response.json()
+  if (!Array.isArray(setRows)) {
+    throw new Error('The collection set-info endpoint did not return a list.')
+  }
+
+  const freshStock = {}
+  for (const row of setRows) {
+    if (!row || typeof row.set_code !== 'string' || !row.set_code) {
+      throw new Error('The collection set-info response contains a row without a set code.')
+    }
+
+    freshStock[row.set_code] = {
+      cards: {},
+      commons: row.commons_count ?? 0,
+      uncommons: row.uncommons_count ?? 0,
+      rares: row.rares_count ?? 0,
+      mythics: row.mythics_count ?? 0,
+      total_commons: 0,
+      total_uncommons: 0,
+      total_rares: 0,
+      total_mythics: 0,
+      base_set_owned: row.base_set_owned ?? 0,
+      extra_owned: row.extra_set_owned ?? 0,
+      foils_owned: row.foils_owned ?? 0,
+      base_set_total: 0,
+      extra_set_total: 0,
+      full_set_every_single: row.full_set_every_single ?? 0,
+      full_set_base_only: row.full_set_base_only ?? 0,
+      full_set_one_each: row.full_set_one_each ?? 0,
+    }
+  }
+
+  collection_stock.o = freshStock
+}
+
+// returns all cards for the current user of the selected set
+async function getAllOwnedCardsForUserInSet(setCode) {
+  const setStock = collection_stock.o[setCode]
+  if (!setStock) {
+    throw new Error(`Cannot load owned cards: set "${setCode}" is missing from the collection stock.`)
+  }
+
+  const response = await fetch(
+    `/mtg-collectron/owncard/${encodeURIComponent(userId.value)}/${encodeURIComponent(setCode)}`,
+    {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
+  if (!response.ok) {
+    throw new Error(`Unable to load owned cards for set "${setCode}" (HTTP ${response.status}).`)
+  }
+
+  const ownedCards = await response.json()
+  if (!Array.isArray(ownedCards)) {
+    throw new Error(`The owned-card endpoint for set "${setCode}" did not return a list.`)
+  }
+
+  const cards = {}
+  for (const ownedCard of ownedCards) {
+    if (
+      !ownedCard ||
+      typeof ownedCard.card_name !== 'string' ||
+      typeof ownedCard.collector_number !== 'string' ||
+      ownedCard.set_code !== setCode
+    ) {
+      throw new Error(`The owned-card response for set "${setCode}" contains an invalid card.`)
+    }
+
+    const cardData = current_set_base_cards.value?.find(card =>
+      card.name === ownedCard.card_name && card.collector_number === ownedCard.collector_number,
+    )
+    if (!cards[ownedCard.card_name]) {
+      cards[ownedCard.card_name] = {}
+    }
+    cards[ownedCard.card_name][ownedCard.collector_number] = {
+      count: ownedCard.card_count,
+      foil: ownedCard.is_foil,
+      extra: ownedCard.is_considered_extra,
+      tag_square: ownedCard.is_tagged_square,
+      tag_circle: ownedCard.is_tagged_circle,
+      tag_triangle: ownedCard.is_tagged_triangle,
+      tag_cross: ownedCard.is_tagged_cross,
+      image: cardData ? getCardImage(cardData.image_uris, cardData.card_faces) : undefined,
+    }
+  }
+
+  setStock.cards = cards
+}
+
 // sets the mouse coords value, for anything we'd like to track the exact mouse position to display
 function getMouseCoords(event) {
   mouse_coords.value = { 'x': event.clientX, 'y': event.clientY }
 }
 
-// activated when a set is selected on the left column
+// activated when a set is selected on the left column, or a card is selected on Card Finder
 // clean up previous values, set up the loading overlay, and grab the new data from the next set
 async function select_set(set) {
   // console.log("collection stock for selected set",collection_stock.o[set.code])
   loading.value = true
+
+  // if we already have a current set selected, and the set exists in the stock, we clear it up
+  if (current_set.value) {
+    const previousSetStock = collection_stock.o[current_set.value.code]
+    if (previousSetStock) {
+      previousSetStock.cards = {}
+    }
+  }
 
   current_page.value = 1
   card_search.value = ''
@@ -993,6 +1106,14 @@ async function select_set(set) {
 
   // grab a list of all cards 
   current_set_base_cards.value = await get_set_all_cards(set.code)
+
+  // populate the selected set's card data from the server
+  try {
+    await getAllOwnedCardsForUserInSet(set.code)
+  } catch (error) {
+    loading.value = false
+    throw error
+  }
 
   var cards_checked = [] // list of cards already checked for rarity
   // we will go card by card to get the number that we consider 'base' and 'extra'
@@ -1039,6 +1160,8 @@ async function select_set(set) {
     collection_stock.o[set.code].total_uncommons = current_set_uncommons.value
     collection_stock.o[set.code].total_rares = current_set_rares.value
     collection_stock.o[set.code].total_mythics = current_set_mythics.value
+    collection_stock.o[set.code].base_set_total = current_set_base_cards_qty.value
+    collection_stock.o[set.code].extra_set_total = current_set_extra_cards_qty.value
   }
 
   current_set_owned_base_cards.value = collection_stock.o[set.code] ? collection_stock.o[set.code].base_set_owned : 0
@@ -1824,13 +1947,22 @@ function clear_all_data() {
 
 const getProgressForSet = computed(() => {
   if (collection_stock.o[current_set_code.value]) {
+    const setStock = collection_stock.o[current_set_code.value]
     switch (page_options.full_set_option_selected.value) {
       case 1: // every single card, variants included
-        return collection_stock.o[current_set_code.value].full_set_every_single ? collection_stock.o[current_set_code.value].full_set_every_single : ((collection_stock.o[current_set_code.value].base_set_owned + collection_stock.o[current_set_code.value].extra_owned) / (collection_stock.o[current_set_code.value].base_set_total + collection_stock.o[current_set_code.value].extra_set_total)) * 100
+        return setStock.full_set_every_single || (setStock.base_set_total + setStock.extra_set_total) === 0
+          ? setStock.full_set_every_single
+          : ((setStock.base_set_owned + setStock.extra_owned) / (setStock.base_set_total + setStock.extra_set_total)) * 100
       case 2: // base set only
-        return collection_stock.o[current_set_code.value].full_set_base_only ? collection_stock.o[current_set_code.value].full_set_base_only : (collection_stock.o[current_set_code.value].base_set_owned / collection_stock.o[current_set_code.value].base_set_total) * 100
-      case 3: // at least one version of every card
-        return collection_stock.o[current_set_code.value].full_set_one_each ? collection_stock.o[current_set_code.value].full_set_one_each : ((collection_stock.o[current_set_code.value].commons + collection_stock.o[current_set_code.value].uncommons + collection_stock.o[current_set_code.value].rares + collection_stock.o[current_set_code.value].mythics) / (current_set_commons.value + current_set_uncommons.value + current_set_rares.value + current_set_mythics.value)) * 100
+        return setStock.full_set_base_only || setStock.base_set_total === 0
+          ? setStock.full_set_base_only
+          : (setStock.base_set_owned / setStock.base_set_total) * 100
+      case 3: { // at least one version of every card
+        const rarityTotal = current_set_commons.value + current_set_uncommons.value + current_set_rares.value + current_set_mythics.value
+        return setStock.full_set_one_each || rarityTotal === 0
+          ? setStock.full_set_one_each
+          : ((setStock.commons + setStock.uncommons + setStock.rares + setStock.mythics) / rarityTotal) * 100
+      }
       default:
         console.log("Something very wrong happened with page_options.full_set_option_selected on render")
         return 0
