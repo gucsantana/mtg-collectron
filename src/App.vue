@@ -389,7 +389,8 @@
             </v-row>
           </v-sheet>
         </v-sheet>
-        <v-pagination v-if="page_options.card_per_page_option_selected != 4" v-model="current_page" :length="pageCount"
+        <v-pagination v-if="page_options.card_per_page_option_selected.value !== 4" v-model="current_page"
+          :length="pageCount"
           :total-visible="isMobile ? 4 : 8" />
         <v-card class="set_stats_box" :elevation="10" v-scroll="on_scroll_stats_box" v-show="stats_box_visible">
           <v-card class="set_stats_inner_box" flat>
@@ -593,6 +594,7 @@ const userId = ref(null)
 const csrf_token = ref(null)
 const loggingOut = ref(false)
 let appInitialized = false
+let appInitializationComplete = false
 
 // -------------------- THEME BLOCK --------------------------- //
 
@@ -731,10 +733,22 @@ var toast = ref(false)
 var no_more_of_skipped_card = ref(false)
 var finished_housekeeping = ref(false)
 
+const card_per_page_options = [
+  { value: 1, title: 36 },
+  { value: 2, title: 60 },
+  { value: 3, title: 120 },
+  //{value: 4, title: 'All'}
+]
+const full_set_options = [
+  { value: 1, title: 'Every single card, variants included' },
+  { value: 2, title: 'Base set only' },
+  { value: 3, title: 'At least one version of each card name' }
+]
+
 var page_options = reactive({
   show_option_selected: 1,
-  full_set_option_selected: 1,
-  card_per_page_option_selected: 1,
+  full_set_option_selected: full_set_options[0],
+  card_per_page_option_selected: card_per_page_options[0],
   dark_mode: false,
   show_prices: true,
   show_sidebar_percent: true,
@@ -778,17 +792,6 @@ const show_options = [
   { value: 2, title: 'Only owned' },
   { value: 3, title: 'Only unowned' }
 ]
-const card_per_page_options = [
-  { value: 1, title: 36 },
-  { value: 2, title: 60 },
-  { value: 3, title: 120 },
-  //{value: 4, title: 'All'}
-]
-const full_set_options = [
-  { value: 1, title: 'Every single card, variants included' },
-  { value: 2, title: 'Base set only' },
-  { value: 3, title: 'At least one version of each card name' }
-]
 
 // -------------------------------------------------------------------------------------------------- //
 
@@ -803,6 +806,7 @@ function handleAuthenticationRequired() {
   loading.value = false
   loading_bar.value = false
   appInitialized = false
+  appInitializationComplete = false
 }
 
 onMounted(async () => {
@@ -856,6 +860,7 @@ onBeforeUnmount(() => {
 async function initializeApp() {
   if (appInitialized) return
   appInitialized = true
+  appInitializationComplete = false
   loading.value = true
 
   try {
@@ -867,7 +872,7 @@ async function initializeApp() {
     // Restore display preferences after the user has been authenticated.
     const set_options = JSON.parse(localStorage.getItem('set_options'))
     if (set_options) { set_types_shown.value = set_options }
-    get_preferences_from_storage()
+    await get_preferences_from_storage()
 
     // get all set data from the server, and directly afterwards, get the users' set info data as well
     set_list.value = await get_all_set_info()
@@ -882,6 +887,7 @@ async function initializeApp() {
     }
   } finally {
     loading.value = false
+    appInitializationComplete = true
   }
 }
 
@@ -923,6 +929,7 @@ async function handleAuthenticated(user) {
       userId.value = null
       csrf_token.value = null
       appInitialized = false
+      appInitializationComplete = false
     }
   }
 }
@@ -962,6 +969,7 @@ async function logOut() {
     authUser.value = null
     userId.value = null
     appInitialized = false
+    appInitializationComplete = false
   } catch (error) {
     authError.value = error instanceof Error ? error.message : 'Unable to log out. Please try again.'
   } finally {
@@ -987,10 +995,39 @@ watch(collection_stock, new_obj => {
 watch(set_types_shown, new_array => {
   localStorage.setItem('set_options', JSON.stringify(new_array))
 })
-watch(page_options, v => {
-  localStorage.setItem('stored_options', JSON.stringify(page_options))
+watch(page_options, async () => {
+  if (!appInitializationComplete) return
+
   toggleDarkMode(page_options.dark_mode)
   current_page.value = 1
+
+  console.log("page_options being persisted: ",page_options)
+
+  try {
+    const response = await authFetch(
+      `/mtg-collectron/user-preferences/${encodeURIComponent(userId.value)}`,
+      {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrf_token.value,
+        },
+        body: JSON.stringify({
+          ...page_options,
+          full_set_option_selected: page_options.full_set_option_selected.value,
+          card_per_page_option_selected: page_options.card_per_page_option_selected.value,
+        }),
+      },
+    )
+    if (!response.ok) {
+      throw new Error(`Unable to update user preferences (HTTP ${response.status}).`)
+    }
+  } catch (error) {
+    authError.value = error instanceof Error
+      ? error.message
+      : 'Unable to update user preferences. Please try again.'
+  }
 })
 watch(card_search, v => {
   current_page.value = 1
@@ -1218,29 +1255,67 @@ async function select_set(set) {
   loading.value = false
 }
 
-// recovers the user preferences from storage and sets up the screen based on them
-function get_preferences_from_storage() {
-  // localStorage.clear('stored_options')
-  const stored_options = JSON.parse(localStorage.getItem('stored_options'))
-  if (stored_options) {
-    page_options.full_set_option_selected = stored_options.full_set_option_selected
-    page_options.card_per_page_option_selected = stored_options.card_per_page_option_selected
+// recovers the user preferences from the database and sets up the screen based on them
+async function get_preferences_from_storage() {
+  const response = await authFetch(
+    `/mtg-collectron/user-preferences/${encodeURIComponent(userId.value)}`,
+    {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
+  if (!response.ok) {
+    throw new Error(`Unable to load user preferences (HTTP ${response.status}).`)
+  }
+
+  const stored_options = await response.json()
+  if (stored_options !== null) {
+    const optionNames = [
+      'full_set_option_selected',
+      'card_per_page_option_selected',
+      'dark_mode',
+      'show_prices',
+      'show_sidebar_percent',
+    ]
+    if (
+      typeof stored_options !== 'object' ||
+      Array.isArray(stored_options) ||
+      optionNames.some(optionName => !Object.prototype.hasOwnProperty.call(stored_options, optionName))
+    ) {
+      throw new Error('The user-preferences endpoint returned invalid preferences.')
+    }
+
+    const storedFullSetOption = full_set_options.find(
+      option => option.value === stored_options.full_set_option_selected,
+    )
+    if (!storedFullSetOption) {
+      throw new Error('The user-preferences endpoint returned an invalid full-set option.')
+    }
+    const storedCardsPerPageOption = card_per_page_options.find(
+      option => option.value === stored_options.card_per_page_option_selected,
+    )
+    if (!storedCardsPerPageOption) {
+      throw new Error('The user-preferences endpoint returned an invalid cards-per-page option.')
+    }
+    page_options.full_set_option_selected = storedFullSetOption
+    page_options.card_per_page_option_selected = storedCardsPerPageOption
     page_options.dark_mode = stored_options.dark_mode
     page_options.show_prices = stored_options.show_prices
     page_options.show_sidebar_percent = stored_options.show_sidebar_percent
   } else {
     const user_options = {
-      full_set_option_selected: { value: 1, title: 'Every single card, variants included' },
-      card_per_page_option_selected: { value: 2, title: 60 },
+      full_set_option_selected: full_set_options[0],
+      card_per_page_option_selected: card_per_page_options[1],
     }
     page_options.full_set_option_selected = user_options.full_set_option_selected
     page_options.card_per_page_option_selected = user_options.card_per_page_option_selected
     page_options.dark_mode = false
     page_options.show_prices = true
     page_options.show_sidebar_percent = true
-
-    localStorage.setItem('stored_options', JSON.stringify(page_options))
   }
+  // after options are populated, we change to dark mode (or not)
+  toggleDarkMode(page_options.dark_mode)
 }
 
 // get all set information from the db
@@ -2008,14 +2083,19 @@ const getProgressForSet = computed(() => {
 })
 const pageCount = computed(() => {
   const total_cards_to_display = current_set_base_cards.value.filter((card) => (card.name.toLowerCase().includes(card_search.value) || card_search.value == '')).length
-  return (page_options && page_options.card_per_page_option_selected && (page_options.card_per_page_option_selected.value != 4))
+
+  return (page_options && page_options.card_per_page_option_selected && (page_options.card_per_page_option_selected.value !== 4))
     ? Math.ceil(total_cards_to_display / page_options.card_per_page_option_selected.title) : 0
 })
 const pageSliceStart = computed(() => {
-  return 0 + (page_options.card_per_page_option_selected.value != 4 ? (current_page.value - 1) * page_options.card_per_page_option_selected.title : 0)
+  return 0 + (page_options.card_per_page_option_selected.value !== 4
+    ? (current_page.value - 1) * page_options.card_per_page_option_selected.title
+    : 0)
 })
 const pageSliceEnd = computed(() => {
-  return (page_options.card_per_page_option_selected.value != 4 ? Math.min(current_set_base_cards.value.length, current_page.value * page_options.card_per_page_option_selected.title) : current_set_base_cards.value.length)
+  return (page_options.card_per_page_option_selected.value !== 4
+    ? Math.min(current_set_base_cards.value.length, current_page.value * page_options.card_per_page_option_selected.title)
+    : current_set_base_cards.value.length)
 })
 const isMobile = computed(() => {
   return unref(display.mobile)

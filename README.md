@@ -12,7 +12,7 @@ Up to four separate tags per card, also indicated in Card Finder. You can use th
 Card search to filter through cards in a set, set search to filter through the list of sets (matches either set name or set code).
 
 Allows users to import cards with the Moxfield export syntax, or export and import their entire collection as JSON-stringified text.
-Users must sign in or create an account before entering the collection. Authentication is handled by the Spring Boot backend; the collection and preferences continue to be stored in the browser's local storage.
+Users must sign in or create an account before entering the collection. Authentication is handled by the Spring Boot backend.
 
 'Card Finder' checks which versions of a card you have in your stock, if any.
 
@@ -44,7 +44,3 @@ I don't -fully- trust the collection percentages yet, it's very much reverse-eng
 Base/extra set counts not accurate for recent sets.
 
 Some cards on Decklist Finder seem to return lower counts than you actually have of them. Weird.
-
-# Pages Deployment
-
-Run "npm run deploy". Branch gh-pages is set up to automatically publish to the Github pages when committed to.
