@@ -547,9 +547,9 @@
               <v-btn @click="exportCollectionMenu" class="side_drawer_button"
                 :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable"
                 variant="outlined">Export Collection</v-btn>
-              <v-btn @click="housekeeping_window_active = true" class="side_drawer_button"
+              <!--v-btn @click="housekeeping_window_active = true" class="side_drawer_button"
                 :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable"
-                variant="outlined">Housekeeping Tasks</v-btn>
+                variant="outlined">Housekeeping Tasks</v-btn><!-->
             </v-list-item>
             <v-divider />
             <v-list-item>
@@ -712,6 +712,9 @@ var about_window_active = ref(false)        // signals the about window is visib
 
 var card_finder_text = ref('')
 var card_finder_results = ref([])
+let cardFinderSearchTimeout
+let cardFinderRequestController
+let cardFinderSearchId = 0
 
 var decklist_finder_searchlist = ref([])          // the list of cards passed to be searched on decklist search, as objects
 var decklist_finder_priority = ref('oldest')      // fetch priority of the searched cards ('oldest' or 'newest')
@@ -854,6 +857,9 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  clearTimeout(cardFinderSearchTimeout)
+  cardFinderSearchId++
+  cardFinderRequestController?.abort()
   window.removeEventListener(AUTHENTICATION_REQUIRED_EVENT, handleAuthenticationRequired)
 })
 
@@ -1032,12 +1038,18 @@ watch(page_options, async () => {
 watch(card_search, v => {
   current_page.value = 1
 })
-watch(card_finder_text, v => {
-  if (v.length >= 3) {
-    findCardsInCollection()
-  } else {
-    card_finder_results.value = []
-  }
+watch(card_finder_text, cardName => {
+  clearTimeout(cardFinderSearchTimeout)
+  cardFinderRequestController?.abort()
+  cardFinderRequestController = undefined
+  const searchId = ++cardFinderSearchId
+  card_finder_results.value = []
+
+  if (cardName.trim().length < 3 || userId.value == null) return
+
+  cardFinderSearchTimeout = setTimeout(() => {
+    findCardsInCollection(cardName.trim(), searchId)
+  }, 300)
 })
 watch(current_page, v => {
   // scroll back to top on changing data pages
@@ -1336,26 +1348,70 @@ async function get_set_all_cards(set_code) {
   return await response.json();
 }
 
-// returns a list of every card in the collection that matches the typed string
-function findCardsInCollection() {
-  const cardName = card_finder_text.value.toLowerCase()
-  var cardList = []
-  for (var set in collection_stock.o) {
-    for (var card in collection_stock.o[set].cards) {
-      if (card.toLowerCase().includes(cardName)) {
-        for (var cardVer in collection_stock.o[set].cards[card]) {
-          const tagSquare = collection_stock.o[set].cards[card][cardVer].tag_square ? '■' : ''
-          const tagTriangle = collection_stock.o[set].cards[card][cardVer].tag_triangle ? '▲' : ''
-          const tagCircle = collection_stock.o[set].cards[card][cardVer].tag_circle ? '⚫︎' : ''
-          const tagCross = collection_stock.o[set].cards[card][cardVer].tag_cross ? '✖' : ''
-          const formattedCardName = card + ' (' + set.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
-          cardList.push({ cardName: card, cardSet: set, formattedCardName: formattedCardName })
-        }
+// Returns owned printings that partially match the typed card name.
+async function findCardsInCollection(cardName, searchId) {
+  const controller = new AbortController()
+  cardFinderRequestController = controller
+
+  try {
+    const response = await authFetch(
+      `/mtg-collectron/owncard/card-finder/${encodeURIComponent(userId.value)}/${encodeURIComponent(cardName)}`,
+      {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      },
+    )
+    if (!response.ok) {
+      throw new Error(`Unable to search your collection (HTTP ${response.status}).`)
+    }
+
+    const ownedCards = await response.json()
+    if (!Array.isArray(ownedCards)) {
+      throw new Error('The card-finder endpoint did not return a list.')
+    }
+
+    const cardList = ownedCards.map(card => {
+      if (
+        !card ||
+        typeof card.card_name !== 'string' ||
+        typeof card.set_code !== 'string' ||
+        typeof card.collector_number !== 'string'
+      ) {
+        throw new Error('The card-finder response contains an invalid card.')
       }
+
+      const tagSquare = card.is_tagged_square ? '■' : ''
+      const tagTriangle = card.is_tagged_triangle ? '▲' : ''
+      const tagCircle = card.is_tagged_circle ? '⚫︎' : ''
+      const tagCross = card.is_tagged_cross ? '✖' : ''
+      const formattedCardName =
+        `${card.card_name} (${card.set_code.toUpperCase()}-${card.collector_number}) ` +
+        `${tagSquare}${tagTriangle}${tagCircle}${tagCross}`
+
+      return {
+        cardName: card.card_name,
+        cardSet: card.set_code,
+        formattedCardName,
+      }
+    })
+    cardList.sort(compareCards)
+
+    if (searchId === cardFinderSearchId) {
+      card_finder_results.value = cardList
+    }
+  } catch (error) {
+    if (error?.name !== 'AbortError' && searchId === cardFinderSearchId) {
+      authError.value = error instanceof Error
+        ? error.message
+        : 'Unable to search your collection. Please try again.'
+    }
+  } finally {
+    if (cardFinderRequestController === controller) {
+      cardFinderRequestController = undefined
     }
   }
-  cardList.sort(compareCards)
-  card_finder_results.value = cardList
 }
 
 // returns a list of every printing of a specific card name in your collection, with optional parameters
