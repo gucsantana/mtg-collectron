@@ -75,7 +75,7 @@
             </v-row>
           </v-card-item>
           <v-divider />
-          <v-radio-group inline v-model="decklist_finder_priority" density="compact" hide-details
+          <v-radio-group inline v-model="decklist_finder_priority" density="compact" hide-details class="decklist_finder_radio_options"
             style="display:inline-block;">
             <v-radio color="primary" label="Prioritize Oldest Printing" value="oldest" />
             <v-radio color="primary" label="Prioritize Newest Printing" value="newest" />
@@ -197,7 +197,6 @@
           <br />
           <p v-show="import_card_total > 0">Imported {{ import_card_total }} unique cards.</p>
           <p v-show="import_syntax == 'native' && import_success">{{ import_result_message }}</p>
-          <p v-show="import_syntax == 'native' && !import_success" style="padding:4px;">{{ import_errors }}</p>
           <br />
           <p v-show="import_errors.length > 0 && import_syntax == 'moxfield'">The following lines could not be imported:
           </p>
@@ -2573,6 +2572,11 @@ function sleep(ms) {
   background-color: #F8BBD0;
 }
 
+.decklist_finder_radio_options :deep(.v-selection-control-group) {
+  column-gap: 8px;
+  align-self: center;
+}
+
 .decklist_finder_results_window {
   width: 500px;
   height: 100%;
@@ -2635,6 +2639,7 @@ function sleep(ms) {
   width: 450px;
   max-width: 90%;
   height: 150px;
+  align-self: center;
 }
 
 .import_file_field {
