@@ -39,6 +39,10 @@ export default defineConfig({
       '/mtg-collectron/user-preferences': {
         target: 'http://localhost:8080',
         changeOrigin: true
+      },
+      '/mtg-collectron/importbackup': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
       }
     }
   }

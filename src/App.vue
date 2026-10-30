@@ -147,27 +147,43 @@
                   </template>
                   <p>'Moxfield Syntax' uses the Moxfield syntax, one card per line</p>
                   <p class="mb-0">e.g. "1 Loran's Escape (BRO) *F*"</p>
-                  <p class="mb-0">'Exported File' uses the whole backup file exported by the 'Export Collection' button
+                  <p class="mb-0">'Exported File' uses the CSV backup file exported by the 'Export Collection' button
                   </p>
-                  <p class="mb-0">It will REWRITE the entire collection, not add to it</p>
                 </v-tooltip>
               </v-col>
             </v-row>
           </v-card-item>
           <v-divider />
-          <v-radio-group inline v-model="import_syntax" density="compact" hide-details style="display:inline-block;">
-            <v-radio color="primary" label="Moxfield Syntax" value="moxfield" />
-            <v-radio color="primary" label="Exported File" value="native" />
-          </v-radio-group>
-          <v-textarea v-model="import_text" v-if="import_syntax == 'moxfield'" autofocus class="import_text_field"
-            variant="outlined" />
-          <v-file-input accept="application/json" @change="loadImportFileToMemory" clearable hide-input
-            v-if="import_syntax == 'native'" class="import_file_field"></v-file-input>
-          <v-row>
+          <div class="import_window_content">
+            <v-radio-group inline v-model="import_syntax" density="compact" hide-details class="import_syntax_selector"
+              @update:model-value="import_replace_confirmed = false">
+              <v-radio color="primary" label="Moxfield Syntax" value="moxfield" />
+              <v-radio color="primary" label="Exported File" value="native" />
+            </v-radio-group>
+            <v-textarea v-model="import_text" v-if="import_syntax == 'moxfield'" autofocus class="import_text_field"
+              variant="outlined"/>
+            <v-file-input accept="text/csv" @change="loadImportFileToMemory" clearable label="Upload CSV file"
+              v-if="import_syntax == 'native'" class="import_file_field" variant="outlined"></v-file-input>
+            <div v-if="import_syntax == 'native'" class="import_action_options">
+              <v-radio-group v-model="import_action" density="compact" hide-details class="import_action_selector"
+                @update:model-value="import_replace_confirmed = false">
+                <v-radio color="primary" label="Add cards from CSV to collection" value="add" />
+                <v-radio color="primary" label="Replace collection with cards from CSV" value="replace" />
+              </v-radio-group>
+              <v-checkbox v-if="import_action == 'replace'" v-model="import_replace_confirmed" color="primary"
+                label="Confirm" density="compact" hide-details class="import_replace_confirmation" />
+              <v-text-field v-model="import_password" label="Password" type="password" autocomplete="current-password"
+                required variant="outlined" density="compact" hide-details class="import_password_field" />
+            </div>
+          </div>
+          <v-card-actions class="import_window_actions">
             <v-spacer />
-            <v-col cols="3"><v-btn @click="import_cards">Import</v-btn></v-col>
-            <v-col cols="3"><v-btn @click="import_window_active = false">Close</v-btn></v-col>
-          </v-row>
+            <v-btn @click="import_cards" variant="outlined"
+              :disabled="import_syntax == 'native' && (!import_password.trim() || (import_action == 'replace' && !import_replace_confirmed))">
+              Import
+            </v-btn>
+            <v-btn @click="import_window_active = false" variant="outlined">Close</v-btn>
+          </v-card-actions>
         </v-card>
       </v-overlay>
       <v-overlay :model-value="import_results_active" @afterLeave="import_results_active = false"
@@ -180,14 +196,8 @@
           <v-divider />
           <br />
           <p v-show="import_card_total > 0">Imported {{ import_card_total }} unique cards.</p>
-          <p v-show="import_errors == '' && import_syntax == 'native'">Imported and replaced collection succesfully.</p>
-          <p v-show="import_errors && import_syntax == 'native'" style="padding:4px;">Failed to import the data. Make
-            sure
-            you're using a file created by the 'Export Collection' button. In case of importing an unrelated JSON
-            object, I
-            will not stop you from shooting your own foot, the site will very likely stop working properly until you
-            clear all
-            data again.</p>
+          <p v-show="import_syntax == 'native' && import_success">{{ import_result_message }}</p>
+          <p v-show="import_syntax == 'native' && !import_success" style="padding:4px;">{{ import_errors }}</p>
           <br />
           <p v-show="import_errors.length > 0 && import_syntax == 'moxfield'">The following lines could not be imported:
           </p>
@@ -237,24 +247,14 @@
               <v-col cols="6">
                 <h2>Export Collection</h2>
               </v-col>
-              <!-- <v-spacer/>
-            <v-col cols="1">
-              <v-tooltip text="/n" location="bottom">
-                <template v-slot:activator="{ props }">
-                  <v-icon :="props" icon="mdi-help-box" size="x-large" color="primary"/>
-                </template>
-                <p>Exports the collection stock as a JSON file readable by this system</p>
-                <p class="mb-0">Save it somewhere if you need a backup to be safe</p>
-              </v-tooltip>
-            </v-col> -->
             </v-row>
           </v-card-item>
           <v-divider />
-          <p>Exports the collection stock as a JSON file readable by this system</p>
-          <p class="mb-0">Save it somewhere if you need a backup to be safe</p>
+          <p>Exports card and set information as a CSV file.</p>
+          <p class="mb-0">Card information appears first, followed by set information.</p>
           <v-card-actions style="margin-top:20px;">
             <v-spacer />
-            <v-col cols="3"><v-btn @click="saveCollectionFile" variant="outlined">Save File</v-btn></v-col>
+            <v-col cols="3"><v-btn @click="saveCollectionFile" variant="outlined">Save CSV</v-btn></v-col>
             <v-col cols="2"><v-btn @click="export_window_active = false" variant="outlined">Close</v-btn></v-col>
           </v-card-actions>
         </v-card>
@@ -725,12 +725,15 @@ var mouse_coords = ref({ 'x': 0, 'y': 0 })             // mouse coords used for 
 var hover_card_src = ref("")
 
 var import_syntax = ref('moxfield')
+var import_action = ref('add')
+var import_replace_confirmed = ref(false)
+var import_password = ref('')
 var import_text = ''
-var import_file_data = null
+var import_file_data = ref(null)
 var import_success = ref(true)
 var import_errors = ref([])
 var import_card_total = ref(0)
-var export_text = ''
+var import_result_message = ref('')
 
 var toast = ref(false)
 var no_more_of_skipped_card = ref(false)
@@ -1690,18 +1693,27 @@ async function skip_decklist_card(card) {
 
 // parse and import list of cards on the text box
 async function import_cards() {
+  import_success.value = false
+  import_errors.value = ''
+  import_result_message.value = ''
+  import_card_total.value = 0
   loading.value = true
   import_results_active.value = false
 
-  if (import_syntax.value == 'moxfield') {
-    await import_from_moxfield()
+  try {
+    if (import_syntax.value == 'moxfield') {
+      await import_from_moxfield()
+    }
+    else if (import_syntax.value == 'native') {
+      await import_from_native()
+    }
+  } catch (error) {
+    import_success.value = false
+    import_errors.value = error instanceof Error ? error.message : 'Unable to import the collection.'
+  } finally {
+    loading.value = false
+    import_results_active.value = true
   }
-  else if (import_syntax.value == 'native') {
-    await import_from_native()
-  }
-  loading.value = false
-
-  import_results_active.value = true
 }
 
 // imports cards with the moxfield syntax
@@ -1754,47 +1766,175 @@ async function import_from_moxfield() {
     }
   }
   // we consider the import a success if at least one card was imported
-  import_success = (cards_imported > 0)
+  import_success.value = (cards_imported > 0)
   import_card_total.value = cards_imported
   import_errors.value = error_list.join(', ')
 }
 
-// when a file is imported to the import menu, this reads and parses its content
-async function loadImportFileToMemory(file) {
-  file.target.files[0].text()
-    .then(JSON.parse)
-    .then((value) => import_file_data = value);
+function loadImportFileToMemory(event) {
+  import_file_data.value = event?.target?.files?.[0] ?? null
 }
 
-// imports cards by reading a backup file in our native JSON format
+// imports a CSV backup through the authenticated backup endpoint
 async function import_from_native() {
-  var error_list = ''
-
-  if (!import_file_data) {
-    error_list = "Data could not be read from the passed file."
+  const file = import_file_data.value
+  if (!file) {
+    throw new Error('Select a CSV file to import.')
   }
+  if (!/\.csv$/i.test(file.name) || (file.type && ![
+    'text/csv',
+    'application/csv',
+    'application/vnd.ms-excel',
+    'text/plain',
+    'application/octet-stream',
+  ].includes(file.type))) {
+    throw new Error('The selected file must be a CSV file.')
+  }
+  if (userId.value == null) {
+    throw new Error('User ID is not retrievable for some reason. A normal user should not be seeing this, contact me!')
+  }
+  if (!import_password.value.trim()) {
+    throw new Error('Enter your password to import the collection.')
+  }
+  if (import_action.value == 'replace' && !import_replace_confirmed.value) {
+    throw new Error('Confirm the collection replacement before importing. This message should not be reachable.')
+  }
+  if (!csrf_token.value) {
+    throw new Error('The security token is unavailable. Refresh the page and try again.')
+  }
+
+  const formData = new FormData()
+  formData.append('userId', String(userId.value))
+  formData.append('password', import_password.value)
+  formData.append('file', file, file.name)
+  formData.append('additiveImport', String(import_action.value == 'add'))
 
   try {
-    collection_stock.o = import_file_data
+    const response = await authFetch('/mtg-collectron/importbackup', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-CSRF-Token': csrf_token.value },
+      body: formData,
+    })
+    if (!response.ok) {
+      const responseBody = await response.text()
+      let responseMessage = ''
+      if (responseBody) {
+        try {
+          const errorResponse = JSON.parse(responseBody)
+          responseMessage = errorResponse.message || errorResponse.error || ''
+        } catch {
+          responseMessage = responseBody
+        }
+      }
+      throw new Error(responseMessage || `Backup import failed (HTTP ${response.status}).`)
+    }
+
+    import_success.value = true
+    import_result_message.value = import_action.value == 'add'
+      ? 'CSV import completed; cards were added to your collection.'
+      : 'CSV import completed; your collection was replaced.'
+
+    try {
+      await refreshCollectionStockFromServer()
+      if (current_set.value) {
+        if (collection_stock.o[current_set.value.code]) {
+          await getAllOwnedCardsForUserInSet(current_set.value.code)
+        } else {
+          current_set_owned_base_cards.value = 0
+          current_set_owned_commons.value = 0
+          current_set_owned_uncommons.value = 0
+          current_set_owned_rares.value = 0
+          current_set_owned_mythics.value = 0
+          current_set_owned_extra_cards.value = 0
+          current_set_owned_foils.value = 0
+        }
+      }
+    } catch (error) {
+      const refreshError = error instanceof Error ? error.message : 'Unknown refresh error.'
+      import_result_message.value += ` The import succeeded, but the collection view could not be refreshed: ${refreshError}`
+    }
+  } finally {
+    import_password.value = ''
   }
-  catch (e) {
-    error_list = e
-    console.log('error:', e)
-  }
-  // we consider the import a success if there is no error listed
-  import_success = (error_list == '')
-  import_errors.value = error_list
 }
 
 function exportCollectionMenu() {
-  export_text = JSON.stringify(collection_stock.o)
   export_window_active.value = true
 }
 
 async function saveCollectionFile() {
-  var d = new Date()
-  var formatted_date = d.getFullYear() + "_" + (d.getMonth() + 1).toString().padStart(2, "0") + "_" + (d.getDate().toString().padStart(2, "0"))
-  FileSaver.saveAs(new Blob([export_text], { type: 'text/plain;charset=utf-8' }), 'mtg_collectron_backup_' + formatted_date + '.json')
+  try {
+    if (userId.value == null) {
+      throw new Error('Unable to export collection data without a user ID.')
+    }
+
+    const requestOptions = {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    }
+    const [cardsResponse, setsResponse] = await Promise.all([
+      authFetch(`/mtg-collectron/owncard/${encodeURIComponent(userId.value)}`, requestOptions),
+      authFetch(`/mtg-collectron/user-set-info/${encodeURIComponent(userId.value)}`, requestOptions),
+    ])
+    if (!cardsResponse.ok) {
+      throw new Error(`Unable to export card information (HTTP ${cardsResponse.status}).`)
+    }
+    if (!setsResponse.ok) {
+      throw new Error(`Unable to export set information (HTTP ${setsResponse.status}).`)
+    }
+
+    const [cardRows, setRows] = await Promise.all([
+      cardsResponse.json(),
+      setsResponse.json(),
+    ])
+    if (!Array.isArray(cardRows) || !Array.isArray(setRows)) {
+      throw new Error('The collection export endpoints did not return lists.')
+    }
+
+    const csvEscape = value => {
+      const text = value == null
+        ? ''
+        : typeof value === 'object'
+          ? JSON.stringify(value)
+          : String(value)
+      return `"${text.replaceAll('"', '""')}"`
+    }
+    const csvSection = (sectionName, rows, leadingColumns) => {
+      if (rows.some(row => row === null || typeof row !== 'object' || Array.isArray(row))) {
+        throw new Error(`The ${sectionName} export contains an invalid row.`)
+      }
+
+      const allColumns = [...new Set(rows.flatMap(row => Object.keys(row)))]
+        .filter(column => column !== 'card_owner_id')
+      const columns = [
+        ...leadingColumns.filter(column => allColumns.includes(column)),
+        ...allColumns.filter(column => !leadingColumns.includes(column)),
+      ]
+      return [
+        csvEscape(sectionName),
+        columns.map(csvEscape).join(','),
+        ...rows.map(row => columns.map(column => csvEscape(row[column])).join(',')),
+      ].join('\r\n')
+    }
+    const csv = [
+      csvSection('card_info', cardRows, ['card_name', 'set_code']),
+      csvSection('set_info', setRows, ['set_code']),
+    ].join('\r\n\r\n')
+
+    const d = new Date()
+    const formatted_date = d.getFullYear() + "_" + (d.getMonth() + 1).toString().padStart(2, "0") + "_" + d.getDate().toString().padStart(2, "0")
+    FileSaver.saveAs(
+      new Blob(["\uFEFF", csv], { type: 'text/csv;charset=utf-8' }),
+      `mtg_collectron_export_${formatted_date}.csv`,
+    )
+    authError.value = ''
+  } catch (error) {
+    authError.value = error instanceof Error
+      ? error.message
+      : 'Unable to export collection data. Please try again.'
+  }
 }
 
 // a simplified version of the add_card_to_stock function in CardSlot.vue
@@ -2459,12 +2599,19 @@ function sleep(ms) {
   z-index: 99999;
 }
 
+.v-card-item {
+  /* used to avoid a weird overflow cutoff in the title of Export Collection */
+  padding: 0.625rem 0;
+}
+
 .import_window {
   width: 100%;
   max-width: 500px;
-  height: 330px;
+  min-height: 330px;
   padding: 0 20px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
 }
 
 .import_window_header {
@@ -2472,21 +2619,62 @@ function sleep(ms) {
   height: 70px;
 }
 
+.import_window_content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.import_syntax_selector :deep(.v-selection-control-group) {
+  column-gap: 8px;
+}
+
 .import_text_field {
   width: 450px;
   max-width: 90%;
   height: 150px;
-  display: inline-block;
-  margin-top: 10px;
 }
 
 .import_file_field {
-  width: 400px;
+  width: 450px;
   max-width: 90%;
   height: 50px;
-  /* display: inline-block; */
-  margin-top: 10px;
-  margin-bottom: 130px;
+}
+
+.import_action_options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  align-self: stretch;
+  width: 100%;
+  margin-top: 6px;
+  text-align: left;
+}
+
+.import_action_selector {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.import_replace_confirmation {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  margin-bottom: 6px;
+}
+
+.import_password_field {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.import_window_actions {
+  margin-top: auto;
 }
 
 .import_results_window {
