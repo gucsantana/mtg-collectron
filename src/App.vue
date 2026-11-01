@@ -1747,11 +1747,8 @@ async function import_from_moxfield() {
       const second_part = card_elements[1].split(') ')
       const third_part = second_part[1]?.split(' ')
       card.set = second_part[0].toLowerCase()
-      if (parseInt(third_part[0])) {
-        card.collector_number = third_part[0]
-      } else {
-        throw EvalError()
-      }
+      card.collector_number = third_part[0]
+      
       if (third_part.length >= 2 && ['*F*', '*E*'].includes(third_part[1])) {
         card.foil = true
       }
@@ -1936,141 +1933,291 @@ async function saveCollectionFile() {
   }
 }
 
-// a simplified version of the add_card_to_stock function in CardSlot.vue
+// Adds imported cards and persists the owned-card and set summaries.
 async function add_card_to_stock(card) {
-  // scryfall fetch for the card, to get the rarity and is_extra info
-  var fetch_url = 'https://api.scryfall.com/cards/search?q=%21"' + card.name + '"+set%3A' + card.set + '+cn%3A' + card.collector_number + '+%28game%3Apaper%29&unique=prints&order=set'
-  const response = await fetch(fetch_url);
-  const response_contents = await response.json();
-  const response_data = response_contents['data'][0]
-  await sleep(100);
+  const ownerId = userId.value
+  if (ownerId == null) {
+    throw new Error('Unable to add a card without an authenticated user ID.')
+  }
+  if (!csrf_token.value) {
+    throw new Error('The security token is unavailable. Refresh the page and try again.')
+  }
 
-  const is_base = !is_card_extra(response_data.promo_types)  // whether the retrieved card is considered base or extra
+  const setCode = String(card.set).toLowerCase()
+  const collectorNumber = String(card.collector_number)
+  const amount = Number(card.amount)
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
+    throw new Error(`Invalid card quantity for "${card.name}".`)
+  }
 
-  // first, we check if we already have any cards from this set; if not, we create a new empty set with this set's name
-  if (!(card.set in collection_stock.o)) {
-    // let's get information to fill the new blank set
-    // get all set's cards from scryfall (yes, ouch)
-    let set_card_data = await get_set_all_cards(card.set)
+  const cardResponse = await authFetch(
+    `/mtg-collectron/card/bynumber/${encodeURIComponent(setCode)}/${encodeURIComponent(collectorNumber)}`,
+    { credentials: 'include' },
+  )
+  if (!cardResponse.ok) {
+    throw new Error(`Unable to load card ${collectorNumber} from set "${setCode}" (HTTP ${cardResponse.status}).`)
+  }
+  const cardResults = await cardResponse.json()
+  const cardData = Array.isArray(cardResults) ? cardResults[0] : null
+  if (!cardData) {
+    throw new Error(`Card ${collectorNumber} was not found in set "${setCode}".`)
+  }
 
-    // we go through all of our owned cards in this set and count base, extra, and foils owned
-    let total_base = 0, total_extra = 0, total_commons = 0, total_uncommons = 0,
-      total_rares = 0, total_mythics = 0
-    let cards_checked = []
+  const setCards = current_set.value?.code === setCode && current_set_base_cards.value.length
+    ? current_set_base_cards.value
+    : await get_set_all_cards(setCode)
+  if (!Array.isArray(setCards) || setCards.length === 0) {
+    throw new Error(`Unable to load card data for set "${setCode}".`)
+  }
 
-    // for each card in the current set we're querying...
-    set_card_data.forEach((set_card) => {
-      // if the card has promo types, it's extra, else base (for counting set totals)
-      if (!is_card_extra(set_card.promo_types)) {
-        total_base++
-      } else {
-        total_extra++
-      }
+  const ownedCardsResponse = await authFetch(
+    `/mtg-collectron/owncard/${encodeURIComponent(ownerId)}/${encodeURIComponent(setCode)}`,
+    {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
+  if (!ownedCardsResponse.ok) {
+    throw new Error(`Unable to load owned cards for set "${setCode}" (HTTP ${ownedCardsResponse.status}).`)
+  }
+  const ownedCards = await ownedCardsResponse.json()
+  if (!Array.isArray(ownedCards)) {
+    throw new Error(`The owned-card endpoint for set "${setCode}" did not return a list.`)
+  }
+  for (const ownedCard of ownedCards) {
+    if (
+      !ownedCard ||
+      typeof ownedCard.card_name !== 'string' ||
+      typeof ownedCard.collector_number !== 'string' ||
+      ownedCard.set_code !== setCode ||
+      !Number.isSafeInteger(Number(ownedCard.card_count)) ||
+      Number(ownedCard.card_count) < 0
+    ) {
+      throw new Error(`The owned-card response for set "${setCode}" contains an invalid card.`)
+    }
+  }
 
-      // tally the rarities in the set; we only count each cardname once
-      if (!cards_checked.includes(set_card.name)) {
-        cards_checked.push(set_card.name)
-        switch (set_card.rarity) {
-          case 'common':
-            total_commons++
-            break
-          case 'uncommon':
-            total_uncommons++
-            break
-          case 'rare':
-            total_rares++
-            break
-          case 'mythic':
-            total_mythics++
-            break
-          default:
-            break
-        }
-      }
+  const existingCard = ownedCards.find(ownedCard =>
+    ownedCard?.set_code === setCode &&
+    String(ownedCard.collector_number) === collectorNumber,
+  )
+
+  const isExtra = is_card_extra(cardData.promo_types)
+  const isFoilOnly = (cardData.foil || cardData.finishes?.includes('etched')) && !cardData.nonfoil
+  const isFoil = Boolean(card.foil || isFoilOnly)
+  const setInfoResponse = await authFetch(
+    `/mtg-collectron/user-set-info/${encodeURIComponent(ownerId)}/${encodeURIComponent(setCode)}`,
+    {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
+  if (setInfoResponse.status === 404) {
+    const createSetResponse = await authFetch('/mtg-collectron/user-set-info/', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf_token.value,
+      },
+      body: JSON.stringify({
+        card_owner_id: ownerId,
+        set_code: setCode,
+        commons_count: 0,
+        uncommons_count: 0,
+        rares_count: 0,
+        mythics_count: 0,
+        base_set_owned: 0,
+        extra_set_owned: 0,
+        foils_owned: 0,
+        full_set_every_single: 0,
+        full_set_base_only: 0,
+        full_set_one_each: 0,
+      }),
     })
-
-    var new_set = {
-      cards: {},
-      commons: 0,
-      uncommons: 0,
-      rares: 0,
-      mythics: 0,
-      total_commons: total_commons,
-      total_uncommons: total_commons,
-      total_rares: total_rares,
-      total_mythics: total_mythics,
-      base_set_owned: 0,
-      extra_owned: 0,
-      foils_owned: 0,
-      base_set_total: total_base,
-      extra_set_total: total_extra,
-      full_set_every_single: 0,  // 'full set' parameters save the completion percentage for each definition of full set
-      full_set_base_only: 0,
-      full_set_one_each: 0,
-      released_at: response_data.released_at
+    if (!createSetResponse.ok) {
+      throw new Error(`Unable to create collection data for set "${setCode}" (HTTP ${createSetResponse.status}).`)
     }
-    collection_stock.o[card.set] = new_set
+  } else if (!setInfoResponse.ok) {
+    throw new Error(`Unable to check collection data for set "${setCode}" (HTTP ${setInfoResponse.status}).`)
   }
 
-  // next, we check the existing card stock for copies; if yes, we add to the count; if not, we create a new card template for this card
-  if (card.name in collection_stock.o[card.set].cards) {
-    if (card.collector_number in collection_stock.o[card.set].cards[card.name]) {
-      collection_stock.o[card.set].cards[card.name][card.collector_number].count += parseInt(card.amount)
-      if (card.foil) {
-        collection_stock.o[card.set].cards[card.name][card.collector_number].foil = true
-      }
-    }
-    else {
-      collection_stock.o[card.set].cards[card.name][card.collector_number] = {
-        count: parseInt(card.amount),
-        foil: card.foil,
-        extra: !is_base,
-        image: getCardImage(response_data['image_uris'], response_data['card_faces'])
-      }
+  const cardWriteResponse = await authFetch('/mtg-collectron/owncard/', {
+    method: existingCard ? 'PATCH' : 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrf_token.value,
+    },
+    body: JSON.stringify(existingCard
+      ? {
+          card_owner_id: ownerId,
+          set_code: setCode,
+          collector_number: collectorNumber,
+          card_count: Number(existingCard.card_count) + amount,
+          ...(isFoil && !existingCard.is_foil ? { is_foil: true } : {}),
+        }
+      : {
+          card_owner_id: ownerId,
+          set_code: setCode,
+          card_name: cardData.name,
+          collector_number: collectorNumber,
+          card_count: amount,
+          is_foil: isFoil,
+          is_considered_extra: isExtra,
+          is_tagged_square: false,
+          is_tagged_circle: false,
+          is_tagged_triangle: false,
+          is_tagged_cross: false,
+        }),
+  })
+  if (!cardWriteResponse.ok) {
+    throw new Error(`Unable to ${existingCard ? 'update' : 'add'} card ${collectorNumber} (HTTP ${cardWriteResponse.status}).`)
+  }
 
-      // if the card has any promo_types listed, like boosterfun and bundle, it's what we call an extra
-      if (is_base) {
-        collection_stock.o[card.set].base_set_owned++
-      } else {
-        collection_stock.o[card.set].extra_owned++
-      }
-    }
-  } else {
-    const new_card = {
-      [card.collector_number]: {
-        count: parseInt(card.amount),
-        foil: card.foil,
-        extra: !is_base,
-        image: getCardImage(response_data['image_uris'], response_data['card_faces'])
-      }
-    }
-    collection_stock.o[card.set].cards[card.name] = new_card
-    switch (response_data.rarity) {
-      case 'common':
-        collection_stock.o[card.set].commons++
-        break
-      case 'uncommon':
-        collection_stock.o[card.set].uncommons++
-        break
-      case 'rare':
-        collection_stock.o[card.set].rares++
-        break
-      case 'mythic':
-        collection_stock.o[card.set].mythics++
-        break
-      default:
-        break
-    }
+  const updatedOwnedCards = existingCard
+    ? ownedCards.map(ownedCard => ownedCard === existingCard
+        ? {
+            ...ownedCard,
+            card_count: Number(existingCard.card_count) + amount,
+            is_foil: existingCard.is_foil || isFoil,
+          }
+        : ownedCard)
+    : [
+        ...ownedCards,
+        {
+          card_owner_id: ownerId,
+          set_code: setCode,
+          card_name: cardData.name,
+          collector_number: collectorNumber,
+          card_count: amount,
+          is_foil: isFoil,
+          is_considered_extra: isExtra,
+          is_tagged_square: false,
+          is_tagged_circle: false,
+          is_tagged_triangle: false,
+          is_tagged_cross: false,
+        },
+      ]
 
-    if (is_base) {
-      collection_stock.o[card.set].base_set_owned++
+  const rarityTotals = { common: 0, uncommon: 0, rare: 0, mythic: 0 }
+  const countedRarities = new Set()
+  let totalBase = 0
+  let totalExtra = 0
+  for (const setCard of setCards) {
+    if (is_card_extra(setCard.promo_types)) {
+      totalExtra++
     } else {
-      collection_stock.o[card.set].extra_owned++
+      totalBase++
+    }
+    if (!countedRarities.has(setCard.name) && Object.prototype.hasOwnProperty.call(rarityTotals, setCard.rarity)) {
+      countedRarities.add(setCard.name)
+      rarityTotals[setCard.rarity]++
     }
   }
 
-  // recalculate the full set percentage counters for this set
-  calculate_completion_for_set(card.set)
+  const ownedRarities = { common: 0, uncommon: 0, rare: 0, mythic: 0 }
+  const countedOwnedRarities = new Set()
+  const ownedCardsByName = {}
+  let baseSetOwned = 0
+  let extraOwned = 0
+  let foilsOwned = 0
+  for (const ownedCard of updatedOwnedCards) {
+    const setCard = setCards.find(candidate =>
+      candidate.name === ownedCard.card_name &&
+      String(candidate.collector_number) === ownedCard.collector_number,
+    )
+    if (!ownedCardsByName[ownedCard.card_name]) {
+      ownedCardsByName[ownedCard.card_name] = {}
+    }
+    ownedCardsByName[ownedCard.card_name][ownedCard.collector_number] = {
+      count: ownedCard.card_count,
+      foil: ownedCard.is_foil,
+      extra: ownedCard.is_considered_extra,
+      tag_square: ownedCard.is_tagged_square,
+      tag_circle: ownedCard.is_tagged_circle,
+      tag_triangle: ownedCard.is_tagged_triangle,
+      tag_cross: ownedCard.is_tagged_cross,
+      image: setCard ? getCardImage(setCard.image_uris, setCard.card_faces) : undefined,
+    }
+
+    if (ownedCard.is_considered_extra) {
+      extraOwned++
+    } else {
+      baseSetOwned++
+    }
+    if (ownedCard.is_foil) {
+      foilsOwned++
+    }
+    if (
+      setCard &&
+      !countedOwnedRarities.has(ownedCard.card_name) &&
+      Object.prototype.hasOwnProperty.call(ownedRarities, setCard.rarity)
+    ) {
+      countedOwnedRarities.add(ownedCard.card_name)
+      ownedRarities[setCard.rarity]++
+    }
+  }
+
+  const totalSetCards = totalBase + totalExtra
+  const totalRarityCards = Object.values(rarityTotals).reduce((total, count) => total + count, 0)
+  const ownedRarityCards = Object.values(ownedRarities).reduce((total, count) => total + count, 0)
+  const fullSetEverySingle = totalSetCards > 0
+    ? ((baseSetOwned + extraOwned) / totalSetCards) * 100
+    : 0
+  const fullSetBaseOnly = totalBase > 0 ? (baseSetOwned / totalBase) * 100 : 0
+  const fullSetOneEach = totalRarityCards > 0 ? (ownedRarityCards / totalRarityCards) * 100 : 0
+  const updatedSet = {
+    card_owner_id: ownerId,
+    set_code: setCode,
+    commons_count: ownedRarities.common,
+    uncommons_count: ownedRarities.uncommon,
+    rares_count: ownedRarities.rare,
+    mythics_count: ownedRarities.mythic,
+    base_set_owned: baseSetOwned,
+    extra_set_owned: extraOwned,
+    foils_owned: foilsOwned,
+    full_set_every_single: fullSetEverySingle,
+    full_set_base_only: fullSetBaseOnly,
+    full_set_one_each: fullSetOneEach,
+  }
+
+  const updateSetResponse = await authFetch('/mtg-collectron/user-set-info/', {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrf_token.value,
+    },
+    body: JSON.stringify(updatedSet),
+  })
+  if (!updateSetResponse.ok) {
+    throw new Error(`Unable to update collection data for set "${setCode}" (HTTP ${updateSetResponse.status}).`)
+  }
+
+  collection_stock.o[setCode] = {
+    ...(collection_stock.o[setCode] || {}),
+    cards: ownedCardsByName,
+    commons: ownedRarities.common,
+    uncommons: ownedRarities.uncommon,
+    rares: ownedRarities.rare,
+    mythics: ownedRarities.mythic,
+    total_commons: rarityTotals.common,
+    total_uncommons: rarityTotals.uncommon,
+    total_rares: rarityTotals.rare,
+    total_mythics: rarityTotals.mythic,
+    base_set_owned: baseSetOwned,
+    extra_owned: extraOwned,
+    foils_owned: foilsOwned,
+    base_set_total: totalBase,
+    extra_set_total: totalExtra,
+    full_set_every_single: fullSetEverySingle,
+    full_set_base_only: fullSetBaseOnly,
+    full_set_one_each: fullSetOneEach,
+    released_at: cardData.released_at,
+  }
 }
 
 // passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri, and trimmed accordingly
