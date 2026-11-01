@@ -41,33 +41,33 @@
             There are no matching cards to display.
           </v-alert>
           <v-list v-else-if="orderedResults.length" nav>
-            <v-list-item v-for="card in orderedResults" :key="card.resultId"
-              class="decklist_result_item"
-              :class="darkMode ? 'tertiary_hover_dark' : 'tertiary_hover_light'"
-              @mouseenter="setHoveredCard($event, card.image)" @mouseleave="hoveredCardImage = ''">
-              <template #prepend>
-                <v-tooltip text="Mark as done, removing from list" location="top" :open-delay="700">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" icon="mdi-check-bold" color="primary"
-                      @click.stop="markCardAsDone(card)" />
-                  </template>
-                </v-tooltip>
-                <v-tooltip text="Skip this printing, tries to use next printings if available" location="top"
-                  :open-delay="700">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" icon="mdi-debug-step-over" color="primary" class="ml-2"
-                      @click.stop="skipCard(card)" />
-                  </template>
-                </v-tooltip>
-              </template>
-              <v-list-item-title>{{ card.amount }}x {{ card.formattedCardName }}</v-list-item-title>
-            </v-list-item>
+            <TransitionGroup name="decklist-result" tag="div" class="decklist_result_items">
+              <v-list-item v-for="card in orderedResults" :key="card.resultId"
+                class="decklist_result_item"
+                :class="darkMode ? 'tertiary_hover_dark' : 'tertiary_hover_light'"
+                @mouseenter="setHoveredCard($event, card.image)" @mouseleave="hoveredCardImage = ''">
+                <template #prepend>
+                  <v-tooltip text="Mark as done, removing from list" location="top" :open-delay="700">
+                    <template #activator="{ props }">
+                      <v-icon v-bind="props" icon="mdi-check-bold" color="primary"
+                        @click.stop="markCardAsDone(card)" />
+                    </template>
+                  </v-tooltip>
+                  <v-tooltip text="Skip this printing, tries to use next printings if available" location="top"
+                    :open-delay="700">
+                    <template #activator="{ props }">
+                      <v-icon v-bind="props" icon="mdi-debug-step-over" color="primary" class="ml-2"
+                        @click.stop="skipCard(card)" />
+                    </template>
+                  </v-tooltip>
+                </template>
+                <v-list-item-title>{{ card.amount }}x {{ card.formattedCardName }}</v-list-item-title>
+              </v-list-item>
+            </TransitionGroup>
           </v-list>
-          <v-alert v-if="noMorePrintings" type="warning" variant="tonal" class="mt-4">
-            No more printings of this card are in your collection.
-          </v-alert>
         </v-card-text>
       </v-card>
+      <v-snackbar v-model="noMorePrintings" :timeout="3500">No more printings of this card in your collection!</v-snackbar>
       <v-img v-if="hoveredCardImage" :src="hoveredCardImage" class="hover_card_image rounded-lg"
         :style="{ top: `${mouseCoords.y + 20}px`, left: `${mouseCoords.x + 30}px` }" />
     </v-container>
@@ -81,6 +81,7 @@ import { authFetch } from './authFetch.js'
 const props = defineProps({
   userId: { type: [String, Number], required: true },
   darkMode: { type: Boolean, default: false },
+  csrfToken: { type: String, required: true },
   setList: { type: Array, required: true },
 })
 defineEmits(['back', 'open-settings'])
@@ -132,14 +133,18 @@ function getCardImage(card) {
 }
 
 async function getOwnedPrintings(cardName) {
-  const response = await authFetch(
-    `/mtg-collectron/owncard/card-finder/${encodeURIComponent(props.userId)}/${encodeURIComponent(cardName)}`,
-    {
-      method: 'GET',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+  const response = await authFetch('/mtg-collectron/owncard/byname', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': props.csrfToken,
     },
-  )
+    body: JSON.stringify({
+      card_owner_id: props.userId,
+      card_name: cardName,
+    }),
+  })
   if (!response.ok) {
     throw new Error(`Unable to search your collection for "${cardName}" (HTTP ${response.status}).`)
   }
@@ -245,13 +250,14 @@ function parseDecklistLine(line) {
   const firstSpace = firstPart.indexOf(' ')
   const amount = Number.parseInt(firstSpace === -1 ? firstPart : firstPart.slice(0, firstSpace), 10)
   if (!Number.isSafeInteger(amount) || amount <= 0 || firstSpace === -1) return null
-
+  
   const request = {
-    name: firstPart.slice(firstSpace + 1).trim(),
+    name: firstPart.slice(firstSpace + 1).trim().replace("/"," // "), // the 'export for MTGO' exports with one / instead of //
     amount,
     set: '',
     collectorNumber: '',
   }
+  console.log("request.name",request.name)
   if (!request.name) return null
 
   if (elements.length > 1) {
@@ -352,6 +358,7 @@ async function performDecklistFinderSearch() {
 }
 
 function markCardAsDone(card) {
+  hoveredCardImage.value = ''
   results.value = results.value.filter(result => result.resultId !== card.resultId)
   allResults.value = allResults.value.filter(result => result.resultId !== card.resultId)
   const request = searchlist.value.find(item => item.id === card.requestId)
@@ -435,6 +442,35 @@ function setHoveredCard(event, image) {
 
 .decklist_result_item.v-list-item :deep(.v-list-item__prepend) {
   min-height: 30px;
+}
+
+.decklist_result_items {
+  position: relative;
+}
+
+.decklist_result_items :deep(.decklist-result-enter-active),
+.decklist_result_items :deep(.decklist-result-leave-active) {
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.decklist_result_items :deep(.decklist-result-enter-from) {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.decklist_result_items :deep(.decklist-result-leave-to) {
+  opacity: 0;
+  transform: translateX(48px);
+}
+
+.decklist_result_items :deep(.decklist-result-leave-active) {
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+
+.decklist_result_items :deep(.decklist-result-move) {
+  transition: transform 220ms ease;
 }
 
 .decklist_page_title {

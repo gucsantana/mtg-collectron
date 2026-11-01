@@ -15,7 +15,7 @@
         <v-progress-linear v-model="loading_bar_fill" height="20" style="width:400px;" color="primary" rounded />
       </v-overlay>
       <DecklistFinder v-if="isDecklistFinderPage" :user-id="userId" :dark-mode="page_options.dark_mode"
-        :set-list="set_list"
+        :csrf-token="csrf_token" :set-list="set_list"
         @back="navigateToMainPage" @open-settings="settings = !settings" />
       <v-overlay :model-value="card_finder_window_active" @afterLeave="card_finder_window_active = false"
         class="align-center justify-center">
@@ -216,8 +216,6 @@
         </v-card>
       </v-overlay>
       <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
-      <v-snackbar v-model="no_more_of_skipped_card" :timeout="3500">No more printings of this card in your
-        collection!</v-snackbar>
       <v-snackbar v-model="finished_housekeeping" :timeout="2500">Finished cleaning up your collection!</v-snackbar>
       <v-app-bar v-if="!isDecklistFinderPage" color="primary">
         <v-btn @click="drawer = !drawer">
@@ -651,7 +649,6 @@ var import_card_total = ref(0)
 var import_result_message = ref('')
 
 var toast = ref(false)
-var no_more_of_skipped_card = ref(false)
 var finished_housekeeping = ref(false)
 
 const card_per_page_options = [
@@ -1291,11 +1288,18 @@ async function findCardsInCollection(cardName, searchId) {
 
   try {
     const response = await authFetch(
-      `/mtg-collectron/owncard/card-finder/${encodeURIComponent(userId.value)}/${encodeURIComponent(cardName)}`,
+      '/mtg-collectron/owncard/card-finder/',
       {
-        method: 'GET',
+        method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrf_token.value,
+        },
+        body: JSON.stringify({
+          card_owner_id: userId.value,
+          card_name: cardName,
+        }),
         signal: controller.signal,
       },
     )
