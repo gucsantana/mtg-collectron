@@ -14,6 +14,9 @@
       <v-overlay persistent :model-value="loading_bar" class="align-center justify-center">
         <v-progress-linear v-model="loading_bar_fill" height="20" style="width:400px;" color="primary" rounded />
       </v-overlay>
+      <DecklistFinder v-if="isDecklistFinderPage" :user-id="userId" :dark-mode="page_options.dark_mode"
+        :set-list="set_list"
+        @back="navigateToMainPage" @open-settings="settings = !settings" />
       <v-overlay :model-value="card_finder_window_active" @afterLeave="card_finder_window_active = false"
         class="align-center justify-center">
         <v-card class="card_finder_window">
@@ -52,85 +55,6 @@
           </v-card-actions>
         </v-card>
       </v-overlay>
-      <v-overlay :model-value="decklist_finder_window_active" @afterLeave="decklist_finder_window_active = false"
-        class="align-center justify-center">
-        <v-card class="import_window">
-          <v-card-item>
-            <v-row class="import_window_header align-center">
-              <v-col cols="6">
-                <h2>Decklist Finder</h2>
-              </v-col>
-              <v-spacer />
-              <v-col cols="1">
-                <v-tooltip text="/n" location="bottom">
-                  <template v-slot:activator="{ props }">
-                    <v-icon :="props" icon="mdi-help-box" size="x-large" color="primary" />
-                  </template>
-                  <p>Searches your collection for a list of cards, one per line, and returns the ones it matches.</p>
-                  <p class="mb-0">You can use either the Moxfield syntax (e.g. "1 Loran's Escape (BRO) *F*") to look for
-                    specific prints only,</p>
-                  <p class="mb-0">or MTGO syntax (e.g. "1 Mox Diamond") to get any printing of it.</p>
-                </v-tooltip>
-              </v-col>
-            </v-row>
-          </v-card-item>
-          <v-divider />
-          <v-radio-group inline v-model="decklist_finder_priority" density="compact" hide-details class="decklist_finder_radio_options"
-            style="display:inline-block;">
-            <v-radio color="primary" label="Prioritize Oldest Printing" value="oldest" />
-            <v-radio color="primary" label="Prioritize Newest Printing" value="newest" />
-          </v-radio-group>
-          <v-textarea v-model="decklist_finder_text" autofocus class="import_text_field" variant="outlined" />
-          <v-row>
-            <v-spacer />
-            <v-col cols="3"><v-btn @click="perform_decklist_finder_search">Find List</v-btn></v-col>
-            <v-col cols="3"><v-btn
-                @click="decklist_finder_window_active = false; decklist_finder_text = ''">Close</v-btn></v-col>
-          </v-row>
-        </v-card>
-      </v-overlay>
-      <v-overlay :model-value="decklist_finder_results_window_active"
-        @afterLeave="decklist_finder_results_window_active = false" class="align-center justify-center">
-        <v-card class="decklist_finder_results_window">
-          <v-card-item>
-            <h2 style="text-align: center;">Search Results</h2>
-          </v-card-item>
-          <v-divider />
-          <v-list nav class="card_finder_results_list align-left" v-show="decklist_finder_results_processed.length > 0">
-            <v-card v-for="card in decklist_finder_results_processed"
-              @mouseenter="getMouseCoords($event); hover_card_src = card.image" @mouseleave="hover_card_src = ''"
-              :class="{ 'decklist_finder_results_list_item': true, 'tertiary_hover_dark': page_options.dark_mode, 'tertiary_hover_light': !page_options.dark_mode }"
-              :flat="true">
-              <v-tooltip text="/n" location="top" :open-delay="700">
-                <template v-slot:activator="{ props }">
-                  <v-icon :="props" icon="mdi-check-bold" @click="mark_decklist_card_as_done(card)" size="large"
-                    color="primary" />
-                </template>
-                <p>Mark as done, removing from list</p>
-              </v-tooltip>
-              <v-tooltip text="/n" location="top" :open-delay="700">
-                <template v-slot:activator="{ props }">
-                  <v-icon :="props" icon="mdi-debug-step-over" @click="skip_decklist_card(card)" size="large"
-                    color="primary" />
-                </template>
-                <p>Skip this printing, tries to use next printings if available</p>
-              </v-tooltip>
-              <p class="decklist_finder_results_text"> {{ card.amount + "x " + card.formattedCardName }} </p>
-            </v-card>
-          </v-list>
-          <v-card-item v-show="decklist_finder_results_processed.length == 0">
-            <h3>There are no cards to display.</h3>
-          </v-card-item>
-          <v-card-actions>
-            <v-spacer />
-            <v-col cols="3"><v-btn
-                @click="decklist_finder_results_window_active = false; decklist_finder_results_processed.value = []"
-                variant="outlined">Close</v-btn></v-col>
-          </v-card-actions>
-        </v-card>
-      </v-overlay>
-      <v-img v-if="hover_card_src != ''" :src="hover_card_src" class="hover_card_image rounded-lg"
-        :style="{ top: hoverCardTop, left: hoverCardLeft }" />
       <v-overlay :model-value="import_window_active" @afterLeave="import_window_active = false"
         class="align-center justify-center">
         <v-card class="import_window">
@@ -295,7 +219,7 @@
       <v-snackbar v-model="no_more_of_skipped_card" :timeout="3500">No more printings of this card in your
         collection!</v-snackbar>
       <v-snackbar v-model="finished_housekeeping" :timeout="2500">Finished cleaning up your collection!</v-snackbar>
-      <v-app-bar color="primary">
+      <v-app-bar v-if="!isDecklistFinderPage" color="primary">
         <v-btn @click="drawer = !drawer">
           <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer" />
           <v-icon icon="mdi-chevron-left-circle" size="x-large" v-if="drawer" />
@@ -306,7 +230,7 @@
           <v-icon icon="mdi-menu" size="x-large" />
         </v-btn>
       </v-app-bar>
-      <v-main class="card_list_main" v-if="current_set && current_set_base_cards">
+      <v-main class="card_list_main" v-if="!isDecklistFinderPage && current_set && current_set_base_cards">
         <v-sheet class="card_list_body rounded-lg">
           <v-card id="set_page_title_card" :height="isMobile ? 140 : 100" flat>
             <div>
@@ -415,7 +339,7 @@
           </v-progress-linear>
         </v-card>
       </v-main>
-      <v-main class="intro_message_main" v-if="!current_set || !current_set_base_cards">
+      <v-main class="intro_message_main" v-if="!isDecklistFinderPage && (!current_set || !current_set_base_cards)">
         <v-sheet class="intro_message_body rounded-lg" justify="center">
           <img class="title_logo" src="@/assets/collectron-title-logo.png" />
           <h2 class="intro_title">Welcome to the MTG Collectron</h2>
@@ -440,7 +364,7 @@
           <p style="padding:4px; font-size: 11px;">version 2.0.1 - last update 20/09/26</p>
         </v-sheet>
       </v-main>
-      <v-card>
+      <v-card v-if="!isDecklistFinderPage">
         <v-navigation-drawer app temporary v-model="drawer" elevation="2" :width="isMobile ? '100%' : 300">
           <v-list>
             <v-list-item id="column_set_visib_title">
@@ -537,7 +461,7 @@
               <v-btn @click="card_finder_window_active = true" class="side_drawer_button"
                 :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable"
                 variant="outlined">Card Finder</v-btn>
-              <v-btn @click="decklist_finder_window_active = true" class="side_drawer_button"
+              <v-btn v-if="!isDecklistFinderPage" @click="navigateToDecklistFinder" class="side_drawer_button"
                 :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" density="comfortable"
                 variant="outlined">Decklist Finder</v-btn>
               <v-btn @click="import_window_active = true" class="side_drawer_button"
@@ -581,6 +505,7 @@
 import { onBeforeUnmount, onMounted, ref, watch, reactive, computed, unref } from 'vue'
 import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
+import DecklistFinder from './DecklistFinder.vue'
 import FileSaver from 'file-saver'
 import Login from './Login.vue'
 import { AUTHENTICATION_REQUIRED_EVENT, authFetch } from './authFetch.js'
@@ -592,6 +517,7 @@ const authUser = ref(null)
 const userId = ref(null)
 const csrf_token = ref(null)
 const loggingOut = ref(false)
+const isDecklistFinderPage = ref(window.location.hash === '#decklist-finder')
 let appInitialized = false
 let appInitializationComplete = false
 
@@ -701,8 +627,6 @@ var loading = ref(false)        // signals the loading circle is visible
 var loading_bar = ref(false)    // signals the loading progress bar is visible
 var loading_bar_fill = ref(0)  // fill value of the progress bar
 var card_finder_window_active = ref(false)              // signals the card search dialog is visible
-var decklist_finder_window_active = ref(false)          // signals the decklist finder dialog is visible
-var decklist_finder_results_window_active = ref(false)  // signals the decklist finder results dialog is visible
 var import_window_active = ref(false)       // signals the import dialog is visible
 var import_results_active = ref(false)      // signals the import dialog results are visible
 var export_window_active = ref(false)       // signals the export dialog is visible
@@ -714,14 +638,6 @@ var card_finder_results = ref([])
 let cardFinderSearchTimeout
 let cardFinderRequestController
 let cardFinderSearchId = 0
-
-var decklist_finder_searchlist = ref([])          // the list of cards passed to be searched on decklist search, as objects
-var decklist_finder_priority = ref('oldest')      // fetch priority of the searched cards ('oldest' or 'newest')
-var decklist_finder_text = ''                     // textbox contents of the decklist search
-var decklist_finder_results = ref([])             // all of the results returned for a decklist search, dupes included
-var decklist_finder_results_processed = ref([])   // the currently filtered decklist search results
-var mouse_coords = ref({ 'x': 0, 'y': 0 })             // mouse coords used for displaying the pop up image box
-var hover_card_src = ref("")
 
 var import_syntax = ref('moxfield')
 var import_action = ref('add')
@@ -814,8 +730,29 @@ function handleAuthenticationRequired() {
   appInitializationComplete = false
 }
 
+function updatePageFromLocation() {
+  isDecklistFinderPage.value = window.location.hash === '#decklist-finder'
+  if (isDecklistFinderPage.value) {
+    settings.value = false
+  }
+}
+
+function navigateToDecklistFinder() {
+  if (isDecklistFinderPage.value) return
+  window.history.pushState({}, '', `${window.location.pathname}${window.location.search}#decklist-finder`)
+  isDecklistFinderPage.value = true
+  settings.value = false
+}
+
+function navigateToMainPage() {
+  window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
+  isDecklistFinderPage.value = false
+}
+
 onMounted(async () => {
   window.addEventListener(AUTHENTICATION_REQUIRED_EVENT, handleAuthenticationRequired)
+  window.addEventListener('popstate', updatePageFromLocation)
+  window.addEventListener('hashchange', updatePageFromLocation)
 
   try {
     const response = await authFetch('/mtg-collectron/auth/session', { credentials: 'include' })
@@ -863,6 +800,8 @@ onBeforeUnmount(() => {
   cardFinderSearchId++
   cardFinderRequestController?.abort()
   window.removeEventListener(AUTHENTICATION_REQUIRED_EVENT, handleAuthenticationRequired)
+  window.removeEventListener('popstate', updatePageFromLocation)
+  window.removeEventListener('hashchange', updatePageFromLocation)
 })
 
 async function initializeApp() {
@@ -885,7 +824,7 @@ async function initializeApp() {
     // get all set data from the server, and directly afterwards, get the users' set info data as well
     set_list.value = await get_all_set_info()
     await refreshCollectionStockFromServer()
-    console.log("Collection stock: ", collection_stock.o)
+    // console.log("Collection stock: ", collection_stock.o)
 
   } catch (error) {
     if (isAuthenticated.value || !authError.value) {
@@ -1160,11 +1099,6 @@ async function getAllOwnedCardsForUserInSet(setCode) {
   setStock.cards = cards
 }
 
-// sets the mouse coords value, for anything we'd like to track the exact mouse position to display
-function getMouseCoords(event) {
-  mouse_coords.value = { 'x': event.clientX, 'y': event.clientY }
-}
-
 // activated when a set is selected on the left column, or a card is selected on Card Finder
 // clean up previous values, set up the loading overlay, and grab the new data from the next set
 async function select_set(set) {
@@ -1416,79 +1350,6 @@ async function findCardsInCollection(cardName, searchId) {
   }
 }
 
-// returns a list of every printing of a specific card name in your collection, with optional parameters
-function findSpecificCardInCollection(cardName, setName, number) {
-  try {
-    var cardList = []
-    if (setName) {
-      console.log("set name is ", setName)
-      if (setName in collection_stock.o) {
-        console.log("set name is in stock")
-        for (var card in collection_stock.o[setName].cards) {
-          // a note on naming: some sites use double // for dividers between multi-faced cards (scryfall), some use single / (Moxfield export)
-          // and the plain text export from Moxfield only sends the first name; the logic below accounts for all of that
-          if (card.toLowerCase().replace("//", "/") == cardName.toLowerCase().replace("//", "/") || card.split('/')[0].trim().toLowerCase() == cardName.toLowerCase()) {
-            for (var cardVer in collection_stock.o[setName].cards[card]) {
-              const tagSquare = collection_stock.o[setName].cards[card][cardVer].tag_square ? '■' : ''
-              const tagTriangle = collection_stock.o[setName].cards[card][cardVer].tag_triangle ? '▲' : ''
-              const tagCircle = collection_stock.o[setName].cards[card][cardVer].tag_circle ? '⚫︎' : ''
-              const tagCross = collection_stock.o[setName].cards[card][cardVer].tag_cross ? '✖' : ''
-              const cardAmount = collection_stock.o[setName].cards[card][cardVer].count
-              const formattedCardName = cardAmount + 'x ' + card + ' (' + setName.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
-              const cardImage = collection_stock.o[setName].cards[card][cardVer].image
-              if (!number || cardVer == number) {
-                cardList.push(
-                  {
-                    cardName: card,
-                    cardSet: setName,
-                    formattedCardName: formattedCardName,
-                    collectorNumber: cardVer,
-                    releaseDate: collection_stock.o[setName].released_at,
-                    amount: cardAmount,
-                    image: "https://cards.scryfall.io/normal/front/" + cardImage
-                  })
-              }
-            }
-          }
-        }
-      }
-    } else {
-      // combs each set for cardnames that match your search; sounds like it SHOULD be hellishly slow, but it isn't? TODO keep an eye on this one for performance
-      for (var set in collection_stock.o) {
-        for (var card in collection_stock.o[set].cards) {
-          if (card.toLowerCase().replace("//", "/") == cardName.toLowerCase().replace("//", "/") || card.split('/')[0].trim().toLowerCase() == cardName.toLowerCase()) {
-            for (var cardVer in collection_stock.o[set].cards[card]) {
-              const tagSquare = collection_stock.o[set].cards[card][cardVer].tag_square ? '■' : ''
-              const tagTriangle = collection_stock.o[set].cards[card][cardVer].tag_triangle ? '▲' : ''
-              const tagCircle = collection_stock.o[set].cards[card][cardVer].tag_circle ? '⚫︎' : ''
-              const tagCross = collection_stock.o[set].cards[card][cardVer].tag_cross ? '✖' : ''
-              const cardAmount = collection_stock.o[set].cards[card][cardVer].count
-              const formattedCardName = card + ' (' + set.toUpperCase() + '-' + cardVer + ') ' + tagSquare + tagTriangle + tagCircle + tagCross
-              const cardImage = collection_stock.o[set].cards[card][cardVer].image
-              cardList.push(
-                {
-                  cardName: card,
-                  cardSet: set,
-                  formattedCardName: formattedCardName,
-                  collectorNumber: cardVer,
-                  releaseDate: collection_stock.o[set].released_at,
-                  amount: cardAmount,
-                  image: "https://cards.scryfall.io/normal/front/" + cardImage
-                })
-            }
-          }
-        }
-      }
-    }
-
-    return cardList.sort(function (a, b) {
-      return new Date(a.releaseDate) - new Date(b.releaseDate)
-    })
-  } catch (err) {
-    console.log("An error has occurred on findSpecificCardInCollection:", err)
-  }
-}
-
 // upon selecting a card on the card finder, go to the set selected and search for the typed card
 async function goToFoundCard(cardName, cardSet) {
   try {
@@ -1504,189 +1365,6 @@ async function goToFoundCard(cardName, cardSet) {
   }
   catch (err) {
     console.log("An error has occurred on goToFoundCard:", err)
-  }
-}
-
-// search for list of cards passed, according to the priority set
-async function perform_decklist_finder_search() {
-  loading.value = true
-  import_results_active.value = false
-  var cardList = []
-  decklist_finder_searchlist.value = []
-  decklist_finder_results.value = []
-  decklist_finder_results_processed.value = []
-
-  // first, we split the list of cards to search, one per line
-  var split_cards = decklist_finder_text.split('\n')
-
-  // then, we iterate through the list
-  for (let i = 0; i < split_cards.length; i++) {
-    try {
-      // for each card, we set up a return object to later use to push the card
-      var card = { 'name': '', 'amount': 0, 'set': '', 'collector_number': 0, 'foil': false }
-
-      // first we split the card by ' (' (note the space), the first half is the quantity and card name, the second half is the set name, collector number and modifiers
-      const card_elements = split_cards[i].split(' (')
-      // then we split the first part in two at the first space, and grab the first element as the amount
-      const amount = card_elements[0].split(' ', 1)[0]
-      // if the first element is not a number, it's an error
-      if (parseInt(amount)) {
-        card.amount = amount
-      } else {
-        throw EvalError()
-      }
-      // the remaining elements of the first part should be the card name
-      card.name = card_elements[0].substring(card_elements[0].indexOf(' ') + 1)
-
-      // if there was no parentheses (and thus no identifying information for the card) we just skip that part
-      if (card_elements.length > 1) {
-        // the second part, past the first parentheses, is further split by the second parentheses; the first element is the set, the second (if exists) may indicate foil
-        const second_part = card_elements[1].split(') ')  // TODO: string that ends in ')' isn't split properly due to this
-        const third_part = second_part[1]?.split(' ')
-        card.set = second_part[0].toLowerCase()
-        if (third_part && parseInt(third_part[0])) {
-          card.collector_number = third_part[0]
-        } else {
-          card.collector_number = 0
-        }
-        if (third_part && third_part.length >= 2 && ['*F*', '*E*'].includes(third_part[1])) {
-          card.foil = true
-        }
-      }
-
-      // push the card element above into our searchlist, to be used later for cleanup/skip purposes
-      decklist_finder_searchlist.value.push(card)
-
-      // return a list of all instances of the named card in your collection, optionally narrowing by set and/or number
-      let cardsFound = findSpecificCardInCollection(card.name, card.set != '' ? card.set : undefined, card.collector_number != 0 ? card.collector_number : undefined)
-      // if search priority is newest cards first, we revert the (normally oldest to newest) array
-      if (decklist_finder_priority.value == "newest") cardsFound = cardsFound.reverse()
-      // add all of the prints found to the search results pile
-      decklist_finder_results.value = decklist_finder_results.value.concat(cardsFound)
-
-      // we grab cards from the returned list until we hit the amount specified
-      const matching_cards = get_enough_cards_from_decklist_filter_results(cardsFound, card.amount)
-      if (matching_cards)
-        cardList = cardList.concat(matching_cards)
-      else
-        // if there are no cards that match one of your search terms, we remove it from the list entirely
-        decklist_finder_searchlist.value = decklist_finder_searchlist.value.filter(x => x.name != card.name)
-    }
-    catch (e) {
-      console.log("Error: ", e)
-    }
-  }
-
-  decklist_finder_results_processed.value = cardList.sort(compareByReleaseAndNumber)
-  // for each card in the processed list, we grab its image link and append the proper url data
-  // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
-  for (var cd in decklist_finder_results_processed.value) {
-    if (!decklist_finder_results_processed.value[cd].image) {
-      const sf_data = await query_json_for_card_data(decklist_finder_results_processed.value[cd])
-      decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris, sf_data.card_faces)
-    }
-  }
-  decklist_finder_results_window_active.value = true
-
-  // console.log("decklist_finder_searchlist.value",decklist_finder_searchlist.value)
-  // console.log("decklist_finder_results.value",decklist_finder_results.value)
-  // console.log("decklist_finder_results_processed.value",decklist_finder_results_processed.value)
-  loading.value = false
-}
-
-// decklist filter: for each card we are looking for, return cards from the results list until you have enough of each passed
-function get_enough_cards_from_decklist_filter_results(cards, amount) {
-  try {
-    let totalCards = 0, cardList = []
-    for (var elem in cards) {
-      // edit the amount to declare the amount of it we're taking
-      cards[elem].amount = Math.min(cards[elem].amount, (amount - totalCards))
-      cardList.push(cards[elem])
-
-      totalCards += cards[elem].amount
-      if (totalCards >= amount)
-        return cardList
-    }
-  } catch (err) {
-    console.log("Error in get_enough_cards_from_decklist_filter_results: ", err)
-  }
-}
-
-// query scryfall for data on a requested card, initially used for decklist finder
-async function query_json_for_card_data(card) {
-  // pretty simple since the bulk data update: just dynamic import it!
-  const { default: set_data } = await import(`./scryfall_data/${card.cardSet.toLowerCase()}_data.json`);
-  return set_data.find(x => x.name == card.cardName && x.collector_number == card.collectorNumber)
-
-  // var fetch_url = "https://api.scryfall.com/cards/search?q=%28game%3Apaper%29+" + encodeURIComponent(card.cardName) + "+set%3A" + card.cardSet + "+cd%3A" + card.collectorNumber
-
-  // // we will query scryfall for data on a specific card, and return that data
-  // const response = await fetch(fetch_url)
-  // const response_data = await response.json()
-  // await sleep(100) // complying with scryfall good neighbor policy query limits
-  // return response_data['data'][0]
-}
-
-// remove the passed card from the list of filtered cards displayed for a decklist finder search
-function mark_decklist_card_as_done(card) {
-  try {
-    // remove the passed card from the full and processed lists
-    decklist_finder_results.value = decklist_finder_results.value.filter(elem => elem.formattedCardName != card.formattedCardName)
-    decklist_finder_results_processed.value = decklist_finder_results_processed.value.filter(elem => elem != card)
-    // find the original request for the card in the searchlist, reduce its amount by the total in the card we removed, and remove it entirely if <= 0
-    const ind = decklist_finder_searchlist.value.findIndex(item => item.name == card.cardName)
-    decklist_finder_searchlist.value[ind].amount -= card.amount
-    if (decklist_finder_searchlist.value[ind].amount <= 0) {
-      decklist_finder_searchlist.value.splice(ind, 1)
-    }
-    // console.log("decklist_finder_searchlist.value", decklist_finder_searchlist.value)
-    // console.log("decklist_finder_results.value", decklist_finder_results.value)
-    // console.log("decklist_finder_results_processed.value", decklist_finder_results_processed.value)
-
-  } catch (err) {
-    console.log(err)
-  }
-}
-
-// attempts to skip the passed card, putting the next available printing in, if any
-async function skip_decklist_card(card) {
-  try {
-    // clear the currently hovered card
-    hover_card_src.value = ""
-    // remove the skipped card from the full results (processed results will be redone, no need)
-    decklist_finder_results.value = decklist_finder_results.value.filter(x => x.formattedCardName != card.formattedCardName)
-    // redo the step of fetching enough of each card on the searchlist
-    var newCardList = [], index_to_remove = -1
-    for (let item in decklist_finder_searchlist.value) {
-      // get every card in the results that matches the searched element
-      const filtered_set = decklist_finder_results.value.filter(elem => elem.cardName == decklist_finder_searchlist.value[item].name)
-      if (filtered_set.length > 0) {
-        newCardList = newCardList.concat(get_enough_cards_from_decklist_filter_results(filtered_set, decklist_finder_searchlist.value[item].amount))
-      } else {
-        // console log warning in case we get two or more indexes to remove, which logically should not happen
-        if (index_to_remove != -1) console.log("WARNING: unexpected behavior on skip_decklist_card")
-        // if the given card does not exist anymore in the main results list, tag it for removal from the searchlist
-        index_to_remove = item
-        no_more_of_skipped_card.value = true
-      }
-    }
-
-    // if we have run out of printings for a searchlist card and tagged it for removal, this is where it happens
-    if (index_to_remove != -1)
-      decklist_finder_searchlist.value.splice(index_to_remove, 1)
-
-    // sort all of the matched cards by release order and pop it back in place
-    decklist_finder_results_processed.value = newCardList.sort(compareByReleaseAndNumber)
-    // for each card in the processed list, we grab its image link and append the proper url data
-    // if we somehow don't have the image link saved, we query its exact version from scryfall, to grab the card image
-    for (var cd in decklist_finder_results_processed.value) {
-      if (!decklist_finder_results_processed.value[cd].image) {
-        const sf_data = await query_json_for_card_data(decklist_finder_results_processed.value[cd])
-        decklist_finder_results_processed.value[cd].image = "https://cards.scryfall.io/normal/front/" + getCardImage(sf_data.image_uris, sf_data.card_faces)
-      }
-    }
-  } catch (err) {
-    console.log(err)
   }
 }
 
@@ -2442,13 +2120,6 @@ const pageSliceEnd = computed(() => {
 const isMobile = computed(() => {
   return unref(display.mobile)
 })
-const hoverCardLeft = computed(() => {
-  return (mouse_coords.value.x + 30) + 'px'
-})
-const hoverCardTop = computed(() => {
-  return (mouse_coords.value.y + 20) + 'px'
-})
-
 function on_scroll_stats_box() {
   stats_box_visible.value = window.scrollY > 280
 }
@@ -2468,24 +2139,6 @@ function getProgressForSidebarSet(set_code) {
         return 0
     }
   } else { return 0 }
-}
-
-// orders two cards by release date, and if the date is the same, order by set name and collector number
-function compareByReleaseAndNumber(a, b) {
-  if (a.releaseDate != b.releaseDate)
-    return (new Date(a.releaseDate) - new Date(b.releaseDate))
-  else {
-    if (a.cardSet != b.cardSet) {
-      if (a.cardSet < b.cardSet) {
-        return -1;
-      }
-      if (a.cardSet > b.cardSet) {
-        return 1;
-      }
-    } else {
-      return parseInt(a.collectorNumber.replace(/\D/g, '')) - parseInt(b.collectorNumber.replace(/\D/g, ''))
-    }
-  }
 }
 
 function compareCards(a, b) {
@@ -2717,30 +2370,6 @@ function sleep(ms) {
 
 .card_finder_results_element:hover {
   background-color: #F8BBD0;
-}
-
-.decklist_finder_radio_options :deep(.v-selection-control-group) {
-  column-gap: 8px;
-  align-self: center;
-}
-
-.decklist_finder_results_window {
-  width: 500px;
-  height: 100%;
-  text-align: left;
-}
-
-.decklist_finder_results_list_item {
-  display: inline-block;
-  width: 100%;
-  margin-bottom: -3px;
-}
-
-.decklist_finder_results_text {
-  cursor: default;
-  width: 100%;
-  display: inline;
-  margin-left: 10px;
 }
 
 .hover_card_image {
