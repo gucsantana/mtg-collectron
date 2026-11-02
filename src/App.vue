@@ -189,26 +189,27 @@
             <h2>About the Collectron</h2>
           </v-card-item>
           <v-divider />
-          <p style="padding:4px; font-size: 13px;">This website has been built from scratch and maintained by Guilherme
-            Santana, with Vue/Vuetify, tested on Chrome desktop and Firefox mobile. I'm sure there are way better
-            collection
-            tools out there, but none that did quite what I wanted.</p>
-          <p style="padding:4px; font-size: 13px;">The site is presented as-is - consider it an ongoing beta - and I
-            make no
-            guarantee about its accuracy, continued functionality, or backwards compatibility of new functions, but I
-            hope you
-            enjoy using it nonetheless.</p>
+          <p style="padding:4px 20px; font-size: 13px;">This website has been built from scratch and maintained by Guilherme
+            Santana, tested on Chrome/Firefox desktop and Firefox mobile.</p>
+          <p style="padding:4px 20px; font-size: 13px;">Tech stack: JavaScript with Vue/Vuetify for the front-end, Java Spring Boot backend, 
+            MySQL database. Copilot was used to speed up development, but the design and features are entirely my own.</p>
+          <p style="padding:4px 20px; font-size: 13px;">The site is presented as-is - consider it an ongoing beta - and I
+            make no guarantee about its accuracy, continued functionality, or backwards compatibility of new functions, but I
+            hope you enjoy using it nonetheless.</p>
           <br />
-          <p style="padding:4px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information
-            associated
-            with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
-          <p style="padding:4px; font-size: 13px;">Card and set information, data searches, and visual information such
-            as
-            card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them
-            in
-            any way, but I'm otherwise very grateful for their accessibility.</p>
+          <v-divider/>
+          <p style="padding:4px 20px; font-size: 13px;">Magic: the Gathering, all card images, symbols and information
+            associated with it, are copyrighted by Wizards of the Coast LLC, and I'm not affiliated with or endorsed by them.</p>
+          <p style="padding:4px 20px; font-size: 13px;">Card and set information, data searches, and visual information such
+            as card and set icon pictures, are all sourced from Scryfall and its API. This site is not affiliated with them
+            in any way, but I'm otherwise very grateful for their accessibility.</p>
           <br />
-          <v-card-actions>
+          <v-divider/>
+          <v-card-actions style="padding-left:20px;">
+            <img class="tech_logos" src="@/assets/js-logo.png" />
+            <img class="tech_logos" src="@/assets/vue-logo.png" />
+            <img class="tech_logos" src="@/assets/java-logo.png" />
+            <img class="tech_logos" src="@/assets/spring-boot-logo.png" />
             <v-spacer />
             <v-btn @click="about_window_active = false" variant="outlined"
               style="margin-right: 10px; margin-bottom: 10px;">Close</v-btn>
@@ -359,7 +360,7 @@
             in
             any way, but I'm otherwise very grateful for their accessibility.</p>
           <br>
-          <p style="padding:4px; font-size: 11px;">version 2.0.1 - last update 20/09/26</p>
+          <p style="padding:4px; font-size: 11px;">version 3.0.0 - last update 02/11/26</p>
         </v-sheet>
       </v-main>
       <v-card v-if="!isDecklistFinderPage">
@@ -488,7 +489,7 @@
             <v-list-item style="display: inline-block; width:100%;">
               <p class="account_username">{{ authUser?.username || authUser?.email }}</p>
               <v-btn @click="logOut" class="side_drawer_button" density="comfortable" variant="outlined"
-                :loading="loggingOut">
+                :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" :loading="loggingOut">
                 Log Out
               </v-btn>
             </v-list-item>
@@ -1288,7 +1289,7 @@ async function findCardsInCollection(cardName, searchId) {
 
   try {
     const response = await authFetch(
-      '/mtg-collectron/owncard/card-finder/',
+      '/mtg-collectron/owncard/card-finder',
       {
         method: 'POST',
         credentials: 'include',
@@ -2199,6 +2200,12 @@ function sleep(ms) {
   display: inline-block;
   margin-left: auto;
   margin-right: auto;
+}
+
+.tech_logos {
+  max-height: 60px;
+  display: inline-block;
+  margin-bottom: 10px;
 }
 
 .set_page_title {
