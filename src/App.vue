@@ -1045,7 +1045,27 @@ async function refreshCollectionStockFromServer() {
 async function getAllOwnedCardsForUserInSet(setCode) {
   const setStock = collection_stock.o[setCode]
   if (!setStock) {
-    throw new Error(`Cannot load owned cards: set "${setCode}" is missing from the collection stock.`)
+    collection_stock.o[setCode] = {
+      cards: {},
+      commons: 0,
+      uncommons: 0,
+      rares: 0,
+      mythics: 0,
+      total_commons: 0,
+      total_uncommons: 0,
+      total_rares: 0,
+      total_mythics: 0,
+      base_set_owned: 0,
+      extra_owned: 0,
+      foils_owned: 0,
+      base_set_total: 0,
+      extra_set_total: 0,
+      full_set_every_single: 0,
+      full_set_base_only: 0,
+      full_set_one_each: 0,
+    }
+
+    setStock = collection_stock.o[setCode]
   }
 
   const response = await authFetch(
