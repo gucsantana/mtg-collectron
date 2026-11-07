@@ -9,7 +9,12 @@
         {{ authError }}
       </v-alert>
       <v-overlay persistent :model-value="loading" class="align-center justify-center">
-        <v-progress-circular color="primary" indeterminate size="64" />
+        <div class="text-center pa-4">
+          <v-progress-circular color="primary" indeterminate size="64" />
+          <p v-if="import_status_message" class="import_status_message mt-4">
+            {{ import_status_message }}
+          </p>
+        </div>
       </v-overlay>
       <v-overlay persistent :model-value="loading_bar" class="align-center justify-center">
         <v-progress-linear v-model="loading_bar_fill" height="20" style="width:400px;" color="primary" rounded />
@@ -649,6 +654,7 @@ var import_success = ref(true)
 var import_errors = ref([])
 var import_card_total = ref(0)
 var import_result_message = ref('')
+var import_status_message = ref('')
 
 var toast = ref(false)
 var finished_housekeeping = ref(false)
@@ -727,6 +733,7 @@ function handleAuthenticationRequired() {
   loading_bar.value = false
   appInitialized = false
   appInitializationComplete = false
+  current_set.value = null
 }
 
 function updatePageFromLocation() {
@@ -887,6 +894,7 @@ function getUserId(user) {
 async function logOut() {
   loggingOut.value = true
   authError.value = ''
+  current_set.value = null
 
   try {
     // CSRF token is necessary to validade most auth methods
@@ -1400,6 +1408,7 @@ async function import_cards() {
   import_errors.value = ''
   import_result_message.value = ''
   import_card_total.value = 0
+  import_status_message.value = ''
   loading.value = true
   import_results_active.value = false
 
@@ -1415,6 +1424,7 @@ async function import_cards() {
     import_errors.value = error instanceof Error ? error.message : 'Unable to import the collection.'
   } finally {
     loading.value = false
+    import_status_message.value = ''
     import_results_active.value = true
   }
 }
@@ -1475,6 +1485,62 @@ function loadImportFileToMemory(event) {
   import_file_data.value = event?.target?.files?.[0] ?? null
 }
 
+async function getImportResponseError(response, fallbackMessage) {
+  const responseBody = await response.text()
+  if (!responseBody) {
+    return `${fallbackMessage} (HTTP ${response.status}).`
+  }
+
+  try {
+    const errorResponse = JSON.parse(responseBody)
+    return errorResponse.message || errorResponse.error || responseBody
+  } catch {
+    return responseBody
+  }
+}
+
+async function readImportJobResponse(response) {
+  if (!response.ok) {
+    throw new Error(await getImportResponseError(response, 'Unable to retrieve the CSV import job.'))
+  }
+
+  try {
+    const job = await response.json()
+    if (!job || typeof job !== 'object' || Array.isArray(job)) {
+      throw new Error('The import server returned an invalid job response.')
+    }
+    return job
+  } catch {
+    throw new Error('The import server returned an invalid job response.')
+  }
+}
+
+async function waitForImportJob(jobId) {
+  let job
+  while (!job || job.state === 'queued' || job.state === 'running') {
+    const response = await authFetch(
+      `/mtg-collectron/importbackup/jobs/${encodeURIComponent(jobId)}`,
+      { credentials: 'include' },
+    )
+    job = await readImportJobResponse(response)
+
+    if (job.state === 'failed') {
+      throw new Error(job.error || 'The CSV import failed.')
+    }
+    if (job.state !== 'queued' && job.state !== 'running' && job.state !== 'completed') {
+      throw new Error('The import server returned an unknown job state.')
+    }
+
+    if (job.state !== 'completed') {
+      import_status_message.value = job.state === 'queued'
+        ? 'CSV import queued. Waiting for the import worker...'
+        : "CSV import is running. This may take several minutes...\nPlease don't close this screen or use the site in other tabs to avoid data loss."
+      await new Promise(resolve => setTimeout(resolve, 2000))
+    }
+  }
+  return job
+}
+
 // imports a CSV backup through the authenticated backup endpoint
 async function import_from_native() {
   const file = import_file_data.value
@@ -1509,6 +1575,7 @@ async function import_from_native() {
   formData.append('file', file, file.name)
   formData.append('additiveImport', String(import_action.value == 'add'))
 
+  import_status_message.value = 'Uploading CSV and starting the import...'
   try {
     const response = await authFetch('/mtg-collectron/importbackup', {
       method: 'POST',
@@ -1517,23 +1584,25 @@ async function import_from_native() {
       body: formData,
     })
     if (!response.ok) {
-      const responseBody = await response.text()
-      let responseMessage = ''
-      if (responseBody) {
-        try {
-          const errorResponse = JSON.parse(responseBody)
-          responseMessage = errorResponse.message || errorResponse.error || ''
-        } catch {
-          responseMessage = responseBody
-        }
-      }
-      throw new Error(responseMessage || `Backup import failed (HTTP ${response.status}).`)
+      throw new Error(await getImportResponseError(response, 'Backup import failed'))
     }
 
+    const acceptedJob = await readImportJobResponse(response)
+    if (typeof acceptedJob.jobId !== 'string' || !acceptedJob.jobId) {
+      throw new Error('The import server did not return a job ID.')
+    }
+    import_status_message.value = 'CSV import queued. Waiting for the import worker...'
+
+    const completedJob = await waitForImportJob(acceptedJob.jobId)
     import_success.value = true
-    import_result_message.value = import_action.value == 'add'
-      ? 'CSV import completed; cards were added to your collection.'
-      : 'CSV import completed; your collection was replaced.'
+    import_card_total.value = completedJob.cardsImported ?? 0
+    const importActionMessage = import_action.value == 'add'
+      ? 'cards were added to your collection.'
+      : 'your collection was replaced.'
+    const setSummary = Number.isInteger(completedJob.setsImported)
+      ? ` (${completedJob.setsImported} sets)`
+      : ''
+    import_result_message.value = `CSV import completed${setSummary}; ${importActionMessage}`
 
     try {
       await refreshCollectionStockFromServer()
@@ -2424,6 +2493,16 @@ function sleep(ms) {
   text-align: center;
   display: flex;
   flex-direction: column;
+}
+
+.import_status_message {
+  max-width: min(90vw, 420px);
+  margin-inline: auto;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background-color: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
 }
 
 .import_window_header {
