@@ -192,7 +192,7 @@
           <p style="padding:4px 20px; font-size: 13px;">This website has been built from scratch and maintained by Guilherme
             Santana, tested on Chrome/Firefox desktop and Firefox mobile.</p>
           <p style="padding:4px 20px; font-size: 13px;">Tech stack: JavaScript with Vue/Vuetify for the front-end, Java Spring Boot backend, 
-            MySQL database. Copilot was used to speed up development, but the design and features are entirely my own.</p>
+            MySQL database, all hosted on a self-managed AWS stack. Copilot was used to speed up development, but the design and features are entirely my own.</p>
           <p style="padding:4px 20px; font-size: 13px;">The site is presented as-is - consider it an ongoing beta - and I
             make no guarantee about its accuracy, continued functionality, or backwards compatibility of new functions, but I
             hope you enjoy using it nonetheless.</p>
@@ -210,6 +210,7 @@
             <img class="tech_logos" src="@/assets/vue-logo.png" />
             <img class="tech_logos" src="@/assets/java-logo.png" />
             <img class="tech_logos" src="@/assets/spring-boot-logo.png" />
+            <img class="tech_logos" src="@/assets/aws-logo.png" />
             <v-spacer />
             <v-btn @click="about_window_active = false" variant="outlined"
               style="margin-right: 10px; margin-bottom: 10px;">Close</v-btn>
@@ -360,7 +361,7 @@
             in
             any way, but I'm otherwise very grateful for their accessibility.</p>
           <br>
-          <p style="padding:4px; font-size: 11px;">version 3.0.0 - last update 02/11/26</p>
+          <p style="padding:4px; font-size: 11px;">version 3.0.0 - last update 07/11/26</p>
         </v-sheet>
       </v-main>
       <v-card v-if="!isDecklistFinderPage">
@@ -1043,7 +1044,7 @@ async function refreshCollectionStockFromServer() {
 
 // returns all cards for the current user of the selected set
 async function getAllOwnedCardsForUserInSet(setCode) {
-  const setStock = collection_stock.o[setCode]
+  var setStock = collection_stock.o[setCode]
   if (!setStock) {
     collection_stock.o[setCode] = {
       cards: {},

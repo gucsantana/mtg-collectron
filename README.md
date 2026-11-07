@@ -31,15 +31,19 @@ Successful login and registration responses should return the public user profil
 
 # Upcoming Features and Improvements
 
-Scrolling to top on page change (why is it so hard? lol)
+Scrolling to top on page change consistently (why is it so hard? lol)
 
 More filters for Decklist Finder, allow user to pass Moxfield url
+
+Allowing imports from Manabox
 
 'Stats' screen with information and trivia about the collection
 
 # Known Issues
 
-I don't -fully- trust the collection percentages yet, it's very much reverse-engineered and with a lot of guessing and fiddly counters.
+The collection percentages are very much reverse-engineered and with a lot of guessing and fiddly counters.
+
+Importing from CSV can give a front-end timeout, but the back-end does finish importing after a while.
 
 Base/extra set counts not accurate for recent sets.
 
