@@ -1,14 +1,16 @@
 <template>
   <Login v-if="!authChecking && !isAuthenticated" :initial-error="authError" @authenticated="handleAuthenticated" />
-  <v-app v-else-if="authChecking" class="align-center justify-center">
-    <v-progress-circular color="primary" indeterminate size="64" />
+  <v-app v-else-if="authChecking">
+    <div class="auth_loading_content">
+      <v-progress-circular color="primary" indeterminate size="64" />
+    </div>
   </v-app>
   <template v-else>
     <v-app>
       <v-alert v-if="authError" type="error" closable class="auth_error" @click:close="authError = ''">
         {{ authError }}
       </v-alert>
-      <v-overlay persistent :model-value="loading" class="align-center justify-center">
+      <v-overlay persistent :model-value="loading" content-class="loading_overlay_content">
         <div class="text-center pa-4">
           <v-progress-circular color="primary" indeterminate size="64" />
           <p v-if="import_status_message" class="import_status_message mt-4">
@@ -2263,6 +2265,21 @@ function sleep(ms) {
   top: 12px;
   left: 12px;
   right: 12px;
+}
+
+.auth_loading_content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:global(.v-overlay__content.loading_overlay_content) {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .account_username {
