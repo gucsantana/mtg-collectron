@@ -23,11 +23,11 @@ Users must sign in or create an account before entering the collection. Authenti
 Run the Spring Boot backend at `http://localhost:8080`, then start the frontend with `npm run dev`. Vite proxies `/mtg-collectron` API requests to the backend so the browser does not make a cross-origin request. The authentication endpoints expected by the frontend are:
 
 - `GET /mtg-collectron/auth/session` returns the current public user as JSON, or HTTP 401 when no valid session exists.
-- `POST /mtg-collectron/auth/login` accepts `{ "email": "...", "password": "..." }`.
+- `POST /mtg-collectron/auth/login` accepts `{ "username": "...", "password": "..." }`.
 - `POST /mtg-collectron/auth/register` accepts `{ "email": "...", "username": "...", "password": "..." }`.
 - `POST /mtg-collectron/auth/logout` invalidates the current session.
 
-Successful login and registration responses should return the public user profile (or `{ "user": { ... } }`) and set an HttpOnly session cookie. Do not return `password_hash`; the backend must validate fields, enforce the unique email and username constraints, hash passwords, and manage session cookies. In production, serve the API over HTTPS and make it same-origin with the frontend so cookie credentials remain protected. If your backend is configured for HTTPS in development, change the proxy target in `vite.config.js` to `https://localhost:8080`.
+The frontend requests a CSRF token before login. After registration succeeds, it logs in with the new account's username and password; registration does not establish a session. Successful login returns a user ID and username and sets an HttpOnly session cookie. Do not return `password_hash`; the backend must validate fields, enforce the unique email and username constraints, hash passwords, and manage session cookies. In production, serve the API over HTTPS and make it same-origin with the frontend so cookie credentials remain protected. If your backend is configured for HTTPS in development, change the proxy target in `vite.config.js` to `https://localhost:8080`.
 
 # Upcoming Features and Improvements
 
@@ -42,8 +42,6 @@ Allowing imports from Manabox
 # Known Issues
 
 The collection percentages are very much reverse-engineered and with a lot of guessing and fiddly counters.
-
-Importing from CSV can give a front-end timeout, but the back-end does finish importing after a while.
 
 Base/extra set counts not accurate for recent sets.
 

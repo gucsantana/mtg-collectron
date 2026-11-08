@@ -496,6 +496,10 @@
             </v-list-item>
             <v-list-item style="display: inline-block; width:100%;">
               <p class="account_username">{{ authUser?.username || authUser?.email }}</p>
+              <!-- <v-btn class="side_drawer_button" density="comfortable" variant="outlined"
+                :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'">
+                Account Management
+              </v-btn> -->
               <v-btn @click="logOut" class="side_drawer_button" density="comfortable" variant="outlined"
                 :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" :loading="loggingOut">
                 Log Out

@@ -34,6 +34,14 @@
               </v-btn>
             </v-col>
           </v-row>
+          <v-row v-if="!isRegistering">
+            <v-col cols="12">
+              <v-btn id="btn_enter_as_guest" class="guest_button" type="button" color="secondary" block
+                :loading="submitting" :disabled="submitting" @click="logInAsGuest">
+                Just looking? Enter as a Guest Account
+              </v-btn>
+            </v-col>
+          </v-row>
         </v-form>
 
       </v-card>
@@ -85,46 +93,60 @@ async function submitForm() {
   }
 }
 
-async function logIn() {
+async function logInAsGuest() {
+  await logIn('demo_acc', 'demo!pass')
+}
+
+async function logIn(usernameValue = username.value, passwordValue = password.value) {
   submitting.value = true
   errorMessage.value = ''
 
   try {
-    if (!username.value.trim() || !password.value) {
+    if (!usernameValue.trim() || !passwordValue) {
       throw new Error('Enter your username and password.')
     }
-    // CSRF token is necessary to validade most auth methods
-    const csrfCall = await authFetch('/mtg-collectron/auth/csrf', {
-      method: 'GET',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    })
-    if (!csrfCall.ok) {
-      throw new Error(`Unable to retrieve a CSRF token (HTTP ${csrfCall.status}).`)
-    }
-    const csrfCallResponse = await csrfCall.json()
-
-    const response = await authFetch('/mtg-collectron/auth/login', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfCallResponse['token']
-      },
-      body: JSON.stringify({ username: username.value.trim(), password: password.value }),
-    })
-    const result = await response.json()
-
-    if (!response.ok) {
-      throw new Error(result.message || 'Unable to log in with those credentials.')
-    }
-
-    emit('authenticated', result.user ?? result)
+    emit('authenticated', await authenticateWithUsername(usernameValue.trim(), passwordValue))
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Unable to log in. Please try again.'
   } finally {
     submitting.value = false
   }
+}
+
+async function getCsrfToken() {
+  const response = await authFetch('/mtg-collectron/auth/csrf', {
+    method: 'GET',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!response.ok) {
+    throw new Error(`Unable to retrieve a CSRF token (HTTP ${response.status}).`)
+  }
+
+  const result = await response.json()
+  if (!result.token) {
+    throw new Error('The server did not provide a CSRF token.')
+  }
+  return result.token
+}
+
+async function authenticateWithUsername(usernameValue, passwordValue) {
+  const csrfToken = await getCsrfToken()
+  const response = await authFetch('/mtg-collectron/auth/login', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
+    },
+    body: JSON.stringify({ username: usernameValue, password: passwordValue }),
+  })
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(result.message || 'Unable to log in with those credentials.')
+  }
+  return result.user ?? result
 }
 
 async function createAccount() {
@@ -147,9 +169,6 @@ async function createAccount() {
       throw new Error('The passwords do not match.')
     }
 
-    // Send only the fields needed to create an account. The raw password is sent over HTTPS so
-    // the server can hash it; a password hash made in the browser would not replace secure
-    // server-side hashing and must never be stored in localStorage or sent as the DB hash.
     const response = await authFetch('/mtg-collectron/auth/register', {
       method: 'POST',
       credentials: 'include',
@@ -160,20 +179,13 @@ async function createAccount() {
         password: password.value,
       }),
     })
-    const result = await response.json()
-
-    // A successful registration is expected to create an authenticated server session and
-    // return the public user record. The backend should hash the password, enforce the unique
-    // email/username constraints, set an HttpOnly session cookie, and never return password_hash.
-    // Keeping those responsibilities on the server prevents the client from choosing account
-    // IDs, activation state, verification state, login timestamps, or stored password hashes.
     if (!response.ok) {
+      const result = await response.json()
       throw new Error(result.message || 'Unable to create the account. Please check your details.')
     }
 
-    // Only the returned public profile is passed to the app. Session credentials remain in the
-    // browser-managed cookie and are included automatically by future same-origin API requests.
-    emit('authenticated', result.user ?? result)
+    // Account creation does not guarantee that the server established a session.
+    emit('authenticated', await authenticateWithUsername(username.value.trim(), password.value))
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Unable to create the account. Please try again.'
   } finally {
@@ -220,6 +232,10 @@ async function createAccount() {
 .login_alert {
   margin-bottom: 18px;
   text-align: left;
+}
+
+.guest_button {
+  width: 100%;
 }
 
 .mode_button {
