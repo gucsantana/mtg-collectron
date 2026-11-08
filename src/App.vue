@@ -24,6 +24,9 @@
       <DecklistFinder v-if="isDecklistFinderPage" :user-id="userId" :dark-mode="page_options.dark_mode"
         :csrf-token="csrf_token" :set-list="set_list"
         @back="navigateToMainPage" @open-settings="settings = !settings" />
+      <AccountManagement v-if="isAccountManagementPage" :user="authUser" :user-id="userId"
+        :csrf-token="csrf_token" @back="navigateToMainPage" @open-settings="settings = !settings"
+        @password-changed="handlePasswordChanged" @account-deleted="handleAccountDeleted" />
       <v-overlay :model-value="card_finder_window_active" @afterLeave="card_finder_window_active = false"
         class="align-center justify-center">
         <v-card class="card_finder_window">
@@ -226,7 +229,7 @@
       </v-overlay>
       <v-snackbar v-model="toast" :timeout="2000">Copied to clipboard!</v-snackbar>
       <v-snackbar v-model="finished_housekeeping" :timeout="2500">Finished cleaning up your collection!</v-snackbar>
-      <v-app-bar v-if="!isDecklistFinderPage" color="primary">
+      <v-app-bar v-if="!isStandalonePage" color="primary">
         <v-btn @click="drawer = !drawer">
           <v-icon icon="mdi-chevron-right-circle" size="x-large" v-if="!drawer" />
           <v-icon icon="mdi-chevron-left-circle" size="x-large" v-if="drawer" />
@@ -237,7 +240,7 @@
           <v-icon icon="mdi-menu" size="x-large" />
         </v-btn>
       </v-app-bar>
-      <v-main class="card_list_main" v-if="!isDecklistFinderPage && current_set && current_set_base_cards">
+      <v-main class="card_list_main" v-if="!isStandalonePage && current_set && current_set_base_cards">
         <v-sheet class="card_list_body rounded-lg">
           <v-card id="set_page_title_card" :height="isMobile ? 140 : 100" flat>
             <div>
@@ -346,7 +349,7 @@
           </v-progress-linear>
         </v-card>
       </v-main>
-      <v-main class="intro_message_main" v-if="!isDecklistFinderPage && (!current_set || !current_set_base_cards)">
+      <v-main class="intro_message_main" v-if="!isStandalonePage && (!current_set || !current_set_base_cards)">
         <v-sheet class="intro_message_body rounded-lg" justify="center">
           <img class="title_logo" src="@/assets/collectron-title-logo.png" />
           <h2 class="intro_title">Welcome to the MTG Collectron</h2>
@@ -371,7 +374,7 @@
           <p style="padding:4px; font-size: 11px;">version 3.0.0 - last update 07/11/26</p>
         </v-sheet>
       </v-main>
-      <v-card v-if="!isDecklistFinderPage">
+      <v-card v-if="!isStandalonePage">
         <v-navigation-drawer app temporary v-model="drawer" elevation="2" :width="isMobile ? '100%' : 300">
           <v-list>
             <v-list-item id="column_set_visib_title">
@@ -496,10 +499,12 @@
             </v-list-item>
             <v-list-item style="display: inline-block; width:100%;">
               <p class="account_username">{{ authUser?.username || authUser?.email }}</p>
-              <!-- <v-btn class="side_drawer_button" density="comfortable" variant="outlined"
-                :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'">
+              <v-btn v-if="!isAccountManagementPage" :disabled="authUser?.username == 'demo_acc'" id="btn_account_management" class="side_drawer_button"
+                density="comfortable" variant="outlined"
+                :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'"
+                @click="navigateToAccountManagement">
                 Account Management
-              </v-btn> -->
+              </v-btn>
               <v-btn @click="logOut" class="side_drawer_button" density="comfortable" variant="outlined"
                 :class="page_options.dark_mode ? 'tertiary_hover_dark' : 'tertiary_hover_light'" :loading="loggingOut">
                 Log Out
@@ -517,6 +522,7 @@ import { onBeforeUnmount, onMounted, ref, watch, reactive, computed, unref } fro
 import { useTheme, useDisplay } from 'vuetify'
 import CardSlot from './CardSlot.vue'
 import DecklistFinder from './DecklistFinder.vue'
+import AccountManagement from './AccountManagement.vue'
 import FileSaver from 'file-saver'
 import Login from './Login.vue'
 import { AUTHENTICATION_REQUIRED_EVENT, authFetch } from './authFetch.js'
@@ -529,6 +535,8 @@ const userId = ref(null)
 const csrf_token = ref(null)
 const loggingOut = ref(false)
 const isDecklistFinderPage = ref(window.location.hash === '#decklist-finder')
+const isAccountManagementPage = ref(window.location.hash === '#account-management')
+const isStandalonePage = computed(() => isDecklistFinderPage.value || isAccountManagementPage.value)
 let appInitialized = false
 let appInitializationComplete = false
 
@@ -744,7 +752,8 @@ function handleAuthenticationRequired() {
 
 function updatePageFromLocation() {
   isDecklistFinderPage.value = window.location.hash === '#decklist-finder'
-  if (isDecklistFinderPage.value) {
+  isAccountManagementPage.value = window.location.hash === '#account-management'
+  if (isStandalonePage.value) {
     settings.value = false
   }
 }
@@ -752,13 +761,18 @@ function updatePageFromLocation() {
 function navigateToDecklistFinder() {
   if (isDecklistFinderPage.value) return
   window.history.pushState({}, '', `${window.location.pathname}${window.location.search}#decklist-finder`)
-  isDecklistFinderPage.value = true
+  updatePageFromLocation()
+}
+
+function navigateToAccountManagement() {
+  window.history.pushState({}, '', `${window.location.pathname}${window.location.search}#account-management`)
+  updatePageFromLocation()
   settings.value = false
 }
 
 function navigateToMainPage() {
   window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
-  isDecklistFinderPage.value = false
+  updatePageFromLocation()
 }
 
 onMounted(async () => {
@@ -895,6 +909,37 @@ async function handleAuthenticated(user) {
 
 function getUserId(user) {
   return user?.id ?? user?.userId ?? user?.user_id
+}
+
+function handlePasswordChanged({ user, csrfToken }) {
+  const authenticatedUserId = getUserId(user)
+  if (authenticatedUserId == null) {
+    authError.value = 'The reauthentication response did not include a user ID.'
+    return
+  }
+  if (!csrfToken) {
+    authError.value = 'The reauthentication response did not include a security token.'
+    return
+  }
+
+  authUser.value = user
+  userId.value = authenticatedUserId
+  csrf_token.value = csrfToken
+  authError.value = ''
+  navigateToMainPage()
+}
+
+function handleAccountDeleted() {
+  isAuthenticated.value = false
+  authUser.value = null
+  userId.value = null
+  csrf_token.value = null
+  authError.value = ''
+  current_set.value = null
+  appInitialized = false
+  appInitializationComplete = false
+  settings.value = false
+  navigateToMainPage()
 }
 
 async function logOut() {
@@ -1505,6 +1550,14 @@ async function getImportResponseError(response, fallbackMessage) {
   }
 }
 
+async function getPasswordValidationError(response, fallbackMessage) {
+  const detail = await getImportResponseError(response, fallbackMessage)
+  if ((response.status === 401 || response.status === 403) && !/csrf|security token/i.test(detail)) {
+    return 'The password provided does not match our records.'
+  }
+  return detail
+}
+
 async function readImportJobResponse(response) {
   if (!response.ok) {
     throw new Error(await getImportResponseError(response, 'Unable to retrieve the CSV import job.'))
@@ -1586,11 +1639,12 @@ async function import_from_native() {
     const response = await authFetch('/mtg-collectron/importbackup', {
       method: 'POST',
       credentials: 'include',
+      suppressAuthenticationRedirect: true,
       headers: { 'X-CSRF-Token': csrf_token.value },
       body: formData,
     })
     if (!response.ok) {
-      throw new Error(await getImportResponseError(response, 'Backup import failed'))
+      throw new Error(await getPasswordValidationError(response, 'Backup import failed'))
     }
 
     const acceptedJob = await readImportJobResponse(response)
@@ -2288,6 +2342,8 @@ function sleep(ms) {
 
 .account_username {
   overflow: hidden;
+  width: 100%;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin: 4px 0 8px;

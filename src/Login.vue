@@ -144,7 +144,11 @@ async function authenticateWithUsername(usernameValue, passwordValue) {
   const result = await response.json()
 
   if (!response.ok) {
-    throw new Error(result.message || 'Unable to log in with those credentials.')
+    const serverMessage = result.message || result.error
+    if (response.status === 401 || serverMessage === 'You must log in to access this resource.') {
+      throw new Error('Incorrect username or password. Please try again.')
+    }
+    throw new Error(serverMessage || `Login failed (HTTP ${response.status}). Please check your credentials and try again.`)
   }
   return result.user ?? result
 }
