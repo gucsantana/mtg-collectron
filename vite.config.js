@@ -5,13 +5,45 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: "/mtg-collectron/",
+  base: "/",
   plugins: [
     vue(),
   ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  },
+  server: {
+    proxy: {
+      '/mtg-collectron/sets': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/mtg-collectron/card': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/mtg-collectron/owncard': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/mtg-collectron/auth': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/mtg-collectron/user-set-info': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/mtg-collectron/user-preferences': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      '/mtg-collectron/importbackup': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      }
     }
   }
 })

@@ -1,0 +1,270 @@
+<template>
+  <v-app>
+    <main class="login_page">
+      <v-card class="login_box" elevation="8">
+        <img class="login_logo" src="@/assets/collectron-title-logo.png" alt="MTG Collectron">
+        <h1 class="login_title">{{ isRegistering ? 'Create an Account' : 'Welcome Back!' }}</h1>
+        <br />
+
+        <v-alert v-if="visibleError" type="error" variant="tonal" class="login_alert">
+          {{ visibleError }}
+        </v-alert>
+
+        <v-form @submit.prevent="submitForm">
+          <v-text-field v-model="username" label="Username" autocomplete="username" minLength="6" maxlength="100"
+            :rules="usernameRules" required variant="outlined" />
+          <v-text-field v-if="isRegistering" v-model="email" label="Email" type="email" autocomplete="email"
+            maxlength="254" required variant="outlined" />
+          <v-text-field v-model="password" label="Password" type="password" minLength="8" maxlength="72"
+            :autocomplete="isRegistering ? 'new-password' : 'current-password'" required variant="outlined" />
+          <v-text-field v-if="isRegistering" v-model="passwordConfirmation" label="Confirm password" type="password"
+            autocomplete="new-password" required variant="outlined" />
+
+          <v-row>
+            <v-col cols="4">
+              <v-btn class="login_action_button" type="submit" color="primary" block :loading="submitting"
+                :disabled="submitting">
+                {{ isRegistering ? 'Register' : 'Log In' }}
+              </v-btn>
+            </v-col>
+            <v-col cols="8">
+              <v-btn id="change_login_mode" class="login_action_button" type="button" color="tertiary" block
+                :disabled="submitting" @click="toggleMode">
+                {{ isRegistering ? 'Already signed up? Log in' : 'New here? Create account' }}
+              </v-btn>
+            </v-col>
+          </v-row>
+          <v-row v-if="!isRegistering">
+            <v-col cols="12">
+              <v-btn id="btn_enter_as_guest" class="guest_button login_action_button" type="button" color="secondary" block
+                :loading="submitting" :disabled="submitting" @click="logInAsGuest">
+                Just looking? Enter as a Guest Account
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-form>
+
+      </v-card>
+    </main>
+  </v-app>
+</template>
+
+<script setup>
+import { computed, ref } from 'vue'
+import { authFetch } from './authFetch.js'
+
+defineOptions({ name: 'UserLogin' })
+
+const emit = defineEmits(['authenticated'])
+const props = defineProps({
+  initialError: {
+    type: String,
+    default: '',
+  },
+})
+
+const isRegistering = ref(false)
+const username = ref('')
+const email = ref('')
+const password = ref('')
+const passwordConfirmation = ref('')
+const submitting = ref(false)
+const errorMessage = ref('')
+const usernameRules = [
+  value => !!value || 'Username is required.',
+  value => /^[A-Za-z0-9_-]+$/.test(value) || 'Use only letters, numbers, hyphens, and underscores.',
+  value => value.length >= 6 || 'Username must have 6 characters or more.',
+]
+
+const visibleError = computed(() => errorMessage.value || props.initialError)
+
+function toggleMode() {
+  isRegistering.value = !isRegistering.value
+  errorMessage.value = ''
+  password.value = ''
+  passwordConfirmation.value = ''
+}
+
+async function submitForm() {
+  if (isRegistering.value) {
+    await createAccount()
+  } else {
+    await logIn()
+  }
+}
+
+async function logInAsGuest() {
+  await logIn('demo_acc', 'demo!pass')
+}
+
+async function logIn(usernameValue = username.value, passwordValue = password.value) {
+  submitting.value = true
+  errorMessage.value = ''
+
+  try {
+    if (!usernameValue.trim() || !passwordValue) {
+      throw new Error('Enter your username and password.')
+    }
+    emit('authenticated', await authenticateWithUsername(usernameValue.trim(), passwordValue))
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Unable to log in. Please try again.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function getCsrfToken() {
+  const response = await authFetch('/mtg-collectron/auth/csrf', {
+    method: 'GET',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!response.ok) {
+    throw new Error(`Unable to retrieve a CSRF token (HTTP ${response.status}).`)
+  }
+
+  const result = await response.json()
+  if (!result.token) {
+    throw new Error('The server did not provide a CSRF token.')
+  }
+  return result.token
+}
+
+async function authenticateWithUsername(usernameValue, passwordValue) {
+  const csrfToken = await getCsrfToken()
+  const response = await authFetch('/mtg-collectron/auth/login', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
+    },
+    body: JSON.stringify({ username: usernameValue, password: passwordValue }),
+  })
+  const result = await response.json()
+
+  if (!response.ok) {
+    const serverMessage = result.message || result.error
+    if (response.status === 401 || serverMessage === 'You must log in to access this resource.') {
+      throw new Error('Incorrect username or password. Please try again.')
+    }
+    throw new Error(serverMessage || `Login failed (HTTP ${response.status}). Please check your credentials and try again.`)
+  }
+  return result.user ?? result
+}
+
+async function createAccount() {
+  submitting.value = true
+  errorMessage.value = ''
+
+  try {
+    // Check the repeated password before contacting the server. This is only a usability check:
+    // all validation must also happen on the backend because browser-side checks can be bypassed.
+    if (!email.value.trim() || !username.value.trim() || !password.value) {
+      throw new Error('Enter an email, username, and password.')
+    }
+    if (!/^[A-Za-z0-9_-]+$/.test(username.value)) {
+      throw new Error('Username can contain only letters, numbers, hyphens, and underscores.')
+    }
+    if (password.value.length < 8) {
+      throw new Error('Password must have at least 8 characters.')
+    }
+    if (password.value !== passwordConfirmation.value) {
+      throw new Error('The passwords do not match.')
+    }
+
+    const response = await authFetch('/mtg-collectron/auth/register', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.value.trim(),
+        username: username.value.trim(),
+        password: password.value,
+      }),
+    })
+    if (!response.ok) {
+      const result = await response.json()
+      throw new Error(result.message || 'Unable to create the account. Please check your details.')
+    }
+
+    // Account creation does not guarantee that the server established a session.
+    emit('authenticated', await authenticateWithUsername(username.value.trim(), password.value))
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Unable to create the account. Please try again.'
+  } finally {
+    submitting.value = false
+  }
+}
+</script>
+
+<style scoped>
+.login_page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: linear-gradient(145deg, #fff7f8, #f5f7fb);
+}
+
+.login_box {
+  width: 100%;
+  max-width: 440px;
+  padding: 32px;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.login_logo {
+  width: 100%;
+  max-width: 310px;
+  margin: 0 auto 12px;
+}
+
+.login_title {
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.login_subtitle {
+  margin: 4px 0 24px;
+  color: #666;
+}
+
+.login_alert {
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.guest_button {
+  width: 100%;
+}
+
+.login_action_button {
+  height: auto;
+  min-height: 36px;
+}
+
+.mode_button {
+  margin-top: 12px;
+}
+
+.login_action_button :deep(.v-btn__content) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.2;
+}
+
+@media screen and (max-width: 480px) {
+  .login_box {
+    padding: 24px 18px;
+  }
+
+  .login_action_button :deep(.v-btn__content) {
+    font-size: clamp(0.5rem, 3.5vw, 0.875rem);
+  }
+}
+</style>
