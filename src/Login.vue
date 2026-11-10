@@ -21,22 +21,22 @@
             autocomplete="new-password" required variant="outlined" />
 
           <v-row>
-            <v-col cols="3">
-              <v-btn type="submit" color="primary" block :loading="submitting" :disabled="submitting">
+            <v-col cols="4">
+              <v-btn class="login_action_button" type="submit" color="primary" block :loading="submitting"
+                :disabled="submitting">
                 {{ isRegistering ? 'Register' : 'Log In' }}
               </v-btn>
             </v-col>
-            <v-spacer />
             <v-col cols="8">
-              <v-btn id="change_login_mode" type="button" color="tertiary" block :disabled="submitting"
-                @click="toggleMode">
+              <v-btn id="change_login_mode" class="login_action_button" type="button" color="tertiary" block
+                :disabled="submitting" @click="toggleMode">
                 {{ isRegistering ? 'Already signed up? Log in' : 'New here? Create account' }}
               </v-btn>
             </v-col>
           </v-row>
           <v-row v-if="!isRegistering">
             <v-col cols="12">
-              <v-btn id="btn_enter_as_guest" class="guest_button" type="button" color="secondary" block
+              <v-btn id="btn_enter_as_guest" class="guest_button login_action_button" type="button" color="secondary" block
                 :loading="submitting" :disabled="submitting" @click="logInAsGuest">
                 Just looking? Enter as a Guest Account
               </v-btn>
@@ -242,13 +242,29 @@ async function createAccount() {
   width: 100%;
 }
 
+.login_action_button {
+  height: auto;
+  min-height: 36px;
+}
+
 .mode_button {
   margin-top: 12px;
+}
+
+.login_action_button :deep(.v-btn__content) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.2;
 }
 
 @media screen and (max-width: 480px) {
   .login_box {
     padding: 24px 18px;
+  }
+
+  .login_action_button :deep(.v-btn__content) {
+    font-size: clamp(0.5rem, 3.5vw, 0.875rem);
   }
 }
 </style>

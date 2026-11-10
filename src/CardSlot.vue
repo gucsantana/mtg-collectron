@@ -1,25 +1,30 @@
 <!-- This component represents a single card being rendered on the screen and all the associated buttons and thingamajigs -->
 <template>
   <v-hover v-slot="{ isHovering, props }" v-if="isCardVisible">
-    <v-card :class="{ 'on-hover': isHovering, 'card-element': true }" :="props" flat>
+    <v-card :class="{ 'on-hover': isHovering || (mobile && touchControlsActive), 'card-element': true }" :="props" flat
+      @click="toggleTouchControls">
       <img :src="getCardImage(card['image_uris'], card['card_faces'])" class="card_image"
-        :class="{ 'lit_up_card_image': isHovering, 'card_owned': isCardOwned }">
+        :class="{ 'lit_up_card_image': isHovering || (mobile && touchControlsActive), 'card_owned': isCardOwned }">
       <v-card name="foil_overlay" :class="{ 'foil_card_frame': isCardFoil }"></v-card>
-      <v-btn @click="add_card_to_stock(card)" class="main_add_card_button" v-show="isHovering" v-if="!isCardOwned"
+      <v-btn @click="add_card_to_stock(card)" class="main_add_card_button"
+        v-show="isHovering || (mobile && touchControlsActive)" v-if="!isCardOwned"
         density="comfortable">
         <v-icon icon="mdi-plus-thick" size="x-large" color="teal-accent-3" />
       </v-btn>
-      <v-btn @click="mark_card_as_foil(card)" class="btn_foil_modify" v-show="isHovering && !isCardOnlyNonfoil"
+      <v-btn @click="mark_card_as_foil(card)" class="btn_foil_modify"
+        v-show="(isHovering || (mobile && touchControlsActive)) && !isCardOnlyNonfoil"
         v-if="isCardOwned && !isCardFoil" :disabled="isCardOnlyFoil" color="purple-lighten-3" density="comfortable">
         <v-icon icon="mdi-star-outline" size="x-large" color="white" />
         <v-tooltip activator="parent" location="bottom">Set as Foil</v-tooltip>
       </v-btn>
-      <v-btn @click="mark_card_as_nonfoil(card)" class="btn_foil_modify" v-show="isHovering"
+      <v-btn @click="mark_card_as_nonfoil(card)" class="btn_foil_modify"
+        v-show="isHovering || (mobile && touchControlsActive)"
         v-if="isCardOwned && isCardFoil" :disabled="isCardOnlyFoil" color="purple-lighten-3" density="comfortable">
         <v-icon icon="mdi-star" size="x-large" color="white" />
         <v-tooltip activator="parent" location="bottom">Remove Foil</v-tooltip>
       </v-btn>
-      <v-card v-show="isHovering" v-if="isCardOwned" class="owned_card_controls">
+      <v-card v-show="isHovering || (mobile && touchControlsActive)" v-if="isCardOwned"
+        class="owned_card_controls">
         <v-row no-gutters align="center">
           <v-col cols="4" class="sub_remove_card_btn" @click="remove_card_from_stock(card)"><v-icon
               icon="mdi-minus-thick" size="large" color="red-lighten-5" /></v-col>
@@ -33,7 +38,7 @@
         </v-row>
       </v-card>
       <!-- chip below shows the default price of the card: nonfoil if it exists, else foil/etched if that's the only version -->
-      <v-chip v-show="isHovering && show_price"
+      <v-chip v-show="(isHovering || (mobile && touchControlsActive)) && show_price"
         v-if="card.prices['usd'] || card.prices['usd_foil'] || card.prices['usd_etched']" variant="flat"
         class="card_price_element" :color="isCardOwned && (!isCardFoil || isCardOnlyFoil) ? '#FFF9C4' : 'white'"
         size="x-small">
@@ -41,14 +46,15 @@
           card.prices['usd'] : (card.prices['usd_foil'] ? card.prices['usd_foil'] : card.prices['usd_etched']) }}
       </v-chip>
       <!-- chip below only shows if the nonfoil price exists AND a foil/etched also exists -->
-      <v-chip v-show="isHovering && show_price"
+      <v-chip v-show="(isHovering || (mobile && touchControlsActive)) && show_price"
         v-if="card.prices['usd'] && (card.prices['usd_foil'] || card.prices['usd_etched'])" variant="flat"
         class="card_price_element_foil" :color="isCardOwned && isCardFoil && !isCardOnlyFoil ? '#FFF9C4' : 'white'"
         size="x-small">
         <p style="color:#7E57C2; font-size:15px;">✪</p> ${{ card.prices['usd_foil'] ? card.prices['usd_foil'] :
           card.prices['usd_etched'] }}
       </v-chip>
-      <v-card v-show="isHovering" v-if="isCardOwned" class="tag_card_controls">
+      <v-card v-show="isHovering || (mobile && touchControlsActive)" v-if="isCardOwned"
+        class="tag_card_controls">
         <v-row no-gutters align="center">
           <v-col cols="3" class="sub_tag_btn tag_square" @click="set_tag(card, 'square')" v-ripple><v-icon
               :icon="isCardTaggedSquare ? 'mdi-square' : 'mdi-square-outline'" size="large" color="teal" /></v-col>
@@ -62,7 +68,8 @@
           <v-tooltip activator="parent" location="bottom">Tag cards for identification</v-tooltip>
         </v-row>
       </v-card>
-      <v-card v-show="!isHovering" v-if="isCardOwned" class="tag_card_icons" variant="flat" color="transparent"
+      <v-card v-show="!isHovering && !(mobile && touchControlsActive)" v-if="isCardOwned"
+        class="tag_card_icons" variant="flat" color="transparent"
         :style={}>
         <v-row no-gutters align="center">
           <v-col cols="3"
@@ -88,8 +95,17 @@
 import { authFetch } from './authFetch.js'
 
 export default {
-  props: ['card', 'user_id', 'csrf_token', 'collection_stock', 'current_set_code', 'show_price', 'dark_mode', 'is_extra', 'base_set_total', 'extra_set_total', 'current_set_commons', 'current_set_uncommons', 'current_set_rares', 'current_set_mythics'],
+  props: ['card', 'user_id', 'csrf_token', 'collection_stock', 'current_set_code', 'show_price', 'dark_mode', 'is_extra', 'base_set_total', 'extra_set_total', 'current_set_commons', 'current_set_uncommons', 'current_set_rares', 'current_set_mythics', 'mobile'],
+  data() {
+    return {
+      touchControlsActive: false,
+    }
+  },
   methods: {
+    toggleTouchControls(event) {
+      if (!this.mobile || event.target.closest('button, .owned_card_controls, .tag_card_controls')) return
+      this.touchControlsActive = !this.touchControlsActive
+    },
     // passing the card images uri array and possible card faces object, return an image uri, prioritizing images uri
     getCardImage(uriArray, cardFacesArray) {
       if (uriArray) {

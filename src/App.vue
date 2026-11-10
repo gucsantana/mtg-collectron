@@ -177,7 +177,8 @@
         <v-card class="export_window">
           <v-card-item>
             <v-row class="import_window_header align-center">
-              <v-col cols="6">
+              <v-spacer/>
+              <v-col cols="11" style="text-align: left;">
                 <h2>Export Collection</h2>
               </v-col>
             </v-row>
@@ -278,7 +279,7 @@
                 <v-divider vertical />
                 <v-col v-if="current_set_extra_cards_qty > 0">
                   <p style="display:inline;">Extra Cards:</p>
-                  <v-tooltip text="/n" location="bottom" style="display:inline;">
+                  <v-tooltip v-if="!isMobile" text="/n" location="bottom" style="display:inline;">
                     <template v-slot:activator="{ props }">
                       <v-icon :="props" icon="mdi-help-circle" size="medium" color="primary"
                         style="margin-left:10px;" />
@@ -310,8 +311,9 @@
             <v-row no-gutters>
               <v-col
                 v-for="(item, index) in current_set_base_cards.filter((card) => (card.name.toLowerCase().includes(card_search.toLowerCase()) || card_search == '')).slice(pageSliceStart, pageSliceEnd)"
-                cols="6" sm="6" md="4" lg="3">
+                :key="`${current_set_code}-${item.collector_number}`" cols="6" sm="6" md="4" lg="3">
                 <CardSlot :card="item" :user_id="userId" :csrf_token="csrf_token" :collection_stock="collection_stock.o"
+                  :mobile="isMobile"
                   :current_set_code="current_set_code" :show_price="page_options.show_prices"
                   :dark_mode="page_options.dark_mode"
                   :is_extra="is_card_extra(item.promo_types)" :base_set_total="current_set_base_cards_qty"
@@ -372,7 +374,7 @@
         </v-sheet>
       </v-main>
       <v-card v-if="!isStandalonePage">
-        <v-navigation-drawer app temporary v-model="drawer" elevation="2" :width="isMobile ? '100%' : 300">
+        <v-navigation-drawer app temporary v-model="drawer" elevation="2" :width="drawerWidth">
           <v-list>
             <v-list-item id="column_set_visib_title">
               <p class="column_header">Set Visibility</p>
@@ -441,7 +443,7 @@
       </v-card>
       <v-card>
         <v-navigation-drawer app temporary v-model="settings" elevation="2" location="right"
-          :width="isMobile ? '100%' : 300">
+          :width="drawerWidth">
           <v-list dense>
             <v-list-item>
               <p class="column_header">User Preferences</p>
@@ -939,10 +941,12 @@ function handleAccountDeleted() {
   navigateToMainPage()
 }
 
+// logs out user, sets some values to their default so that logging out and back in doesn't cause oddities
 async function logOut() {
   loggingOut.value = true
   authError.value = ''
   current_set.value = null
+  settings.value = false
 
   try {
     // CSRF token is necessary to validade most auth methods
@@ -992,6 +996,10 @@ watch(collection_stock, new_obj => {
   current_set_owned_foils.value = new_obj.o[cur_set_code]?.foils_owned
 
   localStorage.setItem('collection_stock', JSON.stringify(new_obj.o))
+})
+// debug to check settings status
+watch(settings, v => {
+  console.log("settings value:",settings.value)
 })
 // whenever the set options checklist changes, we save it
 watch(set_types_shown, new_array => {
@@ -2272,6 +2280,7 @@ const pageSliceEnd = computed(() => {
 const isMobile = computed(() => {
   return unref(display.mobile)
 })
+const drawerWidth = computed(() => isMobile.value ? unref(display.width) : 300)
 function on_scroll_stats_box() {
   stats_box_visible.value = window.scrollY > 280
 }
@@ -2515,7 +2524,7 @@ function sleep(ms) {
 .side_drawer_button {
   margin-top: 10px;
   margin-bottom: 10px;
-  width: 260px;
+  width: 100%;
 }
 
 .tertiary_hover_light:hover {
@@ -2528,7 +2537,7 @@ function sleep(ms) {
 }
 
 .card_finder_window {
-  width: 500px;
+  width: min(500px, calc(100vw - 32px));
   height: 100%;
   text-align: center;
 }
@@ -2560,7 +2569,7 @@ function sleep(ms) {
 }
 
 .import_window {
-  width: 100%;
+  width: min(500px, calc(100vw - 32px));
   max-width: 500px;
   min-height: 330px;
   padding: 0 20px;
@@ -2674,10 +2683,10 @@ function sleep(ms) {
 }
 
 .export_window {
-  width: 100%;
-  min-width: 350px;
+  width: min(500px, calc(100vw - 32px));
   max-width: 500px;
-  height: 200px;
+  min-height: 200px;
+  height: auto;
   padding: 0 20px;
   text-align: center;
 }
@@ -2715,6 +2724,12 @@ function sleep(ms) {
   .card_list_body {
     width: 95%;
     margin: 0 auto;
+    display: block;
+  }
+
+  .intro_message_body {
+    display: block;
+    margin-inline: auto;
   }
 }
 </style>
